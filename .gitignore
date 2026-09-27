@@ -1,0 +1,34 @@
+# Dependencies
+frontend/node_modules/
+backend/env/
+backend/venv/
+.venv/
+
+# Build & cache
+frontend/dist/
+frontend/dist-ssr/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environment & secrets
+.env
+.env.local
+*.local
+
+# Logs & databases
+*.log
+backend/logs/
+*.sqlite3
+db.sqlite3
+
+# Media / uploads
+backend/media/
+
+# Editors & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.sw?
