@@ -14,20 +14,21 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+from decouple import config, Csv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# All secrets and environment-specific values come from backend/.env
+# (copy .env.example to .env). See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-o!i(k7+$qg(89u6$2lh0y)wb2r4&k4^!7v-3co!5r8=33+$^!9'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 
 # Application definition
@@ -81,37 +82,37 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:5173,http://127.0.0.1:5173',
+    cast=Csv(),
+)
 CORS_ALLOW_CREDENTIALS = True
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# SQLite by default (development). Set DB_ENGINE=django.db.backends.postgresql
+# and the DB_* values in .env to use PostgreSQL in production.
+DB_ENGINE = config('DB_ENGINE', default='django.db.backends.sqlite3')
 
-# Using SQLite for development (no PostgreSQL needed)
-# Switch to PostgreSQL in production
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# PostgreSQL Configuration (for production)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'adram_db',
-        'USER': 'postgres',
-        'PASSWORD': 'rootadmin1',
-        'HOST': 'localhost',
-        'PORT': '5433',
+if DB_ENGINE == 'django.db.backends.sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': BASE_DIR / config('DB_NAME', default='db.sqlite3'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
 
 
 # Password validation
@@ -154,6 +155,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# User uploads (e.g. profile pictures)
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ========== CUSTOM USER MODEL ==========
@@ -186,8 +191,6 @@ REST_FRAMEWORK = {
 }
 
 # Simple JWT settings
-from datetime import timedelta
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -203,14 +206,14 @@ SIMPLE_JWT = {
 # SECURITY SETTINGS
 # ============================================
 
-# Session Security
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+# Session Security (secure cookies are switched on automatically when DEBUG is off)
+SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
 
 # CSRF Security
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
@@ -225,19 +228,18 @@ X_FRAME_OPTIONS = 'DENY'  # Prevent clickjacking
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
 
-# Cache Control for Static Files
-# Static files can be cached, but authenticated pages won't be
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-
 
 # ========== EMAIL CONFIGURATION ==========
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', True)
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@adamtech.com')
+# Console backend prints emails to the terminal; use smtp.EmailBackend in production.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@adramtechnologies.com')
+# Where contact-form notifications are sent
+CONTACT_NOTIFY_EMAIL = config('CONTACT_NOTIFY_EMAIL', default='adramtechnologies@gmail.com')
 
 # ========== LOGGING CONFIGURATION ==========
 LOGGING = {
@@ -259,7 +261,7 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'level': config('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
     },

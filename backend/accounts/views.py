@@ -14,7 +14,9 @@ from .serializers import (
     UserUpdateSerializer, ChangePasswordSerializer, ActivityLogSerializer, ForgotPasswordSerializer,
     UserLogoutSerializer
 )
-from .permissions import IsAdminOrOwner
+from rest_framework.exceptions import AuthenticationFailed
+
+from .permissions import IsAdmin
 from .models import ActivityLog
 
 User = get_user_model()
@@ -91,22 +93,19 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        
-        # Log successful login
-        if response.status_code == 200:
-            user = User.objects.get(email=request.data.get('email'))
+        email = request.data.get('email')
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            # Bad credentials raise rather than returning a 401 response
+            user = User.objects.filter(email__iexact=email).first() if email else None
+            if user:
+                log_activity(user, ActivityLog.FAILED_LOGIN, 'Failed login attempt', request)
+            raise
+
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
             log_activity(user, ActivityLog.LOGIN, 'User logged in', request)
-        else:
-            # Log failed login attempt
-            email = request.data.get('email')
-            if email:
-                try:
-                    user = User.objects.get(email=email)
-                    log_activity(user, ActivityLog.FAILED_LOGIN, 'Failed login attempt', request)
-                except User.DoesNotExist:
-                    pass
-        
         return response
 
 
@@ -264,7 +263,7 @@ class UserListView(generics.ListAPIView):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
     search_fields = ['email', 'first_name', 'last_name']
     ordering_fields = ['created_at', 'email']
 

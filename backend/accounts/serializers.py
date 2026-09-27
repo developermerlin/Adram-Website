@@ -54,7 +54,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email', 'first_name', 'last_name', 'phone_number',
-            'country', 'password', 'password_confirm', 'role'
+            'country', 'password', 'password_confirm'
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -96,7 +96,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             phone_number=validated_data.get('phone_number'),
             country=validated_data.get('country'),
             password=validated_data['password'],
-            role=validated_data.get('role', User.STUDENT),
+            # Self-registration always creates students; staff roles are assigned by an admin.
+            role=User.STUDENT,
         )
         return user
 

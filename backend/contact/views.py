@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.core.mail import send_mail
 from django.conf import settings
+from accounts.permissions import IsAdmin
 from .models import ContactMessage
 from .serializers import ContactMessageSerializer
 
@@ -41,7 +42,7 @@ This message was sent from the ADRAM Technologies contact form.
                 subject,
                 message,
                 settings.DEFAULT_FROM_EMAIL,
-                ['adramtechnologies@gmail.com'],
+                [settings.CONTACT_NOTIFY_EMAIL],
                 fail_silently=True,
             )
             
@@ -92,15 +93,9 @@ ADRAM Technologies Team
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing contact messages (admin only)
+    ViewSet for managing contact messages (admin only).
+    Public submissions go through create_contact_message instead.
     """
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
-    
-    def get_permissions(self):
-        """
-        Allow public POST requests, but restrict other methods to authenticated users
-        """
-        if self.request.method == 'POST':
-            return [AllowAny()]
-        return super().get_permissions()
+    permission_classes = [IsAdmin]

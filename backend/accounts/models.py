@@ -150,18 +150,31 @@ class ActivityLog(models.Model):
     Track user activities for security and audit purposes.
     """
 
+    # Action constants (referenced by views, e.g. ActivityLog.LOGIN)
+    LOGIN = 'LOGIN'
+    LOGOUT = 'LOGOUT'
+    REGISTRATION = 'REGISTRATION'
+    PROFILE_UPDATE = 'PROFILE_UPDATE'
+    PASSWORD_CHANGE = 'PASSWORD_CHANGE'
+    PASSWORD_RESET = 'PASSWORD_RESET'
+    EMAIL_VERIFICATION = 'EMAIL_VERIFICATION'
+    ROLE_CHANGE = 'ROLE_CHANGE'
+    ACCOUNT_DEACTIVATION = 'ACCOUNT_DEACTIVATION'
+    ACCOUNT_ACTIVATION = 'ACCOUNT_ACTIVATION'
+    FAILED_LOGIN = 'FAILED_LOGIN'
+
     ACTION_CHOICES = [
-        ('LOGIN', 'Login'),
-        ('LOGOUT', 'Logout'),
-        ('REGISTRATION', 'Registration'),
-        ('PROFILE_UPDATE', 'Profile Update'),
-        ('PASSWORD_CHANGE', 'Password Change'),
-        ('PASSWORD_RESET', 'Password Reset'),
-        ('EMAIL_VERIFICATION', 'Email Verification'),
-        ('ROLE_CHANGE', 'Role Change'),
-        ('ACCOUNT_DEACTIVATION', 'Account Deactivation'),
-        ('ACCOUNT_ACTIVATION', 'Account Activation'),
-        ('FAILED_LOGIN', 'Failed Login Attempt'),
+        (LOGIN, 'Login'),
+        (LOGOUT, 'Logout'),
+        (REGISTRATION, 'Registration'),
+        (PROFILE_UPDATE, 'Profile Update'),
+        (PASSWORD_CHANGE, 'Password Change'),
+        (PASSWORD_RESET, 'Password Reset'),
+        (EMAIL_VERIFICATION, 'Email Verification'),
+        (ROLE_CHANGE, 'Role Change'),
+        (ACCOUNT_DEACTIVATION, 'Account Deactivation'),
+        (ACCOUNT_ACTIVATION, 'Account Activation'),
+        (FAILED_LOGIN, 'Failed Login Attempt'),
     ]
 
     user = models.ForeignKey(

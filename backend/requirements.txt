@@ -1,11 +1,12 @@
 Django==6.1.1
-djangorestframework==3.14.0
-djangorestframework-simplejwt==5.3.2
-django-cors-headers==4.3.1
+djangorestframework==3.18.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
 django-jazzmin==3.0.5
-drf-yasg==1.21.7
-psycopg2-binary==2.9.9
+drf-yasg==1.21.15
 python-decouple==3.8
-Pillow==10.1.0
+Pillow==12.3.0
 django-filter==24.1
 
+# Only needed when DB_ENGINE is PostgreSQL
+psycopg2-binary==2.9.13

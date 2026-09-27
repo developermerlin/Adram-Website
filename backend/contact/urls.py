@@ -6,6 +6,8 @@ router = DefaultRouter()
 router.register(r'messages', views.ContactMessageViewSet)
 
 urlpatterns = [
+    # Public: POST /api/contact/
     path('', views.create_contact_message, name='create-contact-message'),
-    path('api/', include(router.urls)),
+    # Admin only: /api/contact/messages/
+    path('', include(router.urls)),
 ]
