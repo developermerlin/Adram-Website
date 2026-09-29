@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { site } from '../../config/site';
 import { CtaBand, IconTile, PageHero, SectionHeading } from '../../components/ui/Section';
 import { AboutArt } from '../../components/brand/Illustrations';
+import HeroBrand from '../../components/brand/HeroBrand';
 import '../../styles/pages.css';
 
 const values = [
@@ -19,14 +20,19 @@ const pillars = [
 
 export const AboutPage = () => (
   <>
-    <PageHero eyebrow="About us" title={`${site.name}: ${site.tagline.toLowerCase()}`} art={<div className="art-frame art-frame--dark"><AboutArt /></div>}>
+    <PageHero
+      eyebrow="About us"
+      title={`${site.name}: ${site.tagline.toLowerCase()}`}
+      background="/consultancy/consult-hero.jpg"
+      art={<div className="art-frame art-frame--dark"><AboutArt /></div>}
+    >
       A technology company in {site.location} helping organisations work smarter and helping people build careers in tech.
     </PageHero>
 
     <section className="section">
       <div className="container grid grid-2 align-center">
         <div>
-          <SectionHeading eyebrow="Who we are" title="Technology, skills and opportunity under one roof" />
+          <SectionHeading eyebrow="Who we are" title="A trusted partner in technology, training and educational opportunity" />
           <p className="lead">
             ADRAM Technologies delivers IT solutions for businesses, schools, NGOs and public institutions, from websites
             and custom software to office networks and AI-powered tools.
@@ -36,24 +42,28 @@ export const AboutPage = () => (
             why we guide young Sierra Leoneans towards international scholarships that open doors to world-class education.
           </p>
         </div>
-        <div className="stack">
-          {pillars.map((p) => (
-            <Link key={p.title} to={p.to} className="card card--hover pillar-link">
-              <IconTile name={p.icon} />
-              <div>
-                <h3>{p.title}</h3>
-                <p className="muted">{p.text}</p>
-              </div>
-              <i className="fas fa-arrow-right pillar-link__arrow" />
-            </Link>
-          ))}
+        <div className="about-brand">
+          <HeroBrand variant="flat" />
         </div>
+      </div>
+      <div className="container about-pillars">
+        {pillars.map((p) => (
+          <Link key={p.title} to={p.to} className="card card--hover pillar-link">
+            <IconTile name={p.icon} />
+            <div>
+              <h3>{p.title}</h3>
+              <p className="muted">{p.text}</p>
+            </div>
+            <i className="fas fa-arrow-right pillar-link__arrow" />
+          </Link>
+        ))}
       </div>
     </section>
 
     <section className="section section--dark" id="mission">
       <div className="container grid grid-2">
         <div className="statement">
+          <IconTile name="innovation" tone="dark" />
           <span className="eyebrow">Our mission</span>
           <h2>Make dependable technology and digital skills accessible to everyone we serve.</h2>
           <p>
@@ -62,6 +72,7 @@ export const AboutPage = () => (
           </p>
         </div>
         <div className="statement">
+          <IconTile name="discover" tone="dark" />
           <span className="eyebrow">Our vision</span>
           <h2>A Sierra Leone where every organisation and every young person can thrive in the digital economy.</h2>
           <p>

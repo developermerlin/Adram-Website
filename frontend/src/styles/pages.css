@@ -2318,3 +2318,128 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- About: polish ---------- */
+.about-brand {
+  display: grid;
+  place-items: center;
+}
+
+.about-brand .hero-brand-scene {
+  max-width: 420px;
+}
+
+.about-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+  margin-top: clamp(32px, 5vw, 56px);
+}
+
+.pillar-link {
+  position: relative;
+  overflow: hidden;
+}
+
+.pillar-link::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--brand-gradient);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+
+.pillar-link:hover::before {
+  transform: scaleY(1);
+}
+
+/* Mission and vision: two glass panels on a softly lit navy band */
+#mission {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(520px 320px at 8% 0%, rgba(22, 200, 245, 0.14), transparent 70%),
+    radial-gradient(560px 360px at 100% 100%, rgba(20, 84, 232, 0.28), transparent 70%),
+    var(--navy-900);
+}
+
+#mission .container {
+  position: relative;
+  z-index: 1;
+  gap: clamp(20px, 3vw, 32px);
+}
+
+.section--dark .statement {
+  position: relative;
+  padding: clamp(24px, 3.4vw, 40px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  overflow: hidden;
+}
+
+.section--dark .statement::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--brand-gradient);
+}
+
+.section--dark .statement .icon-tile {
+  margin-bottom: 18px;
+}
+
+.section--dark .statement .eyebrow {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.section--dark .statement h2 {
+  margin-bottom: 16px;
+}
+
+/* Values: numbered cards with an accent bar that draws in on hover */
+#values .grid {
+  counter-reset: value;
+}
+
+.value-card {
+  position: relative;
+  overflow: hidden;
+  counter-increment: value;
+}
+
+.value-card::before {
+  content: counter(value, decimal-leading-zero);
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: var(--line);
+  transition: color 0.2s ease;
+}
+
+.value-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--brand-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.value-card:hover::before {
+  color: var(--blue-600);
+}
+
+.value-card:hover::after {
+  transform: scaleX(1);
+}

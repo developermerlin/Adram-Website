@@ -1232,6 +1232,11 @@ textarea.input {
     color: var(--navy-800);
   }
 
+  .mobile-nav__sub .mobile-nav__all {
+    color: var(--blue-700);
+    font-weight: 600;
+  }
+
   .mobile-nav__actions {
     display: grid;
     gap: 10px;
@@ -1402,6 +1407,22 @@ textarea.input {
   height: 2px;
   border-radius: 2px;
   background: var(--brand-gradient);
+}
+
+.site-footer .footer-col__more {
+  color: var(--cyan-300);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.site-footer .footer-col__more i {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  transition: transform 0.15s ease;
+}
+
+.site-footer .footer-col__more:hover i {
+  transform: translateX(3px);
 }
 
 .site-footer li {

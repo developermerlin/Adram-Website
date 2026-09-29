@@ -9,6 +9,9 @@ import Brand from '../ui/Brand';
 import BrandIcon from '../brand/BrandIcon';
 import SocialLinks from '../ui/SocialLinks';
 
+// The Services and Training menus list only the first few items, then link to the full page
+const DROPDOWN_LIMIT = 6;
+
 const NAV = [
   { to: '/', label: 'Home', end: true },
   {
@@ -23,8 +26,8 @@ const NAV = [
   {
     to: '/services',
     label: 'Services',
-    children: services.map((s) => ({ to: `/services/${s.id}`, label: s.title, icon: s.brandIcon })),
-    footer: { to: '/services', label: 'All services' },
+    children: services.slice(0, DROPDOWN_LIMIT).map((s) => ({ to: `/services/${s.id}`, label: s.title, icon: s.brandIcon })),
+    footer: { to: '/services', label: services.length > DROPDOWN_LIMIT ? `All ${services.length} services` : 'All services' },
   },
   {
     to: '/courses',
@@ -153,7 +156,13 @@ export const SiteHeader = () => {
   const [openItem, setOpenItem] = useState(null);
   const { data: courses } = useCourses();
   const nav = NAV.map((item) =>
-    item.to === '/courses' ? { ...item, children: (courses || []).map((p) => ({ to: `/courses#${p.slug}`, label: p.title, icon: p.icon })) } : item,
+    item.to === '/courses'
+      ? {
+          ...item,
+          children: (courses || []).slice(0, DROPDOWN_LIMIT).map((p) => ({ to: `/courses#${p.slug}`, label: p.title, icon: p.icon })),
+          footer: { ...item.footer, label: courses?.length > DROPDOWN_LIMIT ? `All ${courses.length} programmes` : item.footer.label },
+        }
+      : item,
   );
   const [expanded, setExpanded] = useState(null);
   const [scrolled, setScrolled] = useState(false);
@@ -261,6 +270,11 @@ export const SiteHeader = () => {
                     <BrandIcon name={child.icon} size={18} /> {child.label}
                   </Link>
                 ))}
+                {item.footer && (
+                  <Link to={item.footer.to} className="mobile-nav__all" onClick={() => setMenuOpen(false)}>
+                    {item.footer.label} <i className="fas fa-arrow-right" aria-hidden="true" />
+                  </Link>
+                )}
               </div>
             )}
           </div>

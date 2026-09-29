@@ -20,7 +20,11 @@ const students = [
   { to: '/login', label: 'Student portal' },
 ];
 
-const FooterLinks = ({ title, links }) => (
+// The footer lists only the first few services, then a plain link to the full list.
+const FOOTER_SERVICES = 5;
+
+// `more` (optional): { to, label } adds a "view all" link after the list.
+const FooterLinks = ({ title, links, more }) => (
   <div className="footer-col">
     <h4>{title}</h4>
     <ul>
@@ -29,6 +33,13 @@ const FooterLinks = ({ title, links }) => (
           <Link to={l.to}>{l.label}</Link>
         </li>
       ))}
+      {more && (
+        <li>
+          <Link to={more.to} className="footer-col__more">
+            {more.label} <i className="fas fa-arrow-right" aria-hidden="true" />
+          </Link>
+        </li>
+      )}
     </ul>
   </div>
 );
@@ -46,7 +57,11 @@ export const SiteFooter = () => (
           <SocialLinks />
         </div>
 
-        <FooterLinks title="Services" links={services.map((s) => ({ to: `/services/${s.id}`, label: s.title }))} />
+        <FooterLinks
+          title="Services"
+          links={services.slice(0, FOOTER_SERVICES).map((s) => ({ to: `/services/${s.id}`, label: s.title }))}
+          more={{ to: '/services', label: 'View all services' }}
+        />
         <FooterLinks title="Company" links={company} />
         <FooterLinks title="Students" links={students} />
 

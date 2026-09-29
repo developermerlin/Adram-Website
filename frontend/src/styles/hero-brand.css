@@ -1,0 +1,367 @@
+/* ADRAM logo scene: the hero panel on the home page and its flat card on the About page. */
+
+/* Hero brand panel: the logo in a white badge, framed by soft rings, a tilted orbit and four service badges.
+   It sits in 3D: tilted at rest, following the pointer, with each layer floating at its own depth. */
+.hero-brand-scene {
+  width: 100%;
+  max-width: 400px;
+  justify-self: center;
+  perspective: 1100px;
+}
+
+.hero-brand {
+  --rx: 6deg;    /* resting tilt; the pointer overrides these (see LandingPage.jsx) */
+  --ry: -10deg;
+  --mx: 30%;
+  --my: 20%;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1.5px solid transparent;
+  border-radius: 28px;
+  /* A light panel with a gradient edge (blue → cyan → violet) */
+  background:
+    radial-gradient(circle at 50% 50%, rgba(47, 107, 255, 0.14), transparent 60%),
+    radial-gradient(circle at 88% 8%, rgba(22, 200, 245, 0.16), transparent 42%),
+    radial-gradient(circle at 10% 92%, rgba(139, 92, 246, 0.12), transparent 42%),
+    linear-gradient(160deg, #ffffff 0%, var(--tint-blue) 100%) padding-box,
+    linear-gradient(135deg, #2f6bff, #16c8f5 45%, #8b5cf6) border-box;
+  box-shadow:
+    0 50px 80px -40px rgba(20, 84, 232, 0.55),
+    0 24px 40px -30px rgba(139, 92, 246, 0.45);
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+/* Everything is centred on the panel; each layer then floats at its own depth (translateZ) */
+.hero-brand__glow,
+.hero-brand__ring,
+.hero-brand__orbit,
+.hero-brand__badge,
+.hero-brand__satellites {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* A slowly turning colour glow behind the logo */
+.hero-brand__glow {
+  width: 64%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #2f6bff, #16c8f5, #8b5cf6, #2f6bff);
+  filter: blur(34px);
+  opacity: 0.55;
+  animation: hero-spin 14s linear infinite;
+}
+
+.hero-brand__ring {
+  border-radius: 50%;
+}
+
+.hero-brand__ring--outer {
+  width: 76%;
+  aspect-ratio: 1;
+  border: 1px dashed color-mix(in srgb, var(--blue-600) 30%, transparent);
+  transform: translate(-50%, -50%) translateZ(10px);
+}
+
+.hero-brand__ring--inner {
+  width: 60%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.15) 70%);
+  box-shadow: inset 0 0 24px rgba(47, 107, 255, 0.12);
+  transform: translate(-50%, -50%) translateZ(20px);
+}
+
+/* A tilted ellipse, like the ring around the "A" in the logo, with a glowing dot riding it */
+.hero-brand__orbit {
+  width: 90%;
+  height: 30%;
+  border: 1.5px solid color-mix(in srgb, var(--blue-500) 38%, transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) translateZ(45px) rotate(-18deg);
+}
+
+.hero-brand__orbit::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #16c8f5, var(--blue-600));
+  box-shadow: 0 0 0 4px rgba(22, 200, 245, 0.2), 0 0 16px rgba(22, 200, 245, 0.75);
+  transform: translateY(-50%);
+}
+
+/* The logo badge: white, with a gradient rim, floating highest */
+.hero-brand__badge {
+  width: 48%;
+  aspect-ratio: 1;
+  overflow: hidden;   /* brand.png is square with a white background: the circle trims its corners */
+  border: 3px solid transparent;
+  border-radius: 50%;
+  background:
+    var(--white) padding-box,
+    conic-gradient(from 210deg, #2f6bff, #16c8f5, #8b5cf6, #2f6bff) border-box;
+  box-shadow:
+    0 0 0 8px rgba(255, 255, 255, 0.55),
+    0 26px 44px -18px rgba(20, 84, 232, 0.55),
+    0 10px 24px -14px rgba(139, 92, 246, 0.5);
+  transform: translate(-50%, -50%) translateZ(70px);
+}
+
+.hero-brand__badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The four service badges sit on the outer ring, at the diagonals, each in its own colour */
+.hero-brand__satellites {
+  width: 76%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) translateZ(90px);
+  transform-style: preserve-3d;
+}
+
+.hero-brand__satellite {
+  --tile: linear-gradient(135deg, #2f6bff, #1454e8);
+  --glow: rgba(20, 84, 232, 0.6);
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  background: var(--tile);
+  color: var(--white);
+  font-size: 0.92rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 12px 22px -10px var(--glow);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  animation: hero-float 6s ease-in-out infinite;
+}
+
+.hero-brand__satellite:nth-child(1) { left: 14.6%; top: 14.6%; }
+.hero-brand__satellite:nth-child(2) {
+  --tile: linear-gradient(135deg, #22d3ee, #0891b2);
+  --glow: rgba(8, 145, 178, 0.6);
+  left: 85.4%; top: 14.6%; animation-delay: -1.5s;
+}
+.hero-brand__satellite:nth-child(3) {
+  --tile: linear-gradient(135deg, #a78bfa, #7c3aed);
+  --glow: rgba(124, 58, 237, 0.55);
+  left: 85.4%; top: 85.4%; animation-delay: -3s;
+}
+.hero-brand__satellite:nth-child(4) {
+  --tile: linear-gradient(135deg, #38bdf8, #4f46e5);
+  --glow: rgba(79, 70, 229, 0.55);
+  left: 14.6%; top: 85.4%; animation-delay: -4.5s;
+}
+
+/* A soft light that follows the pointer across the panel */
+.hero-brand__sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.55), transparent 45%);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  transform: translateZ(100px);
+}
+
+@keyframes hero-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -6px; }
+}
+
+@keyframes hero-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-brand {
+    transition: none;
+  }
+
+  .hero-brand__satellite,
+  .hero-brand__glow {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Hover transitions (interactive variant, used in the home hero)
+   Layers keep their translateZ depth; hover adds scale / spread on top of it.
+   ========================================================================== */
+
+/* Moving over the panel follows the pointer closely; leaving springs back with a slight overshoot */
+.hero-brand--interactive {
+  transition: transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.5s ease;
+}
+
+.hero-brand--interactive:hover {
+  transition: transform 0.12s ease-out, box-shadow 0.5s ease;
+  box-shadow:
+    0 60px 90px -40px rgba(20, 84, 232, 0.65),
+    0 30px 50px -30px rgba(139, 92, 246, 0.55);
+}
+
+.hero-brand__glow,
+.hero-brand__ring,
+.hero-brand__orbit,
+.hero-brand__badge {
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+.hero-brand--interactive:hover .hero-brand__glow {
+  opacity: 0.85;
+}
+
+.hero-brand--interactive:hover .hero-brand__ring--outer {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--blue-600) 45%, transparent);
+  transform: translate(-50%, -50%) translateZ(10px) scale(1.07);
+}
+
+.hero-brand--interactive:hover .hero-brand__ring--inner {
+  transform: translate(-50%, -50%) translateZ(20px) scale(1.1);
+}
+
+.hero-brand--interactive:hover .hero-brand__orbit {
+  transform: translate(-50%, -50%) translateZ(45px) rotate(-6deg) scale(1.05);
+}
+
+.hero-brand--interactive:hover .hero-brand__badge {
+  transform: translate(-50%, -50%) translateZ(70px) scale(1.07);
+  box-shadow:
+    0 0 0 12px rgba(255, 255, 255, 0.6),
+    0 34px 54px -18px rgba(20, 84, 232, 0.65),
+    0 14px 30px -14px rgba(139, 92, 246, 0.6);
+}
+
+/* Service badges fly outwards along their diagonal and show their name */
+.hero-brand__satellite {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+}
+
+.hero-brand--interactive:hover .hero-brand__satellite:nth-child(1) { transform: translate(calc(-50% - 12px), calc(-50% - 12px)) scale(1.14); }
+.hero-brand--interactive:hover .hero-brand__satellite:nth-child(2) { transform: translate(calc(-50% + 12px), calc(-50% - 12px)) scale(1.14); }
+.hero-brand--interactive:hover .hero-brand__satellite:nth-child(3) { transform: translate(calc(-50% + 12px), calc(-50% + 12px)) scale(1.14); }
+.hero-brand--interactive:hover .hero-brand__satellite:nth-child(4) { transform: translate(calc(-50% - 12px), calc(-50% + 12px)) scale(1.14); }
+
+.hero-brand__satellite::after {
+  content: attr(data-label);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--navy-900);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+
+.hero-brand__satellite:hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* A diagonal band of light sweeps across the panel each time the pointer enters */
+.hero-brand__sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  opacity: 0;
+}
+
+.hero-brand--interactive:hover .hero-brand__sheen::after {
+  opacity: 1;
+  transform: translateX(120%);
+  transition: transform 1s ease, opacity 0.3s ease;
+}
+
+/* ==========================================================================
+   Flat variant (About page): the same scene as a calm navy card, no tilt or pointer effects
+   ========================================================================== */
+.hero-brand--flat {
+  --rx: 0deg;
+  --ry: 0deg;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(47, 107, 255, 0.35), transparent 62%),
+    radial-gradient(circle at 90% 6%, rgba(22, 200, 245, 0.22), transparent 42%),
+    linear-gradient(160deg, #0f2a78 0%, var(--navy-900) 100%) padding-box,
+    linear-gradient(135deg, #2f6bff, #16c8f5 45%, #8b5cf6) border-box;
+  box-shadow: 0 40px 70px -40px rgba(14, 22, 48, 0.8);
+  transform: none;
+  will-change: auto;
+}
+
+.hero-brand--flat .hero-brand__glow {
+  opacity: 0.4;
+}
+
+.hero-brand--flat .hero-brand__ring--outer {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.hero-brand--flat .hero-brand__ring--inner {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 70%);
+  box-shadow: inset 0 0 24px rgba(22, 200, 245, 0.16);
+}
+
+.hero-brand--flat .hero-brand__orbit {
+  border-color: rgba(22, 200, 245, 0.5);
+}
+
+.hero-brand--flat .hero-brand__badge {
+  box-shadow:
+    0 0 0 8px rgba(255, 255, 255, 0.12),
+    0 26px 44px -18px rgba(0, 0, 0, 0.6);
+}
+
+.hero-brand--flat .hero-brand__sheen {
+  display: none;
+}
+
+.hero-brand--flat:hover .hero-brand__badge {
+  transform: translate(-50%, -50%) translateZ(70px) scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-brand__glow,
+  .hero-brand__ring,
+  .hero-brand__orbit,
+  .hero-brand__badge,
+  .hero-brand__satellite {
+    transition: none;
+  }
+
+  .hero-brand__sheen::after {
+    display: none;
+  }
+}
