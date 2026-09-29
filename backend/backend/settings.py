@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'api',
     'accounts',
     'contact',
+    'catalog',
+    'portal',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
 ]
@@ -158,6 +160,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # User uploads (e.g. profile pictures)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+# Payment receipts and application documents: never served directly, only through the portal API.
+PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -231,6 +235,9 @@ X_FRAME_OPTIONS = 'DENY'  # Prevent clickjacking
 
 # ========== EMAIL CONFIGURATION ==========
 # Console backend prints emails to the terminal; use smtp.EmailBackend in production.
+# Email codes: no hourly limit unless one is set (e.g. OTP_MAX_CODES_PER_HOUR=10 in .env).
+OTP_MAX_CODES_PER_HOUR = config('OTP_MAX_CODES_PER_HOUR', default=0, cast=int) or None
+
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
@@ -240,6 +247,15 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@adramtechnologies.com')
 # Where contact-form notifications are sent
 CONTACT_NOTIFY_EMAIL = config('CONTACT_NOTIFY_EMAIL', default='adramtechnologies@gmail.com')
+
+# Voice and video calls (WebRTC). STUN lets browsers find each other; on strict networks (some mobile
+# data and office firewalls) calls also need a TURN relay. Add one as JSON in the environment, e.g.
+# WEBRTC_ICE_SERVERS=[{"urls":"stun:stun.l.google.com:19302"},{"urls":"turn:turn.example.com:3478","username":"u","credential":"p"}]
+import json as _json  # noqa: E402
+WEBRTC_ICE_SERVERS = _json.loads(config(
+    'WEBRTC_ICE_SERVERS',
+    default='[{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]',
+))
 
 # ========== LOGGING CONFIGURATION ==========
 LOGGING = {
@@ -273,3 +289,18 @@ os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 
 # ========== URL CONFIGURATION ==========
 APPEND_SLASH = True
+
+
+# ========== SOCIAL SIGN-IN (OAuth) ==========
+# Where the browser is sent after sign-in, and the public address of this API (used to build the
+# redirect URI registered with each provider: {BACKEND_URL}/api/v1/auth/oauth/<provider>/callback/).
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+BACKEND_URL = config('BACKEND_URL', default='http://127.0.0.1:8000')
+
+# Leave a pair empty to switch that provider off.
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+FACEBOOK_CLIENT_ID = config('FACEBOOK_CLIENT_ID', default='')
+FACEBOOK_CLIENT_SECRET = config('FACEBOOK_CLIENT_SECRET', default='')
+GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
+GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')

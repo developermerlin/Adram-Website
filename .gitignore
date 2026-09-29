@@ -25,6 +25,7 @@ db.sqlite3
 
 # Media / uploads
 backend/media/
+backend/private_media/
 
 # Editors & OS
 .vscode/

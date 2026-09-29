@@ -1,167 +1,140 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authAPI } from '../services/api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { authAPI, tokenStorage } from '../services/api';
 
 const AuthContext = createContext(null);
 
+const readStoredUser = () => {
+  try {
+    return JSON.parse(tokenStorage.user);
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(() => (tokenStorage.access ? readStoredUser() : null));
+  // True only while we confirm a stored session on first load; forms track their own submitting state.
+  const [initializing, setInitializing] = useState(() => Boolean(tokenStorage.access));
 
-  // Initialize auth state from localStorage
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const storedUser = localStorage.getItem('user');
-        const accessToken = localStorage.getItem('access_token');
-
-        if (storedUser && accessToken) {
-          setUser(JSON.parse(storedUser));
-          setIsAuthenticated(true);
-
-          // Verify token validity by calling profile endpoint
-          try {
-            const response = await authAPI.getProfile();
-            setUser(response.data);
-            localStorage.setItem('user', JSON.stringify(response.data));
-          } catch (error) {
-            console.error('Profile fetch failed, clearing storage');
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            setUser(null);
-            setIsAuthenticated(false);
-          }
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
+  const storeUser = useCallback((userData) => {
+    tokenStorage.saveUser(userData);
+    setUser(userData);
   }, []);
 
-  const register = async (formData) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.register(formData);
-      const { access, refresh, user: userData } = response.data;
+  const clearSession = useCallback(() => {
+    tokenStorage.clear();
+    setUser(null);
+  }, []);
 
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-      localStorage.setItem('user', JSON.stringify(userData));
+  // Confirm a stored session is still valid (refreshing the token if needed).
+  useEffect(() => {
+    if (!tokenStorage.access) return;
+    authAPI
+      .getProfile()
+      .then(({ data }) => storeUser(data))
+      .catch(() => clearSession())
+      .finally(() => setInitializing(false));
+  }, [storeUser, clearSession]);
 
-      setUser(userData);
-      setIsAuthenticated(true);
-      toast.success('Registration successful!');
+  // The API client fires this when a refresh fails.
+  useEffect(() => {
+    window.addEventListener('auth:expired', clearSession);
+    return () => window.removeEventListener('auth:expired', clearSession);
+  }, [clearSession]);
 
-      return userData;
-    } catch (error) {
-      const message = error.response?.data?.email?.[0] || error.response?.data?.detail || 'Registration failed';
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Step 1 of sign-in: checks the password and emails a code. Returns { challenge, email, purpose }.
+  const login = useCallback(async (email, password, remember = true) => {
+    const { data } = await authAPI.login(email, password, remember);
+    return data;
+  }, []);
 
-  const login = async (email, password) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.login(email, password);
-      const { access, refresh, user: userData } = response.data;
+  // Creates the account and emails a verification code. Returns { challenge, email, purpose }.
+  const register = useCallback(async (formData) => {
+    const { data } = await authAPI.register(formData);
+    return data;
+  }, []);
 
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      setUser(userData);
-      setIsAuthenticated(true);
-      toast.success('Login successful!');
-
-      return userData;
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Login failed. Please check your credentials.';
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        await authAPI.logout(refreshToken);
+  // Step 2: the emailed code. Signs in when the account is approved; otherwise returns { status } only.
+  const verifyOtp = useCallback(
+    async (challenge, code) => {
+      const { data } = await authAPI.verifyOtp(challenge, code);
+      if (data.access) {
+        tokenStorage.save(data, data.remember !== false);
+        storeUser(data.user);
+        toast.success(`Welcome back, ${data.user.first_name}!`);
       }
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      setUser(null);
-      setIsAuthenticated(false);
-      toast.success('Logged out successfully');
-    }
-  };
+      return data;
+    },
+    [storeUser],
+  );
 
-  const updateProfile = async (formData) => {
+  // Social sign-in: the one-time code from the API is swapped for the usual token pair.
+  const loginWithOAuthCode = useCallback(
+    async (code, isNew) => {
+      const { data } = await authAPI.oauthExchange(code);
+      tokenStorage.save(data, true);
+      storeUser(data.user);
+      toast.success(isNew ? `Welcome to ADRAM, ${data.user.first_name}!` : `Welcome back, ${data.user.first_name}!`);
+      return data.user;
+    },
+    [storeUser],
+  );
+
+  const logout = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await authAPI.updateProfile(formData);
-      const updatedUser = { ...user, ...response.data };
-
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      toast.success('Profile updated successfully');
-
-      return updatedUser;
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Profile update failed';
-      toast.error(message);
-      throw error;
+      if (tokenStorage.refresh) await authAPI.logout(tokenStorage.refresh);
+    } catch {
+      // The token may already be invalid; signing out locally is what matters.
     } finally {
-      setLoading(false);
+      clearSession();
+      toast.success('You have been signed out.');
     }
-  };
+  }, [clearSession]);
 
-  const changePassword = async (oldPassword, newPassword, newPasswordConfirm) => {
-    try {
-      setLoading(true);
-      await authAPI.changePassword({
-        old_password: oldPassword,
-        new_password: newPassword,
-        new_password_confirm: newPasswordConfirm,
-      });
-      toast.success('Password changed successfully');
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Password change failed';
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // The update endpoint returns only the editable fields, so merge them into the stored user.
+  const saveProfile = useCallback(
+    async (request, message) => {
+      const { data } = await request;
+      const updated = { ...user, ...data, full_name: `${data.first_name} ${data.last_name}`.trim() };
+      storeUser(updated);
+      toast.success(message);
+      return updated;
+    },
+    [user, storeUser],
+  );
 
-  const value = {
-    user,
-    loading,
-    isAuthenticated,
-    register,
-    login,
-    logout,
-    updateProfile,
-    changePassword,
-  };
+  const updateProfile = useCallback((formData) => saveProfile(authAPI.updateProfile(formData), 'Profile updated.'), [saveProfile]);
+  const uploadProfilePicture = useCallback((file) => saveProfile(authAPI.uploadProfilePicture(file), 'Profile photo updated.'), [saveProfile]);
+  const removeProfilePicture = useCallback(() => saveProfile(authAPI.removeProfilePicture(), 'Profile photo removed.'), [saveProfile]);
+
+  const changePassword = useCallback(async (payload) => {
+    await authAPI.changePassword(payload);
+    toast.success('Password changed.');
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      initializing,
+      login,
+      loginWithOAuthCode,
+      verifyOtp,
+      register,
+      logout,
+      updateProfile,
+      uploadProfilePicture,
+      removeProfilePicture,
+      changePassword,
+    }),
+    [user, initializing, login, loginWithOAuthCode, verifyOtp, register, logout, updateProfile, uploadProfilePicture, removeProfilePicture, changePassword],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User, ActivityLog
+from .models import User, ActivityLog, SocialAccount
 
 
 @admin.register(User)
@@ -16,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
         (_('Important dates'), {'fields': ('last_login', 'created_at', 'updated_at')}),
-        (_('Account Status'), {'fields': ('is_verified', 'role')}),
+        (_('Account Status'), {'fields': ('is_verified', 'role', 'approval_status', 'approved_at', 'approved_by', 'rejection_reason')}),
     )
     add_fieldsets = (
         (None, {
@@ -24,11 +24,11 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('email', 'password1', 'password2'),
         }),
     )
-    list_display = ('email', 'first_name', 'last_name', 'role', 'is_verified', 'is_active', 'created_at')
-    list_filter = ('is_active', 'is_verified', 'role', 'created_at')
+    list_display = ('email', 'first_name', 'last_name', 'role', 'approval_status', 'is_verified', 'is_active', 'created_at')
+    list_filter = ('approval_status', 'is_active', 'is_verified', 'role', 'created_at')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('-created_at',)
-    readonly_fields = ('created_at', 'updated_at', 'last_login')
+    readonly_fields = ('created_at', 'updated_at', 'last_login', 'approved_at', 'approved_by')
     
     filter_horizontal = ('groups', 'user_permissions')
 
@@ -75,3 +75,11 @@ class ActivityLogAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
 
+
+
+@admin.register(SocialAccount)
+class SocialAccountAdmin(admin.ModelAdmin):
+    list_display = ('user', 'provider', 'email', 'created_at', 'last_login')
+    list_filter = ('provider',)
+    search_fields = ('user__email', 'email', 'uid')
+    readonly_fields = ('user', 'provider', 'uid', 'email', 'created_at', 'last_login')

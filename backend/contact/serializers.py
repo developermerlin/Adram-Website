@@ -6,3 +6,11 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         model = ContactMessage
         fields = ['id', 'name', 'email', 'subject', 'message', 'created_at', 'is_read']
         read_only_fields = ['id', 'created_at', 'is_read']
+
+
+class ContactMessageAdminSerializer(serializers.ModelSerializer):
+    """Admin inbox: messages are read-only apart from the read flag."""
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'name', 'email', 'subject', 'message', 'created_at', 'is_read']
+        read_only_fields = ['id', 'name', 'email', 'subject', 'message', 'created_at']

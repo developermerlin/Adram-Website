@@ -1,16 +1,20 @@
-import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AppRoutes } from './routes/AppRoutes';
+import { AuthProvider } from './context/AuthContext';
+import ScrollManager from './components/layout/ScrollManager';
+import AppRoutes from './routes/AppRoutes';
+import { BrandDefs } from './components/brand/BrandIcon';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-right" />
+        <BrandDefs />
+        <ScrollManager />
+        <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'var(--font-body)' } }} />
         <AppRoutes />
       </AuthProvider>
-    </Router>
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,461 @@
+{
+  "scholarships": [
+    {
+      "slug": "chevening",
+      "name": "Chevening Scholarships",
+      "country": "gb",
+      "provider": "UK Government (Foreign, Commonwealth & Development Office)",
+      "levels": [
+        "Masters"
+      ],
+      "funding": "full",
+      "duration": "1 year (one-year master’s)",
+      "application_window": "Applications typically open in August and close in early November.",
+      "fields": "Any subject at a UK university",
+      "summary": "The UK Government’s flagship global scholarship for future leaders. Scholars complete a one-year master’s at any UK university and join a worldwide network of Chevening alumni.",
+      "covers": [
+        "University tuition fees",
+        "Monthly living allowance",
+        "Return economy flight to the UK",
+        "Arrival and departure allowances",
+        "Visa application costs"
+      ],
+      "eligibility": [
+        "Citizen of Sierra Leone (a Chevening-eligible country)",
+        "An undergraduate degree that qualifies you for a UK master’s programme",
+        "At least two years of work experience",
+        "Apply to three eligible UK master’s courses",
+        "Commit to returning to Sierra Leone for at least two years after the award"
+      ],
+      "steps": [
+        "Choose three eligible one-year master’s courses in the UK",
+        "Complete the online application with four essays (leadership, networking, study plans, career plan)",
+        "Provide two references and your academic documents",
+        "Shortlisted candidates are interviewed at the British High Commission",
+        "Secure an unconditional offer from one of your chosen universities"
+      ],
+      "url": "https://www.chevening.org/scholarships/",
+      "sort_order": 10
+    },
+    {
+      "slug": "commonwealth",
+      "name": "Commonwealth Scholarships",
+      "country": "gb",
+      "provider": "Commonwealth Scholarship Commission in the UK",
+      "levels": [
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "1 year (master’s) to 3–4 years (PhD)",
+      "application_window": "",
+      "fields": "Subjects that support development in your home country",
+      "summary": "Funded by the UK Government for talented students from Commonwealth countries who could not otherwise afford to study in the UK. The focus is on study that contributes to development at home.",
+      "covers": [
+        "Tuition fees",
+        "Return airfare to the UK",
+        "Monthly living stipend",
+        "Thesis and study travel grants (where applicable)",
+        "Arrival allowance"
+      ],
+      "eligibility": [
+        "Citizen of, or refugee in, an eligible Commonwealth country such as Sierra Leone",
+        "Usually an upper second-class (2:1) first degree or higher",
+        "Unable to afford to study in the UK without the scholarship",
+        "Nominated through your national nominating body or an approved nominating organisation"
+      ],
+      "steps": [
+        "Check which nominating body applies to you in Sierra Leone",
+        "Choose eligible UK courses and prepare your research or study plan",
+        "Apply online through the Commission’s system before the nominator’s deadline",
+        "Your nominating body shortlists candidates and forwards nominations",
+        "The Commission makes the final selection"
+      ],
+      "url": "https://cscuk.fcdo.gov.uk/scholarships/",
+      "sort_order": 20
+    },
+    {
+      "slug": "fulbright",
+      "name": "Fulbright Foreign Student Program",
+      "country": "us",
+      "provider": "U.S. Department of State, through the U.S. Embassy",
+      "levels": [
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "Typically 1–2 years (master’s) or longer for PhD study",
+      "application_window": "",
+      "fields": "Most academic fields",
+      "summary": "The U.S. Government’s international exchange programme for graduate students, young professionals and artists to study and conduct research at universities in the United States.",
+      "covers": [
+        "Tuition (often shared with the host university)",
+        "Round-trip airfare",
+        "Monthly living stipend",
+        "Health insurance"
+      ],
+      "eligibility": [
+        "Citizen of Sierra Leone",
+        "A completed bachelor’s degree with a strong academic record",
+        "Good English proficiency (a test such as TOEFL may be required)",
+        "Apply through the U.S. Embassy in Freetown"
+      ],
+      "steps": [
+        "Check the current call for applications from the U.S. Embassy in Freetown",
+        "Prepare your study objectives, personal statement and references",
+        "Submit the online application before the embassy’s deadline",
+        "Attend an interview if shortlisted",
+        "Selected candidates are placed at U.S. universities"
+      ],
+      "url": "https://foreign.fulbrightonline.org/",
+      "sort_order": 30
+    },
+    {
+      "slug": "mastercard-foundation",
+      "name": "Mastercard Foundation Scholars Program",
+      "country": "africa",
+      "provider": "Mastercard Foundation with partner universities",
+      "levels": [
+        "Undergraduate",
+        "Masters"
+      ],
+      "funding": "full",
+      "duration": "Length of the degree programme",
+      "application_window": "",
+      "fields": "Varies by partner university",
+      "summary": "Comprehensive scholarships for academically talented young Africans facing financial barriers, at partner universities in Africa and around the world, with mentoring and leadership development.",
+      "covers": [
+        "Tuition fees",
+        "Accommodation",
+        "Books and supplies",
+        "Living stipend",
+        "Travel (where applicable)",
+        "Mentoring and leadership training"
+      ],
+      "eligibility": [
+        "Young African with strong academic ability",
+        "Demonstrated financial need",
+        "Commitment to giving back to your community",
+        "Admission requirements of the partner university you apply to"
+      ],
+      "steps": [
+        "Review the list of partner universities and their programmes",
+        "Apply directly to the partner university’s scholars programme",
+        "Submit transcripts, essays and evidence of financial need",
+        "Complete any interviews or assessments"
+      ],
+      "url": "https://mastercardfdn.org/en/what-we-do/our-programs/mastercard-foundation-scholars-program/",
+      "sort_order": 40
+    },
+    {
+      "slug": "daad",
+      "name": "DAAD Scholarships",
+      "country": "de",
+      "provider": "German Academic Exchange Service (DAAD)",
+      "levels": [
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "Length of the programme (typically 1–2 years for a master’s)",
+      "application_window": "",
+      "fields": "Development-related postgraduate courses and research",
+      "summary": "Germany’s academic exchange service funds international students on postgraduate courses, including development-related master’s programmes for professionals from developing countries.",
+      "covers": [
+        "Monthly stipend",
+        "Travel allowance",
+        "Health insurance",
+        "Study and research allowance",
+        "Tuition is free at most public universities"
+      ],
+      "eligibility": [
+        "A bachelor’s degree, usually completed within the last six years",
+        "For many development-related courses, at least two years of relevant work experience",
+        "Meet the language requirements of the course (English or German)"
+      ],
+      "steps": [
+        "Search the DAAD scholarship database for programmes open to Sierra Leone",
+        "Choose eligible courses and check each course’s own deadline",
+        "Prepare a motivation letter, CV and references",
+        "Apply directly to the course, following DAAD instructions"
+      ],
+      "url": "https://www.daad.de/en/study-and-research-in-germany/scholarships/",
+      "sort_order": 50
+    },
+    {
+      "slug": "erasmus-mundus",
+      "name": "Erasmus Mundus Joint Masters",
+      "country": "eu",
+      "provider": "European Union (Erasmus+)",
+      "levels": [
+        "Masters"
+      ],
+      "funding": "full",
+      "duration": "1–2 years across two or more countries",
+      "application_window": "",
+      "fields": "Over 100 programmes in many subjects",
+      "summary": "Prestigious master’s programmes delivered by consortia of European universities. Students study in at least two different countries and graduate with a joint or multiple degree.",
+      "covers": [
+        "Participation (tuition) costs",
+        "Travel and installation costs",
+        "Monthly living allowance"
+      ],
+      "eligibility": [
+        "A bachelor’s degree or equivalent",
+        "Open to students from any country",
+        "Meet the specific requirements of the chosen programme"
+      ],
+      "steps": [
+        "Browse the Erasmus Mundus catalogue and pick up to three programmes",
+        "Check each programme’s entry requirements and deadline",
+        "Apply directly to the programme consortium",
+        "Selected students receive a scholarship offer from the consortium"
+      ],
+      "url": "https://www.eacea.ec.europa.eu/scholarships/erasmus-mundus-catalogue_en",
+      "sort_order": 60
+    },
+    {
+      "slug": "chinese-government",
+      "name": "Chinese Government Scholarship",
+      "country": "cn",
+      "provider": "China Scholarship Council (CSC)",
+      "levels": [
+        "Undergraduate",
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "Length of the degree, often with a Chinese language year",
+      "application_window": "",
+      "fields": "Most subjects; many programmes taught in English",
+      "summary": "Full scholarships from the Chinese Government for international students at Chinese universities, available through bilateral programmes with embassies and directly through universities.",
+      "covers": [
+        "Tuition fees",
+        "On-campus accommodation",
+        "Monthly living stipend",
+        "Comprehensive medical insurance"
+      ],
+      "eligibility": [
+        "Non-Chinese citizen in good health",
+        "Age limits usually apply (e.g. under 25 for bachelor’s, under 35 for master’s, under 40 for PhD)",
+        "Relevant previous qualification for the level you apply to"
+      ],
+      "steps": [
+        "Choose the application route: the Chinese Embassy (bilateral programme) or a university",
+        "Register on the Campus China portal and complete the online form",
+        "Upload certificates, transcripts, study plan and physical examination form",
+        "Submit your documents to the embassy or university by their deadline"
+      ],
+      "url": "https://www.campuschina.org/",
+      "sort_order": 70
+    },
+    {
+      "slug": "turkiye-burslari",
+      "name": "Türkiye Scholarships",
+      "country": "tr",
+      "provider": "Government of the Republic of Türkiye",
+      "levels": [
+        "Undergraduate",
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "Length of the degree plus a one-year Turkish language course",
+      "application_window": "Applications typically open in January and close in February.",
+      "fields": "Most subjects at Turkish universities",
+      "summary": "A highly competitive government scholarship covering study at top Turkish universities, with a preparatory year of Turkish language and cultural programmes.",
+      "covers": [
+        "Tuition fees",
+        "Monthly stipend",
+        "Accommodation",
+        "Health insurance",
+        "One-time round-trip flight",
+        "One-year Turkish language course"
+      ],
+      "eligibility": [
+        "Open to citizens of all countries",
+        "Age limits apply (typically under 21 for undergraduate, under 30 for master’s, under 35 for PhD)",
+        "Minimum academic scores apply (commonly 70% for undergraduate and master’s, 75% for PhD)"
+      ],
+      "steps": [
+        "Create an account on the Türkiye Scholarships application system",
+        "Choose up to twelve university programmes",
+        "Upload your documents and complete your statement of intent",
+        "Shortlisted applicants attend an interview"
+      ],
+      "url": "https://www.turkiyeburslari.gov.tr/",
+      "sort_order": 80
+    },
+    {
+      "slug": "holland-scholarship",
+      "name": "Holland Scholarship",
+      "country": "nl",
+      "provider": "Dutch Ministry of Education and Dutch universities",
+      "levels": [
+        "Undergraduate",
+        "Masters"
+      ],
+      "funding": "partial",
+      "duration": "One-off award in the first year",
+      "application_window": "",
+      "fields": "Programmes at participating Dutch universities",
+      "summary": "A one-off grant for international students from outside the European Economic Area starting a bachelor’s or master’s at a participating Dutch institution.",
+      "covers": [
+        "One-time grant towards the first year of study (partial funding)"
+      ],
+      "eligibility": [
+        "Nationality of a country outside the European Economic Area",
+        "First time studying in the Netherlands",
+        "Admission to a participating bachelor’s or master’s programme"
+      ],
+      "steps": [
+        "Check which Dutch universities and programmes take part",
+        "Apply for admission to your chosen programme",
+        "Apply for the scholarship through the university by its deadline"
+      ],
+      "url": "https://www.studyinnl.org/finances/holland-scholarship",
+      "sort_order": 90
+    },
+    {
+      "slug": "lester-pearson",
+      "name": "Lester B. Pearson International Scholarship",
+      "country": "ca",
+      "provider": "University of Toronto",
+      "levels": [
+        "Undergraduate"
+      ],
+      "funding": "full",
+      "duration": "Four years of undergraduate study",
+      "application_window": "",
+      "fields": "Undergraduate programmes at the University of Toronto",
+      "summary": "The University of Toronto’s most prestigious scholarship for international secondary-school students who show exceptional academic achievement, creativity and leadership.",
+      "covers": [
+        "Tuition fees",
+        "Books",
+        "Incidental fees",
+        "Full residence support for four years"
+      ],
+      "eligibility": [
+        "International student in the final year of secondary school (or recently graduated)",
+        "Exceptional academic achievement and creativity",
+        "Recognised as a leader in your school and community",
+        "Nominated by your school"
+      ],
+      "steps": [
+        "Ask your school to nominate you",
+        "Apply for admission to the University of Toronto",
+        "Submit the scholarship application once nominated"
+      ],
+      "url": "https://future.utoronto.ca/pearson/about/",
+      "sort_order": 100
+    },
+    {
+      "slug": "iccr",
+      "name": "ICCR Scholarships",
+      "country": "in",
+      "provider": "Indian Council for Cultural Relations",
+      "levels": [
+        "Undergraduate",
+        "Masters",
+        "PhD"
+      ],
+      "funding": "full",
+      "duration": "Length of the degree programme",
+      "application_window": "",
+      "fields": "Most subjects at Indian universities",
+      "summary": "Scholarships from the Government of India, including schemes for African students, to study at universities across India.",
+      "covers": [
+        "Tuition fees",
+        "Monthly stipend",
+        "Accommodation or housing allowance",
+        "Medical support"
+      ],
+      "eligibility": [
+        "Citizen of an eligible country, including African countries",
+        "Relevant previous qualification for the chosen level",
+        "Good English proficiency"
+      ],
+      "steps": [
+        "Register on the ICCR A2A scholarships portal",
+        "Choose up to five universities and courses",
+        "Upload documents and submit to the Indian mission accredited to Sierra Leone"
+      ],
+      "url": "https://a2ascholarships.iccr.gov.in/",
+      "sort_order": 110
+    }
+  ],
+  "courses": [
+    {
+      "slug": "ai-machine-learning",
+      "title": "AI & Machine Learning",
+      "icon": "ai",
+      "summary": "Python for data, machine-learning fundamentals and building real AI-powered tools.",
+      "topics": [
+        "Python & data analysis",
+        "ML models",
+        "Working with AI APIs"
+      ],
+      "sort_order": 10
+    },
+    {
+      "slug": "programming",
+      "title": "Programming Foundations",
+      "icon": "terminal",
+      "summary": "Start from zero: logic, problem solving and your first real programs.",
+      "topics": [
+        "Python / JavaScript",
+        "Problem solving",
+        "Git & GitHub"
+      ],
+      "sort_order": 20
+    },
+    {
+      "slug": "web-development",
+      "title": "Web Development",
+      "icon": "web",
+      "summary": "Build and deploy modern websites and web apps, front end to back end.",
+      "topics": [
+        "HTML, CSS, JavaScript",
+        "React",
+        "Django / APIs"
+      ],
+      "sort_order": 30
+    },
+    {
+      "slug": "software-engineering",
+      "title": "Software Engineering",
+      "icon": "architecture",
+      "summary": "How professional teams design, test and ship dependable software.",
+      "topics": [
+        "Design & architecture",
+        "Testing",
+        "Databases"
+      ],
+      "sort_order": 40
+    },
+    {
+      "slug": "mobile-development",
+      "title": "Mobile App Development",
+      "icon": "mobile",
+      "summary": "Design and publish Android and iOS apps.",
+      "topics": [
+        "Cross-platform apps",
+        "App UI design",
+        "Publishing"
+      ],
+      "sort_order": 50
+    },
+    {
+      "slug": "professional-training",
+      "title": "Professional & Corporate Training",
+      "icon": "briefcase",
+      "summary": "Tailored digital-skills training for organisations and their staff.",
+      "topics": [
+        "Office productivity",
+        "Cyber-safety",
+        "Custom curricula"
+      ],
+      "sort_order": 60
+    }
+  ]
+}
