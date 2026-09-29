@@ -5,7 +5,6 @@ import { useScholarships } from '../../data/useCatalog';
 import { OfficialLink } from '../../components/ui/ScholarshipActions';
 import { DeadlineBadge } from '../../components/ui/KeyDates';
 import { CtaBand, IconTile, PageHero, SectionHeading } from '../../components/ui/Section';
-import { ScholarshipArt } from '../../components/brand/Illustrations';
 import Flag from '../../components/ui/Flag';
 import '../../styles/pages.css';
 
@@ -131,7 +130,7 @@ export const ScholarshipsPage = () => {
       <PageHero
         eyebrow="Scholarships"
         title="Study abroad on an international scholarship"
-        art={<div className="art-frame art-frame--dark"><ScholarshipArt /></div>}
+        background="/scholarship/scholarship-hero.jpg"
         actions={
           <>
             <a href="#finder" className="btn btn--primary">
@@ -290,6 +289,12 @@ export const ScholarshipsPage = () => {
               Scholarship applications are competitive. Our counsellors help you choose wisely, present yourself well and
               meet every deadline.
             </p>
+            <figure className="sch-photo">
+              <img src="/scholarship/scholarship-help.jpg" alt="" loading="lazy" width="1100" height="619" />
+              <figcaption>
+                <i className="fas fa-graduation-cap" aria-hidden="true" /> Your future starts with the right application
+              </figcaption>
+            </figure>
             <div className="sch-help__grid">
               {support.map((s) => (
                 <div key={s.title} className="benefit">
@@ -334,6 +339,7 @@ export const ScholarshipsPage = () => {
       <section className="section section--surface" id="requirements">
         <div className="container sch-docs">
           <div className="aside-card sch-docs__card">
+            <img className="sch-docs__img" src="/scholarship/scholarship-docs.jpg" alt="" loading="lazy" width="900" height="563" />
             <IconTile name="certificate" />
             <h3>Documents to prepare</h3>
             <p className="muted">Most applications ask for these. Start gathering them early.</p>

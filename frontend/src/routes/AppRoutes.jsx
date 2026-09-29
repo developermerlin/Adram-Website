@@ -7,6 +7,7 @@ import AboutPage from '../pages/public/AboutPage';
 import ServicesPage from '../pages/public/ServicesPage';
 import ServiceDetailPage from '../pages/public/ServiceDetailPage';
 import CoursesPage from '../pages/public/CoursesPage';
+import TeamPage from '../pages/public/TeamPage';
 import ScholarshipsPage from '../pages/public/ScholarshipsPage';
 import ScholarshipDetailPage from '../pages/public/ScholarshipDetailPage';
 import ContactPage from '../pages/public/ContactPage';
@@ -43,6 +44,7 @@ export const AppRoutes = () => (
     <Route element={<PublicLayout />}>
       <Route index element={<LandingPage />} />
       <Route path="about" element={<AboutPage />} />
+      <Route path="about/team" element={<TeamPage />} />
       <Route path="services" element={<ServicesPage />} />
       <Route path="services/:serviceId" element={<ServiceDetailPage />} />
       <Route path="courses" element={<CoursesPage />} />

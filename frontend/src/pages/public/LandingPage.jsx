@@ -3,7 +3,7 @@ import { services } from '../../data/services';
 import { useCourses } from '../../data/useCatalog';
 import { site } from '../../config/site';
 import { CtaBand, IconTile, SectionHeading } from '../../components/ui/Section';
-import { AboutArt, ScholarshipArt, TrainingArt } from '../../components/brand/Illustrations';
+import { AboutArt } from '../../components/brand/Illustrations';
 import HeroBrand from '../../components/brand/HeroBrand';
 import '../../styles/landing.css';
 
@@ -238,8 +238,9 @@ export const LandingPage = () => {
           </SectionHeading>
           <div className="talent-grid">
             <article className="talent-card">
-              <div className="talent-card__art">
-                <TrainingArt />
+              <div className="talent-card__photo">
+                <img src="/typing/typing-card.jpg" alt="" loading="lazy" width="1100" height="688" />
+                <span className="talent-card__tag"><i className="fas fa-laptop-code" aria-hidden="true" /> {programs ? `${programs.length} programmes` : 'Training'}</span>
               </div>
               <div className="talent-card__body">
                 <span className="eyebrow">Training & courses</span>
@@ -251,8 +252,9 @@ export const LandingPage = () => {
               </div>
             </article>
             <article className="talent-card">
-              <div className="talent-card__art talent-card__art--dark">
-                <ScholarshipArt />
+              <div className="talent-card__photo">
+                <img src="/scholarship/scholarship-card.jpg" alt="" loading="lazy" width="1100" height="688" />
+                <span className="talent-card__tag"><i className="fas fa-graduation-cap" aria-hidden="true" /> Study abroad</span>
               </div>
               <div className="talent-card__body">
                 <span className="eyebrow">Scholarships</span>

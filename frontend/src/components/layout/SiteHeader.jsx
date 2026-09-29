@@ -21,6 +21,7 @@ const NAV = [
       { to: '/about', label: 'Company overview', icon: 'building' },
       { to: '/about#mission', label: 'Mission & vision', icon: 'innovation' },
       { to: '/about#values', label: 'Our values', icon: 'quality' },
+      { to: '/about/team', label: 'Our team', icon: 'people' },
     ],
   },
   {

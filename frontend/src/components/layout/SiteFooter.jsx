@@ -7,6 +7,7 @@ import SocialLinks from '../ui/SocialLinks';
 const company = [
   { to: '/about', label: 'About us' },
   { to: '/about#mission', label: 'Mission & vision' },
+  { to: '/about/team', label: 'Our team' },
   { to: '/services', label: 'Our services' },
   { to: '/contact', label: 'Contact us' },
   { to: '/about#values', label: 'Our values' },
