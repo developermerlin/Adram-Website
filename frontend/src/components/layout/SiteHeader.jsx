@@ -2,56 +2,52 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { dashboardPathFor } from '../../config/roles';
-import { site, telHref } from '../../config/site';
-import { services } from '../../data/services';
+import { telHref } from '../../config/site';
+import { fill } from '../../content/merge';
+import { usePageContent, useSite } from '../../content/useContent';
+import { useServices } from '../../content/useServices';
 import { useCourses } from '../../data/useCatalog';
 import Brand from '../ui/Brand';
 import BrandIcon from '../brand/BrandIcon';
 import SocialLinks from '../ui/SocialLinks';
+import NotificationBell from '../lms/NotificationBell';
+import { useCartCount } from '../lms/cartStore';
+import '../../styles/marketplace.css';
 
-// The Services and Training menus list only the first few items, then link to the full page
-const DROPDOWN_LIMIT = 6;
-
-const NAV = [
-  { to: '/', label: 'Home', end: true },
-  {
-    to: '/about',
-    label: 'About',
-    children: [
-      { to: '/about', label: 'Company overview', icon: 'building' },
-      { to: '/about#mission', label: 'Mission & vision', icon: 'innovation' },
-      { to: '/about#values', label: 'Our values', icon: 'quality' },
-      { to: '/about/team', label: 'Our team', icon: 'people' },
-    ],
-  },
-  {
-    to: '/services',
-    label: 'Services',
-    children: services.slice(0, DROPDOWN_LIMIT).map((s) => ({ to: `/services/${s.id}`, label: s.title, icon: s.brandIcon })),
-    footer: { to: '/services', label: services.length > DROPDOWN_LIMIT ? `All ${services.length} services` : 'All services' },
-  },
-  {
-    to: '/courses',
-    label: 'Training',
-    children: [], // training programmes, filled from the API in SiteHeader
-    footer: { to: '/courses', label: 'All programmes' },
-  },
-  {
-    to: '/scholarships',
-    label: 'Scholarships',
-    children: [
-      { to: '/scholarships#finder', label: 'Find a scholarship', icon: 'award' },
-      { to: '/scholarships#destinations', label: 'Study destinations', icon: 'globe' },
-      { to: '/scholarships#support', label: 'How we help', icon: 'support' },
-      { to: '/scholarships#requirements', label: 'Documents & FAQs', icon: 'certificate' },
-    ],
-    footer: { to: '/scholarships', label: 'All scholarships' },
-  },
-  { to: '/contact', label: 'Contact' },
-];
+// The menu labels, dropdown links and how many items each dropdown lists come from the editable "navigation" content.
+const buildNav = (n, services, courses) => {
+  const limit = n.limits.dropdown;
+  const mf = n.menuFooters;
+  const count = (list, few, many) => (list && list.length > limit ? fill(many, { count: list.length }) : few);
+  return [
+    { to: '/', label: n.labels.home, end: true },
+    { to: '/about', label: n.labels.about, children: n.aboutMenu.map((m) => ({ to: m.link, label: m.label, icon: m.icon })) },
+    {
+      to: '/services',
+      label: n.labels.services,
+      children: services.slice(0, limit).map((sv) => ({ to: `/services/${sv.id}`, label: sv.title, icon: sv.brandIcon })),
+      footer: { to: '/services', label: count(services, mf.services, mf.servicesMany) },
+    },
+    {
+      to: '/courses',
+      label: n.labels.training,
+      children: (courses || []).slice(0, limit).map((p) => ({ to: `/courses/${p.slug}`, label: p.title, icon: p.icon })),
+      footer: { to: '/courses', label: count(courses, mf.training, mf.trainingMany) },
+    },
+    {
+      to: '/scholarships',
+      label: n.labels.scholarships,
+      children: n.scholarshipsMenu.map((m) => ({ to: m.link, label: m.label, icon: m.icon })),
+      footer: { to: '/scholarships', label: mf.scholarships },
+    },
+    { to: '/contact', label: n.labels.contact },
+  ];
+};
 
 // Thin bar above the menu with the details people look for first.
-const InfoBar = () => (
+const InfoBar = () => {
+  const site = useSite();
+  return (
   <div className="info-bar">
     <div className="container info-bar__inner">
       <ul className="info-bar__list">
@@ -71,7 +67,8 @@ const InfoBar = () => (
       </ul>
     </div>
   </div>
-);
+  );
+};
 
 // Sign in: an arrow going in through a door.
 const SignInIcon = () => (
@@ -151,22 +148,18 @@ const NavItem = ({ item, open, onOpen, onClose }) => {
 };
 
 export const SiteHeader = () => {
+  const site = useSite();
   const { isAuthenticated, user } = useAuth();
   const { pathname, hash } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openItem, setOpenItem] = useState(null);
   const { data: courses } = useCourses();
-  const nav = NAV.map((item) =>
-    item.to === '/courses'
-      ? {
-          ...item,
-          children: (courses || []).slice(0, DROPDOWN_LIMIT).map((p) => ({ to: `/courses#${p.slug}`, label: p.title, icon: p.icon })),
-          footer: { ...item.footer, label: courses?.length > DROPDOWN_LIMIT ? `All ${courses.length} programmes` : item.footer.label },
-        }
-      : item,
-  );
+  const { services } = useServices();
+  const navContent = usePageContent('navigation');
+  const nav = buildNav(navContent, services, courses);
   const [expanded, setExpanded] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const cartCount = useCartCount();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -190,9 +183,22 @@ export const SiteHeader = () => {
     };
   }, [menuOpen]);
 
+  // Cart and notifications stay in the bar on every screen size (beside the menu button on phones)
+  const quick = isAuthenticated && (
+    <div className="header-quick">
+      {user?.role === 'STUDENT' && (
+        <Link to="/cart" className="header-icon" aria-label={cartCount ? `Cart, ${cartCount} courses` : 'Cart'} title="Cart">
+          <i className="fas fa-cart-shopping" aria-hidden="true" />
+          {cartCount > 0 && <span className="header-icon__count">{cartCount}</span>}
+        </Link>
+      )}
+      <NotificationBell className="header-bell" buttonClass="header-icon" />
+    </div>
+  );
+
   const accountActions = isAuthenticated ? (
     <Link to={dashboardPathFor(user?.role)} className="btn btn--primary btn--sm">
-      <i className="fas fa-gauge" /> My dashboard
+      <i className="fas fa-gauge" /> {navContent.labels.dashboard}
     </Link>
   ) : (
     // Pill buttons: the icon sits in a round chip beside the words. An arrow going in through a door (sign in)
@@ -200,11 +206,11 @@ export const SiteHeader = () => {
     <>
       <Link to="/login" className="auth-btn">
         <span className="auth-btn__chip"><SignInIcon /></span>
-        <span className="auth-btn__label">Sign in</span>
+        <span className="auth-btn__label">{navContent.labels.signIn}</span>
       </Link>
       <Link to="/register" className="auth-btn auth-btn--primary">
         <span className="auth-btn__chip"><SignUpIcon /></span>
-        <span className="auth-btn__label">Sign up</span>
+        <span className="auth-btn__label">{navContent.labels.signUp}</span>
       </Link>
     </>
   );
@@ -228,6 +234,7 @@ export const SiteHeader = () => {
             ))}
           </nav>
 
+          {quick}
           <div className="header-actions">{accountActions}</div>
 
           <button

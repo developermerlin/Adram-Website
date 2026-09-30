@@ -1,8 +1,10 @@
-import { site } from '../../config/site';
+import { useSite } from '../../content/useContent';
 
 // Social icon buttons in each network's brand colour (see .social-links in global.css).
 // `labeled` shows each network's name beside its icon (used on the contact page).
-export const SocialLinks = ({ size = 'md', labeled = false, className = '' }) => (
+export const SocialLinks = ({ size = 'md', labeled = false, className = '' }) => {
+  const site = useSite();
+  return (
   <div className={`social-links social-links--${size}${labeled ? ' social-links--labeled' : ''} ${className}`}>
     {site.socials.map((s) => (
       <a
@@ -28,6 +30,7 @@ export const SocialLinks = ({ size = 'md', labeled = false, className = '' }) =>
       </a>
     ))}
   </div>
-);
+  );
+};
 
 export default SocialLinks;

@@ -150,6 +150,192 @@ export const catalogAPI = {
   }),
 };
 
+// Editable website wording and images. `page` is public; the rest are for administrators.
+export const contentAPI = {
+  page: (slug) => api.get(`/v1/content/${slug}/`),
+  manage: (slug) => api.get(`/v1/content/manage/${slug}/`),
+  save: (slug, data) => api.put(`/v1/content/manage/${slug}/`, { data }),
+  reset: (slug) => api.delete(`/v1/content/manage/${slug}/`),
+  history: (slug) => api.get(`/v1/content/manage/${slug}/history/`),
+  restore: (slug, id) => api.post(`/v1/content/manage/${slug}/restore/${id}/`),
+  media: () => api.get('/v1/content/media/'),
+  upload: (file, onProgress) => {
+    const body = new FormData();
+    body.append('image', file);
+    return api.post('/v1/content/media/', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
+    });
+  },
+  removeMedia: (id) => api.delete(`/v1/content/media/${id}/`),
+};
+
+// Course portal: finding courses, learning, quizzes, assignments, notes, progress and certificates.
+const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
+const toForm = (data) => {
+  if (data instanceof FormData) return data;
+  const body = new FormData();
+  Object.entries(data).forEach(([k, v]) => v !== undefined && v !== null && body.append(k, v));
+  return body;
+};
+
+export const lmsAPI = {
+  // discovery
+  catalog: (params = {}) => api.get('/v1/lms/catalog/', { params }),
+  facets: () => api.get('/v1/lms/catalog/facets/'),
+  homeRows: () => api.get('/v1/lms/catalog/home/'),
+  categories: () => api.get('/v1/lms/categories/'),
+  related: (slug) => api.get(`/v1/lms/courses/${slug}/related/`),
+  viewed: (slug) => api.post(`/v1/lms/courses/${slug}/view/`),
+  instructor: (id) => api.get(`/v1/lms/instructors/${id}/`),
+  // a course and its lessons
+  outline: (slug) => api.get(`/v1/lms/courses/${slug}/`),
+  lesson: (id) => api.get(`/v1/lms/lessons/${id}/`),
+  // {completed?, position?, spent?}: `spent` is seconds since the last heartbeat
+  saveProgress: (id, data) => api.post(`/v1/lms/lessons/${id}/progress/`, data),
+  startQuiz: (id) => api.post(`/v1/lms/lessons/${id}/quiz/start/`),
+  // answers: {questionId: choiceId | [choiceIds] | 'text'}
+  submitQuiz: (id, answers, attempt) => api.post(`/v1/lms/lessons/${id}/quiz/`, { answers, ...(attempt ? { attempt } : {}) }),
+  submissions: (id) => api.get(`/v1/lms/lessons/${id}/submissions/`),
+  submitAssignment: (id, { text, file }) => api.post(`/v1/lms/lessons/${id}/submissions/`, toForm({ text: text || '', file }), multipart),
+  lessonNotes: (id) => api.get(`/v1/lms/lessons/${id}/notes/`),
+  addNote: (id, data) => api.post(`/v1/lms/lessons/${id}/notes/`, data),
+  courseNotes: (slug, q) => api.get(`/v1/lms/courses/${slug}/notes/`, { params: q ? { q } : {} }),
+  updateNote: (id, body) => api.patch(`/v1/lms/notes/${id}/`, { body }),
+  removeNote: (id) => api.delete(`/v1/lms/notes/${id}/`),
+  certificate: (slug) => api.get(`/v1/lms/courses/${slug}/certificate/`),
+  verifyCertificate: (code) => api.get(`/v1/lms/certificates/${encodeURIComponent(code)}/`),
+  // the signed-in person
+  mine: () => api.get('/v1/lms/me/'),
+  dashboard: () => api.get('/v1/lms/me/dashboard/'),
+  library: () => api.get('/v1/lms/me/library/'),
+  myCertificates: () => api.get('/v1/lms/me/certificates/'),
+  myProfile: () => api.get('/v1/lms/me/profile/'),
+  saveMyProfile: (data) => api.put('/v1/lms/me/profile/', data),
+  report: (data) => api.post('/v1/lms/reports/', data),
+  // reviews
+  reviews: (slug, params) => api.get(`/v1/lms/courses/${slug}/reviews/`, { params }),
+  saveReview: (slug, data) => api.post(`/v1/lms/courses/${slug}/reviews/`, data),
+  deleteReview: (slug) => api.delete(`/v1/lms/courses/${slug}/reviews/`),
+  // wishlist
+  wishlist: () => api.get('/v1/lms/me/wishlist/'),
+  wish: (slug) => api.post(`/v1/lms/courses/${slug}/wishlist/`),
+  unwish: (slug) => api.delete(`/v1/lms/courses/${slug}/wishlist/`),
+  // announcements and Q&A
+  announcements: (slug) => api.get(`/v1/lms/courses/${slug}/announcements/`),
+  questions: (slug, params) => api.get(`/v1/lms/courses/${slug}/qa/`, { params }),
+  ask: (slug, data) => api.post(`/v1/lms/courses/${slug}/qa/`, data),
+  thread: (id) => api.get(`/v1/lms/qa/${id}/`),
+  removeThread: (id) => api.delete(`/v1/lms/qa/${id}/`),
+  reply: (id, body) => api.post(`/v1/lms/qa/${id}/replies/`, { body }),
+  removeReply: (id) => api.delete(`/v1/lms/qa/replies/${id}/`),
+  likeReply: (id, liked) => (liked ? api.post(`/v1/lms/qa/replies/${id}/like/`) : api.delete(`/v1/lms/qa/replies/${id}/like/`)),
+  markAnswer: (id, answer = true) => api.post(`/v1/lms/qa/replies/${id}/mark/`, { answer }),
+  // course staff (the course's instructor, or administrators)
+  postAnnouncement: (slug, data) => api.post(`/v1/lms/manage/courses/${slug}/announcements/`, data),
+  removeAnnouncement: (id) => api.delete(`/v1/lms/manage/announcements/${id}/`),
+  curriculum: (slug) => api.get(`/v1/lms/manage/courses/${slug}/curriculum/`),
+  addSection: (slug, title) => api.post(`/v1/lms/manage/courses/${slug}/sections/`, { title }),
+  renameSection: (id, title) => api.patch(`/v1/lms/manage/sections/${id}/`, { title }),
+  removeSection: (id) => api.delete(`/v1/lms/manage/sections/${id}/`),
+  addLesson: (sectionId, data) => api.post(`/v1/lms/manage/sections/${sectionId}/lessons/`, data),
+  // `data` is a plain object, or FormData when a video or document file goes with it
+  saveLesson: (id, data, onProgress) =>
+    api.patch(`/v1/lms/manage/lessons/${id}/`, data, {
+      ...(data instanceof FormData ? multipart : {}),
+      onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
+      timeout: 0,
+    }),
+  removeLesson: (id) => api.delete(`/v1/lms/manage/lessons/${id}/`),
+  addResource: (lessonId, file, title) => api.post(`/v1/lms/manage/lessons/${lessonId}/resources/`, toForm({ file, title }), multipart),
+  removeResource: (id) => api.delete(`/v1/lms/manage/resources/${id}/`),
+  reorderResources: (lessonId, ids) => api.post(`/v1/lms/manage/lessons/${lessonId}/resources/order/`, { ids }),
+  // quiz settings (pass_mark, time_limit_minutes, max_attempts, questions_per_attempt, shuffle_questions, shuffle_choices,
+  // show_answers, is_required) and questions [{kind: single|multiple|true_false|short, text, explanation, points, choices, accepted_answers}]
+  saveQuiz: (lessonId, data) => api.put(`/v1/lms/manage/lessons/${lessonId}/quiz/`, data),
+  reorder: (slug, data) => api.post(`/v1/lms/manage/courses/${slug}/reorder/`, data),
+  students: (slug) => api.get(`/v1/lms/manage/courses/${slug}/students/`),
+  courseSubmissions: (slug, status) => api.get(`/v1/lms/manage/courses/${slug}/submissions/`, { params: status ? { status } : {} }),
+  // {status: approved|rejected, grade, feedback}
+  gradeSubmission: (id, data) => api.post(`/v1/lms/manage/submissions/${id}/grade/`, data),
+};
+
+// Cart, orders and purchase history
+export const shopAPI = {
+  cart: (coupon) => api.get('/v1/lms/cart/', { params: coupon ? { coupon } : {} }),
+  addToCart: (slug) => api.post('/v1/lms/cart/', { slug }),
+  removeFromCart: (slug) => api.delete(`/v1/lms/cart/${slug}/`),
+  checkout: (coupon) => api.post('/v1/lms/cart/checkout/', coupon ? { coupon } : {}),
+  buyNow: (slug, coupon) => api.post(`/v1/lms/courses/${slug}/buy/`, coupon ? { coupon } : {}),
+  orders: () => api.get('/v1/lms/me/orders/'),
+  order: (id) => api.get(`/v1/lms/orders/${id}/`),
+  pay: (id, { method, transactionId, receipt }) =>
+    api.post(`/v1/lms/orders/${id}/payment/`, toForm({ method, transaction_id: transactionId, receipt }), multipart),
+  cancel: (id) => api.post(`/v1/lms/orders/${id}/cancel/`),
+  receipt: (id) => api.get(`/v1/lms/orders/${id}/receipt/`, { responseType: 'blob' }),
+};
+
+// The notification centre (bell)
+export const notificationsAPI = {
+  list: (params = {}) => api.get('/v1/lms/me/notifications/', { params }),
+  markRead: (ids) => api.post('/v1/lms/me/notifications/read/', { ids }),
+  markAllRead: () => api.post('/v1/lms/me/notifications/read/', { all: true }),
+};
+
+// Instructors (administrators may use these too)
+export const instructorAPI = {
+  dashboard: () => api.get('/v1/lms/instructor/dashboard/'),
+  courses: () => api.get('/v1/lms/instructor/courses/'),
+  createCourse: (data) => api.post('/v1/lms/instructor/courses/', data),
+  course: (slug) => api.get(`/v1/lms/instructor/courses/${slug}/`),
+  saveCourse: (slug, data) => api.patch(`/v1/lms/instructor/courses/${slug}/`, data),
+  deleteCourse: (slug) => api.delete(`/v1/lms/instructor/courses/${slug}/`),
+  submit: (slug) => api.post(`/v1/lms/instructor/courses/${slug}/submit/`),
+  publish: (slug, publish = true) => api.post(`/v1/lms/instructor/courses/${slug}/publish/`, { publish }),
+  analytics: (params = {}) => api.get('/v1/lms/instructor/analytics/', { params }),
+  earnings: () => api.get('/v1/lms/instructor/earnings/'),
+  questions: (params = {}) => api.get('/v1/lms/instructor/questions/', { params }),
+  reviews: (params = {}) => api.get('/v1/lms/instructor/reviews/', { params }),
+};
+
+// Administrators: the course marketplace
+export const lmsAdminAPI = {
+  dashboard: (days = 30) => api.get('/v1/lms/admin/dashboard/', { params: { days } }),
+  courses: (status) => api.get('/v1/lms/admin/courses/', { params: status ? { status } : {} }),
+  // action: start | approve | request_changes | reject | publish | unpublish
+  reviewCourse: (slug, action, note) => api.post(`/v1/lms/admin/courses/${slug}/review/`, { action, note }),
+  categories: () => api.get('/v1/lms/admin/categories/'),
+  saveCategory: (id, data) => (id ? api.patch(`/v1/lms/admin/categories/${id}/`, data) : api.post('/v1/lms/admin/categories/', data)),
+  removeCategory: (id) => api.delete(`/v1/lms/admin/categories/${id}/`),
+  reviews: (params = {}) => api.get('/v1/lms/admin/reviews/', { params }),
+  moderateReview: (id, action, note) => api.post(`/v1/lms/admin/reviews/${id}/`, { action, note }),
+  reports: (status) => api.get('/v1/lms/admin/reports/', { params: status ? { status } : {} }),
+  decideReport: (id, data) => api.post(`/v1/lms/admin/reports/${id}/`, data),
+  certificates: (params = {}) => api.get('/v1/lms/admin/certificates/', { params }),
+  certificateAction: (code, action, reason) => api.post(`/v1/lms/admin/certificates/${code}/`, { action, reason }),
+  audit: (params = {}) => api.get('/v1/lms/admin/audit/', { params }),
+  createUser: (data) => api.post('/v1/lms/admin/users/', data),
+  editUser: (id, data) => api.patch(`/v1/lms/admin/users/${id}/`, data),
+  // audience: students | instructors | everyone
+  broadcast: (data) => api.post('/v1/lms/admin/notify/', data),
+  userLearning: (id) => api.get(`/v1/lms/admin/users/${id}/learning/`),
+  grantCourse: (id, slug) => api.post(`/v1/lms/admin/users/${id}/enroll/`, { slug }),
+  // sales
+  orders: (params = {}) => api.get('/v1/lms/manage/orders/', { params }),
+  order: (id) => api.get(`/v1/lms/manage/orders/${id}/`),
+  decideOrder: (id, action, note) => api.post(`/v1/lms/manage/orders/${id}/decision/`, { action, note }),
+  refundOrder: (id, reason) => api.post(`/v1/lms/manage/orders/${id}/refund/`, { reason }),
+  receipt: (id) => api.get(`/v1/lms/orders/${id}/receipt/`, { responseType: 'blob' }),
+  coupons: () => api.get('/v1/lms/manage/coupons/'),
+  saveCoupon: (id, data) => (id ? api.patch(`/v1/lms/manage/coupons/${id}/`, data) : api.post('/v1/lms/manage/coupons/', data)),
+  removeCoupon: (id) => api.delete(`/v1/lms/manage/coupons/${id}/`),
+  settings: () => api.get('/v1/lms/manage/settings/'),
+  saveSettings: (data) => api.put('/v1/lms/manage/settings/', data),
+  earnings: () => api.get('/v1/lms/manage/earnings/'),
+  payouts: (instructor) => api.get('/v1/lms/manage/payouts/', { params: instructor ? { instructor } : {} }),
+  addPayout: (data) => api.post('/v1/lms/manage/payouts/', data),
+};
+
 // The student's own portal
 export const portalAPI = {
   me: () => api.get('/v1/portal/me/'),

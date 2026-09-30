@@ -7,6 +7,7 @@ import { ROLES } from '../../config/roles';
 import { formatDate, timeAgo } from '../../utils/format';
 import { ACTION_META, CONFIRM } from '../../utils/userStatus';
 import PortalLayout from '../../components/layout/PortalLayout';
+import CreateUserDialog from '../../components/lms/CreateUserDialog';
 import Avatar from '../../components/ui/Avatar';
 import { Alert } from '../../components/ui/Form';
 import { StatusBadges, UserActions, UserDrawer } from '../../components/admin/UserAdmin';
@@ -39,6 +40,7 @@ export const AdminUsersPage = () => {
   const [openId, setOpenId] = useState(null);
   const [bulkConfirm, setBulkConfirm] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   const reload = useCallback(() => {
     setLoading(true);
@@ -105,7 +107,7 @@ export const AdminUsersPage = () => {
   const bulk = (action) => (CONFIRM[action] ? setBulkConfirm(action) : runBulk(action));
 
   return (
-    <PortalLayout title="Users" subtitle="Approve new accounts, manage access and change roles.">
+    <PortalLayout title="Users" subtitle="Approve new accounts, manage access and change roles." actions={<button type="button" className="btn btn--primary btn--sm" onClick={() => setCreating(true)}><i className="fas fa-user-plus" /> Create user</button>}>
       <UsersOverview
         version={statsVersion}
         onPickStatus={(s) => {
@@ -252,6 +254,7 @@ export const AdminUsersPage = () => {
           }}
         />
       )}
+      {creating && <CreateUserDialog onClose={() => setCreating(false)} onCreated={(u) => { setCreating(false); setSearch(u.email); setPage(1); setOpenId(u.id); }} />}
     </PortalLayout>
   );
 };

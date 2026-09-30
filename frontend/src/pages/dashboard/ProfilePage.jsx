@@ -8,6 +8,7 @@ import PortalLayout from '../../components/layout/PortalLayout';
 import Avatar from '../../components/ui/Avatar';
 import { Alert, PasswordChecklist, PasswordField, TextField } from '../../components/ui/Form';
 import { isStrongPassword } from '../../utils/password';
+import LearningProfileCard from '../../components/lms/LearningProfileCard';
 
 const MAX_PHOTO_MB = 5;
 const emptyPasswords = { old_password: '', new_password: '', new_password_confirm: '' };
@@ -181,14 +182,18 @@ const PasswordForm = () => {
   );
 };
 
-export const ProfilePage = () => (
-  <PortalLayout title="Profile & security" subtitle="Manage your personal details and keep your account secure.">
-    <PhotoCard />
-    <div className="grid grid-2 align-start">
-      <ProfileForm />
-      <PasswordForm />
-    </div>
-  </PortalLayout>
-);
+export const ProfilePage = () => {
+  const { user } = useAuth();
+  return (
+    <PortalLayout title="Profile & security" subtitle="Manage your personal details and keep your account secure.">
+      <PhotoCard />
+      <div className="grid grid-2 align-start">
+        <ProfileForm />
+        <PasswordForm />
+      </div>
+      {['STUDENT', 'INSTRUCTOR'].includes(user?.role) && <LearningProfileCard />}
+    </PortalLayout>
+  );
+};
 
 export default ProfilePage;

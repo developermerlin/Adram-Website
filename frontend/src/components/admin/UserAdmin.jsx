@@ -8,6 +8,8 @@ import { ACTION_META, ACTIONS_FOR, STATUS_META, statusOf } from '../../utils/use
 import Avatar from '../ui/Avatar';
 import { ActivityList } from '../../pages/dashboard/ActivityPage';
 import useUserAction from './useUserAction';
+import UserLearningPanel from '../lms/UserLearningPanel';
+import UserEditForm from '../lms/UserEditForm';
 
 export const StatusBadges = ({ user }) => {
   const meta = STATUS_META[statusOf(user)];
@@ -89,7 +91,7 @@ export const UserDrawer = ({ userId, onClose, onChanged }) => {
               <div>
                 <h3>{u.full_name}</h3>
                 <a href={`mailto:${u.email}`}>{u.email}</a>
-                <div className="drawer__badges"><StatusBadges user={u} /></div>
+                <div className="drawer__badges"><StatusBadges user={u} />{u.is_superuser && <span className="badge badge--blue"><i className="fas fa-crown" /> Super Admin</span>}</div>
               </div>
             </div>
 
@@ -136,6 +138,15 @@ export const UserDrawer = ({ userId, onClose, onChanged }) => {
                 <div><dt>Linked sign-in</dt><dd>{data.social_accounts.map((s) => s.provider[0].toUpperCase() + s.provider.slice(1)).join(', ')}</dd></div>
               )}
             </dl>
+
+            {['STUDENT', 'INSTRUCTOR'].includes(u.role) && (
+              <>
+                <h4 className="drawer__subhead">Learning &amp; purchases</h4>
+                <UserLearningPanel userId={u.id} />
+              </>
+            )}
+
+            {(!u.is_superuser || me?.is_superuser) && <UserEditForm key={u.updated_at} user={u} onSaved={() => { load(); onChanged?.(u); }} />}
 
             <h4 className="drawer__subhead">Recent activity</h4>
             <ActivityList items={data.activity} loading={false} />

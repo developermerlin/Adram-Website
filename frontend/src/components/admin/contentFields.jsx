@@ -1,0 +1,385 @@
+import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import { contentAPI, parseApiErrors } from '../../services/api';
+import { getPath, setPath } from '../../content/merge';
+import { SITE_LIBRARY, TECH_LOGOS } from '../../content/schema';
+import { assetUrl } from '../../utils/assets';
+import BrandIcon, { ICON_NAMES } from '../brand/BrandIcon';
+import { ListEditor } from './catalog';
+
+// The controls the content editor is built from (see content/schema.js for how pages describe their fields).
+
+const Hint = ({ id, error, hint }) =>
+  error ? <p className="field-error">{error}</p> : hint ? <p className="hint" id={id}>{hint}</p> : null;
+
+// ---------------------------------------------------------------- Images
+
+const ImageLibrary = ({ current, onPick, onClose }) => {
+  const [tab, setTab] = useState('uploads');
+  const [uploads, setUploads] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [error, setError] = useState('');
+  const input = useRef(null);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    contentAPI.media().then(({ data }) => setUploads(data)).catch(() => setUploads([]));
+  }, []);
+
+  const upload = async (file) => {
+    if (!file) return;
+    setError('');
+    setProgress(0);
+    try {
+      const { data } = await contentAPI.upload(file, setProgress);
+      toast.success('Image uploaded');
+      onPick(data.url);
+    } catch (err) {
+      const errors = parseApiErrors(err);
+      setError(errors.image || errors.form || errors.detail || 'The image could not be uploaded.');
+    } finally {
+      setProgress(null);
+      if (input.current) input.current.value = '';
+    }
+  };
+
+  const remove = async (image) => {
+    if (!window.confirm(`Delete “${image.name || 'this image'}” from the library? Pages still using it will lose the picture.`)) return;
+    try {
+      await contentAPI.removeMedia(image.id);
+      setUploads((list) => list.filter((x) => x.id !== image.id));
+    } catch {
+      toast.error('Could not delete the image.');
+    }
+  };
+
+  const groups = SITE_LIBRARY.reduce((acc, img) => ({ ...acc, [img.group]: [...(acc[img.group] || []), img] }), {});
+
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-labelledby="library-title">
+      <button type="button" className="modal__backdrop" aria-label="Close" onClick={onClose} />
+      <div className="modal__card modal__card--wide cf-library">
+        <div className="cf-library__head">
+          <h2 id="library-title">Choose an image</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><i className="fas fa-xmark" /></button>
+        </div>
+        <div className="segmented" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'uploads'} className={tab === 'uploads' ? 'is-active' : ''} onClick={() => setTab('uploads')}>Upload &amp; my images</button>
+          <button type="button" role="tab" aria-selected={tab === 'site'} className={tab === 'site' ? 'is-active' : ''} onClick={() => setTab('site')}>Website photos</button>
+        </div>
+
+        {tab === 'uploads' ? (
+          <>
+            <label className={`cf-drop${progress !== null ? ' is-busy' : ''}`}>
+              <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => upload(e.target.files?.[0])} disabled={progress !== null} />
+              <i className="fas fa-cloud-arrow-up" aria-hidden="true" />
+              <span>{progress !== null ? `Uploading… ${progress}%` : 'Click to upload a new image'}</span>
+              <small>JPG, PNG, WebP or GIF, up to 6 MB. Wide photos (at least 1200 px) look best.</small>
+            </label>
+            {error && <p className="field-error" role="alert">{error}</p>}
+            {uploads === null ? (
+              <p className="muted small">Loading your images…</p>
+            ) : uploads.length === 0 ? (
+              <p className="muted small">You haven’t uploaded any images yet.</p>
+            ) : (
+              <ul className="cf-library__grid">
+                {uploads.map((img) => (
+                  <li key={img.id}>
+                    <button type="button" className={`cf-thumb${current === img.url ? ' is-active' : ''}`} onClick={() => onPick(img.url)} title={img.name}>
+                      <img src={assetUrl(img.url)} alt="" loading="lazy" />
+                      <span>{img.name || 'Image'}</span>
+                    </button>
+                    <button type="button" className="cf-thumb__delete" aria-label={`Delete ${img.name || 'image'}`} onClick={() => remove(img)}>
+                      <i className="fas fa-trash-can" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          Object.entries(groups).map(([group, images]) => (
+            <section key={group} className="cf-library__group">
+              <h3>{group}</h3>
+              <ul className="cf-library__grid">
+                {images.map((img) => (
+                  <li key={img.src}>
+                    <button type="button" className={`cf-thumb${current === img.src ? ' is-active' : ''}`} onClick={() => onPick(img.src)} title={img.name}>
+                      <img src={img.src} alt="" loading="lazy" />
+                      <span>{img.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const ImageField = ({ field, value, onChange, id }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="field cf-image">
+      <span className="field__label" id={`${id}-label`}>{field.label}</span>
+      <div className="cf-image__row">
+        <div className="cf-image__preview">
+          {value ? <img src={assetUrl(value)} alt="" /> : <span><i className="far fa-image" aria-hidden="true" /> No image</span>}
+        </div>
+        <div className="cf-image__actions">
+          <button type="button" className="btn btn--outline btn--sm" onClick={() => setOpen(true)} aria-describedby={`${id}-label`}>
+            <i className="fas fa-image" /> {value ? 'Change image' : 'Choose image'}
+          </button>
+          {value && (
+            <button type="button" className="btn btn--text btn--sm text-danger" onClick={() => onChange('')}>
+              <i className="fas fa-xmark" /> Remove
+            </button>
+          )}
+        </div>
+      </div>
+      <Hint hint={field.hint} />
+      {open && <ImageLibrary current={value} onClose={() => setOpen(false)} onPick={(src) => { onChange(src); setOpen(false); }} />}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- Icons
+
+const IconField = ({ field, value, onChange, id }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="field cf-icon">
+      <span className="field__label" id={`${id}-label`}>{field.label}</span>
+      <button type="button" className="cf-icon__current" aria-expanded={open} aria-labelledby={`${id}-label`} onClick={() => setOpen((o) => !o)}>
+        {value ? <BrandIcon name={value} size={24} /> : <i className="far fa-circle" aria-hidden="true" />}
+        <span>{value || 'Choose an icon'}</span>
+        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="icon-picker" role="radiogroup" aria-label={field.label}>
+          {ICON_NAMES.map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="radio"
+              aria-checked={value === name}
+              aria-label={name}
+              title={name}
+              className={`icon-picker__option${value === name ? ' is-active' : ''}`}
+              onClick={() => { onChange(name); setOpen(false); }}
+            >
+              <BrandIcon name={name} size={26} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- Simple inputs
+
+const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
+
+const WeekdaysField = ({ field, value, onChange, id }) => {
+  const days = (Array.isArray(value) ? value : []).map(Number);
+  const toggle = (day) => onChange(days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort((a, b) => a - b));
+  return (
+    <fieldset className="field cf-days">
+      <legend className="field__label">{field.label}</legend>
+      <div className="cf-days__row">
+        {DAYS.map(([day, name]) => (
+          <button key={day} type="button" id={`${id}-${day}`} className={`cf-days__day${days.includes(day) ? ' is-active' : ''}`} aria-pressed={days.includes(day)} onClick={() => toggle(day)}>
+            {name}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+};
+
+// ---------------------------------------------------------------- Lists of cards
+
+const clone = (v) => JSON.parse(JSON.stringify(v));
+
+const ListField = ({ field, value, onChange, id }) => {
+  const items = Array.isArray(value) ? value : [];
+  const [open, setOpen] = useState({});
+  const max = field.max ?? 60;
+  const name = field.itemName || 'item';
+
+  const update = (i, item) => onChange(items.map((x, j) => (j === i ? item : x)));
+  const add = () => {
+    if (items.length >= max) return;
+    onChange([...items, clone(field.blank)]);
+    setOpen((o) => ({ ...o, [items.length]: true }));
+  };
+  const remove = (i) => {
+    onChange(items.filter((_, j) => j !== i));
+    setOpen({});
+  };
+  const duplicate = (i) => {
+    if (items.length >= max) return;
+    onChange([...items.slice(0, i + 1), clone(items[i]), ...items.slice(i + 1)]);
+    setOpen((o) => ({ ...o, [i + 1]: true }));
+  };
+  const move = (i, step) => {
+    const next = [...items];
+    [next[i], next[i + step]] = [next[i + step], next[i]];
+    onChange(next);
+    setOpen((o) => ({ ...o, [i]: o[i + step], [i + step]: o[i] }));
+  };
+  const stop = (fn) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
+
+  return (
+    <div className="cf-list">
+      <div className="cf-list__head">
+        <span className="field__label">{field.label}</span>
+        <span className="muted small">{items.length} {items.length === 1 ? name : `${name}s`}</span>
+      </div>
+      <Hint hint={field.hint} />
+      {items.length === 0 && <p className="cf-list__empty muted small">Nothing here yet.</p>}
+      {items.map((item, i) => {
+        const title = getPath(item, field.titleField);
+        return (
+          // Index keys are fine: every field is a controlled input
+          <details key={i} className="cf-item" open={Boolean(open[i])} onToggle={(e) => { const isOpen = e.currentTarget.open; setOpen((o) => (o[i] === isOpen ? o : { ...o, [i]: isOpen })); }}>
+            <summary>
+              <span className="cf-item__num" aria-hidden="true">{i + 1}</span>
+              <span className="cf-item__title">{title || `New ${name}`}</span>
+              <span className="cf-item__tools">
+                <button type="button" className="icon-btn" aria-label={`Move ${name} ${i + 1} up`} disabled={i === 0} onClick={stop(() => move(i, -1))}><i className="fas fa-arrow-up" /></button>
+                <button type="button" className="icon-btn" aria-label={`Move ${name} ${i + 1} down`} disabled={i === items.length - 1} onClick={stop(() => move(i, 1))}><i className="fas fa-arrow-down" /></button>
+                <button type="button" className="icon-btn" aria-label={`Duplicate ${name} ${i + 1}`} disabled={items.length >= max} onClick={stop(() => duplicate(i))}><i className="far fa-copy" /></button>
+                <button type="button" className="icon-btn icon-btn--danger" aria-label={`Remove ${name} ${i + 1}`} onClick={stop(() => remove(i))}><i className="fas fa-trash-can" /></button>
+              </span>
+              <i className="fas fa-chevron-down cf-item__chevron" aria-hidden="true" />
+            </summary>
+            <div className="cf-item__body">
+              {field.fields.map((f) => (
+                <ContentField key={f.path} field={f} id={`${id}-${i}-${f.path}`} value={getPath(item, f.path)} onChange={(v) => update(i, setPath(item, f.path, v))} />
+              ))}
+            </div>
+          </details>
+        );
+      })}
+      <button type="button" className="btn btn--outline btn--sm" onClick={add} disabled={items.length >= max}>
+        <i className="fas fa-plus" /> Add {name}
+      </button>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- One field
+
+export const ContentField = ({ field, value, onChange, id, error }) => {
+  const hintId = field.hint ? `${id}-hint` : undefined;
+  switch (field.type) {
+    case 'image':
+      return <ImageField field={field} value={value || ''} onChange={onChange} id={id} />;
+    case 'icon':
+      return <IconField field={field} value={value || ''} onChange={onChange} id={id} />;
+    case 'weekdays':
+      return <WeekdaysField field={field} value={value} onChange={onChange} id={id} />;
+    case 'list':
+      return <ListField field={field} value={value} onChange={onChange} id={id} />;
+    case 'heading':
+      return (
+        <div className="cf-subhead">
+          <h4>{field.label}</h4>
+          {field.hint && <p className="hint">{field.hint}</p>}
+        </div>
+      );
+    case 'toggle':
+      return (
+        <div className="field">
+          <label className="checkbox">
+            <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />
+            <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+            <span>
+              {field.label}
+              {field.hint && <small>{field.hint}</small>}
+            </span>
+          </label>
+        </div>
+      );
+    case 'logo':
+      return (
+        <div className="field cf-logo">
+          <label htmlFor={id}>{field.label}</label>
+          <div className="cf-logo__row">
+            {value && <img src={`/tech/${value}.svg`} alt="" width="36" height="36" />}
+            <select id={id} className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+              {!TECH_LOGOS.includes(value) && value && <option value={value}>{value}</option>}
+              {TECH_LOGOS.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      );
+    case 'strings':
+      return (
+        <ListEditor id={id} label={field.label} hint={field.hint} items={Array.isArray(value) ? value : []} onChange={onChange} placeholder={field.placeholder} max={field.max ?? 12} maxLength={300} />
+      );
+    case 'textarea':
+      return (
+        <div className="field">
+          <label htmlFor={id}>{field.label}</label>
+          <textarea id={id} className="input" rows={field.rows || 3} value={value ?? ''} aria-invalid={Boolean(error)} aria-describedby={hintId} onChange={(e) => onChange(e.target.value)} />
+          <Hint id={hintId} error={error} hint={field.hint} />
+        </div>
+      );
+    case 'select':
+      return (
+        <div className="field">
+          <label htmlFor={id}>{field.label}</label>
+          <select id={id} className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+            {field.options.map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+          <Hint id={hintId} error={error} hint={field.hint} />
+        </div>
+      );
+    case 'number':
+      return (
+        <div className="field">
+          <label htmlFor={id}>{field.label}</label>
+          <input id={id} type="number" className="input" min={field.min} max={field.max} step="0.5" value={value ?? ''} aria-describedby={hintId} onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} />
+          <Hint id={hintId} error={error} hint={field.hint} />
+        </div>
+      );
+    default: // text, link
+      return (
+        <div className="field">
+          <label htmlFor={id}>{field.label}</label>
+          <input
+            id={id}
+            type={field.inputType || 'text'}
+            className="input"
+            value={value ?? ''}
+            placeholder={field.placeholder}
+            maxLength={field.type === 'link' ? 500 : 300}
+            aria-invalid={Boolean(error)}
+            aria-describedby={hintId}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <Hint id={hintId} error={error} hint={field.hint} />
+        </div>
+      );
+  }
+};
+
+export default ContentField;

@@ -25,10 +25,11 @@ export const site = {
 };
 
 // Freetown is on GMT (UTC+0) all year, so UTC time is local office time for every visitor.
-export const officeStatus = (now = new Date()) => {
+// `hours` defaults to the built-in ones; pages pass the admin-edited hours from useSite().
+export const officeStatus = (now = new Date(), hours = site.hours) => {
   const day = now.getUTCDay();
   const hour = now.getUTCHours() + now.getUTCMinutes() / 60;
-  const today = site.hours.find((h) => h.weekdays.includes(day));
+  const today = hours.find((h) => h.weekdays.includes(day));
   const open = Boolean(today?.open !== undefined && hour >= today.open && hour < today.close);
   return { today, open };
 };

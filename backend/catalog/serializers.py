@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import LEVELS, Course, Scholarship
+from .models import LEVELS, Category, Course, Scholarship
 
 LIST_FIELDS_MAX = 30
 
@@ -71,9 +71,53 @@ class ScholarshipSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    """A programme as the public sees it: the catalogue card and the course page."""
+    promo_embed_url = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
+    sale_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    is_free = serializers.BooleanField(read_only=True)
+    category = serializers.SerializerMethodField()
+    subcategory = serializers.SerializerMethodField()
+    instructor = serializers.SerializerMethodField()
+
     class Meta:
         model = Course
-        fields = ['slug', 'title', 'icon', 'summary', 'topics', 'duration', 'fee', 'next_intake']
+        fields = [
+            'slug', 'title', 'icon', 'summary', 'topics', 'duration', 'fee', 'price', 'next_intake',
+            'description', 'learn_points', 'requirements', 'audience', 'level', 'language', 'thumbnail', 'promo_embed_url',
+            'instructor_name', 'instructor_title', 'instructor_bio', 'instructor_photo', 'enrollment_mode', 'stats',
+            'id', 'subtitle', 'discount_price', 'sale_price', 'currency', 'is_free', 'faqs', 'category', 'subcategory',
+            'instructor', 'updated_at', 'published_at', 'is_premium', 'highlight', 'format_label',
+        ]
+
+    def get_category(self, obj):
+        return {'id': obj.category.id, 'slug': obj.category.slug, 'name': obj.category.name} if obj.category_id else None
+
+    def get_subcategory(self, obj):
+        return {'id': obj.subcategory.id, 'slug': obj.subcategory.slug, 'name': obj.subcategory.name} if obj.subcategory_id else None
+
+    def get_instructor(self, obj):
+        from lms.briefs import instructor_info
+        return instructor_info(obj)
+
+    def get_promo_embed_url(self, obj):
+        from lms.media import embed_url  # imported here: lms depends on catalog
+        return embed_url(obj.promo_video_url) if obj.promo_video_url else None
+
+    def get_stats(self, obj):
+        """Lessons, hours, rating and students. Without the course-portal tables (migration not applied yet) the
+        programme list must keep working, so it reports an empty course portal instead of failing."""
+        from django.db import DatabaseError
+        from lms.stats import course_stats
+        try:
+            return course_stats(obj)
+        except DatabaseError:
+            return {'lesson_count': 0, 'total_seconds': 0, 'rating_average': 0, 'rating_count': 0, 'student_count': 0}
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['lesson_count'] = data['stats']['lesson_count']  # kept for the Training page cards
+        return data
 
 
 # ---------------------------------------------------------------- Admin portal
@@ -126,16 +170,89 @@ class ScholarshipManageSerializer(ManageSerializerMixin, serializers.ModelSerial
                  'text': e.get('text', '').strip()} for e in value]
 
 
+def _safe_image(value):
+    """An image is a path on this site (/media/..., /web/...) or a web address, never a script."""
+    value = (value or '').strip()
+    if value and not (value.startswith('/') and not value.startswith('//') or value.lower().startswith(('http://', 'https://'))):
+        raise serializers.ValidationError('Choose an image from the library.')
+    return value
+
+
+class FaqField(serializers.ListField):
+    """[{question, answer}]: blank pairs are dropped."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('child', serializers.DictField(child=serializers.CharField(max_length=2000, allow_blank=True)))
+        kwargs.setdefault('max_length', 30)
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        rows = super().to_internal_value(data)
+        clean = []
+        for row in rows:
+            question, answer = str(row.get('question', '')).strip()[:300], str(row.get('answer', '')).strip()[:2000]
+            if question and answer:
+                clean.append({'question': question, 'answer': answer})
+            elif question or answer:
+                raise serializers.ValidationError('Give every FAQ a question and an answer.')
+        return clean
+
+
 class CourseManageSerializer(ManageSerializerMixin, serializers.ModelSerializer):
     topics = TextListField(line_length=60, max_length=8)
+    learn_points = TextListField(line_length=200, max_length=12, required=False)
+    requirements = TextListField(line_length=200, max_length=10, required=False)
+    audience = TextListField(line_length=200, max_length=8, required=False)
+    thumbnail = serializers.CharField(max_length=300, required=False, allow_blank=True, validators=[_safe_image])
+    instructor_photo = serializers.CharField(max_length=300, required=False, allow_blank=True, validators=[_safe_image])
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
+    discount_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
+    faqs = FaqField(required=False)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(parent__isnull=True), required=False, allow_null=True)
+    subcategory = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(parent__isnull=False), required=False, allow_null=True)
+    instructor_account = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
-            'id', 'slug', 'title', 'icon', 'summary', 'topics', 'duration', 'fee', 'next_intake',
+            'id', 'slug', 'title', 'subtitle', 'icon', 'summary', 'topics', 'duration', 'fee', 'price', 'discount_price', 'next_intake',
+            'description', 'learn_points', 'requirements', 'audience', 'level', 'language', 'thumbnail', 'promo_video_url',
+            'instructor_name', 'instructor_title', 'instructor_bio', 'instructor_photo', 'enrollment_mode',
+            'category', 'subcategory', 'faqs', 'instructor', 'instructor_account', 'is_premium', 'highlight', 'format_label', 'stats', 'status', 'review_note', 'submitted_at', 'published_at',
             'is_published', 'sort_order', 'created_at', 'updated_at', 'updated_by_name',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'status', 'review_note', 'submitted_at', 'published_at']
+
+    def get_stats(self, obj):
+        return CourseSerializer.get_stats(self, obj)
+
+    def get_instructor_account(self, obj):
+        user = obj.instructor
+        return {'id': user.id, 'name': user.get_full_name(), 'email': user.email} if user else None
+
+    def validate_instructor(self, user):
+        from accounts.models import User
+        if user and user.role != User.INSTRUCTOR:
+            raise serializers.ValidationError('Choose an account with the Instructor role.')
+        return user
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        category = attrs.get('category', getattr(self.instance, 'category', None))
+        sub = attrs.get('subcategory', getattr(self.instance, 'subcategory', None))
+        if sub and sub.parent_id != getattr(category, 'id', None):
+            raise serializers.ValidationError({'subcategory': 'Choose a subcategory of the chosen category.'})
+        price = attrs.get('price', getattr(self.instance, 'price', None))
+        sale = attrs.get('discount_price', getattr(self.instance, 'discount_price', None))
+        if sale is not None and (not price or sale >= price):
+            raise serializers.ValidationError({'discount_price': 'The sale price must be lower than the price.'})
+        return attrs
+
+    def validate_promo_video_url(self, value):
+        from lms.media import embed_url
+        if value and not embed_url(value):
+            raise serializers.ValidationError('Paste a YouTube or Vimeo link.')
+        return value
 
 
 class ReorderSerializer(serializers.Serializer):

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { mapsHref, officeStatus, site, telHref, whatsappHref } from '../../config/site';
+import { officeStatus, telHref } from '../../config/site';
+import { fill } from '../../content/merge';
+import { usePageContent, useSite } from '../../content/useContent';
 import { contactAPI, parseApiErrors } from '../../services/api';
 import { IconTile, PageHero } from '../../components/ui/Section';
 import { ContactArt } from '../../components/brand/Illustrations';
@@ -10,26 +12,16 @@ import '../../styles/pages.css';
 
 const emptyForm = { name: '', email: '', subject: '', message: '' };
 
-// Quick topics fill in the subject; people can still type their own.
-const topics = [
-  'Web development',
-  'Mobile app',
-  'Custom software',
-  'Networking',
-  'AI & automation',
-  'IT consultancy',
-  'Training',
-  'Scholarships',
-];
-
-const methods = [
-  { icon: 'phone', title: 'Call us', value: site.phones[0], href: telHref(site.phones[0]), action: 'Call now' },
-  { icon: 'discover', title: 'WhatsApp', value: 'Chat with our team', href: whatsappHref, action: 'Start chat', external: true },
-  { icon: 'mail', title: 'Email', value: site.email, href: `mailto:${site.email}`, action: 'Send email' },
-  { icon: 'location', title: 'Visit us', value: site.location, href: mapsHref, action: 'Get directions', external: true },
+const contactMethods = (site, m) => [
+  { icon: 'phone', title: m.callTitle, value: site.phones[0], href: telHref(site.phones[0]), action: m.callAction },
+  ...(site.whatsappHref ? [{ icon: 'discover', title: m.whatsappTitle, value: m.whatsappValue, href: site.whatsappHref, action: m.whatsappAction, external: true }] : []),
+  { icon: 'mail', title: m.emailTitle, value: site.email, href: `mailto:${site.email}`, action: m.emailAction },
+  { icon: 'location', title: m.visitTitle, value: site.location, href: site.mapsHref, action: m.visitAction, external: true },
 ];
 
 const ContactForm = () => {
+  const { whatsappHref } = useSite();
+  const { form: f, topics } = usePageContent('contact');
   const [params] = useSearchParams();
   // Pages link here with ?subject=... to pre-fill the enquiry type.
   const [form, setForm] = useState({ ...emptyForm, subject: params.get('subject') || '' });
@@ -65,17 +57,17 @@ const ContactForm = () => {
     return (
       <div className="contact-form-card contact-sent" role="status">
         <span className="contact-sent__icon"><i className="fas fa-check" /></span>
-        <h2>Message sent. Thank you!</h2>
-        <p>
-          We’ve received your message and will reply within one working day. For anything urgent, call or WhatsApp us.
-        </p>
+        <h2>{f.sentTitle}</h2>
+        <p>{f.sentText}</p>
         <div className="contact-sent__actions">
           <button type="button" className="btn btn--outline" onClick={() => setStatus('idle')}>
-            <i className="fas fa-pen" /> Send another message
+            <i className="fas fa-pen" /> {f.sentAgainLabel}
           </button>
-          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn--whatsapp">
-            <i className="fab fa-whatsapp" /> Chat on WhatsApp
-          </a>
+          {whatsappHref && (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn--whatsapp">
+              <i className="fab fa-whatsapp" /> {f.sentWhatsappLabel}
+            </a>
+          )}
         </div>
       </div>
     );
@@ -87,17 +79,17 @@ const ContactForm = () => {
     <div className="contact-form-card">
       <div className="contact-form-card__head">
         <div>
-          <h2>Send us a message</h2>
-          <p>Fill in the form and the right person on our team will get back to you.</p>
+          <h2>{f.title}</h2>
+          <p>{f.intro}</p>
         </div>
-        <span className="reply-badge"><i className="fas fa-bolt" /> Replies within 1 working day</span>
+        <span className="reply-badge"><i className="fas fa-bolt" /> {f.badge}</span>
       </div>
 
       <Alert>{errors.form}</Alert>
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <div className="field">
-          <span className="field__label">What can we help with?</span>
+          <span className="field__label">{f.topicsLabel}</span>
           <div className="topic-chips" role="group" aria-label="Choose a topic">
             {topics.map((t) => (
               <button
@@ -113,19 +105,19 @@ const ContactForm = () => {
           </div>
         </div>
         <div className="form-row">
-          <TextField name="name" label="Full name" required autoComplete="name" placeholder="Your name" value={form.name} onChange={handleChange} error={errors.name} />
-          <TextField name="email" label="Email address" type="email" required autoComplete="email" placeholder="you@example.com" value={form.email} onChange={handleChange} error={errors.email} />
+          <TextField name="name" label={f.nameLabel} required autoComplete="name" placeholder={f.namePlaceholder} value={form.name} onChange={handleChange} error={errors.name} />
+          <TextField name="email" label={f.emailLabel} type="email" required autoComplete="email" placeholder={f.emailPlaceholder} value={form.email} onChange={handleChange} error={errors.email} />
         </div>
-        <TextField name="subject" label="Subject" required placeholder="e.g. New website for our school" value={form.subject} onChange={handleChange} error={errors.subject} />
+        <TextField name="subject" label={f.subjectLabel} required placeholder={f.subjectPlaceholder} value={form.subject} onChange={handleChange} error={errors.subject} />
         <div className="field">
-          <label htmlFor="message">Message</label>
+          <label htmlFor="message">{f.messageLabel}</label>
           <textarea
             id="message"
             name="message"
             className="input"
             required
             rows={6}
-            placeholder="Tell us about your project, timeline and any questions you have…"
+            placeholder={f.messagePlaceholder}
             value={form.message}
             onChange={handleChange}
             aria-invalid={Boolean(errors.message)}
@@ -133,9 +125,9 @@ const ContactForm = () => {
           {errors.message && <p className="field-error">{errors.message}</p>}
         </div>
         <div className="contact-form-card__foot">
-          <p><i className="fas fa-lock" /> Your details are only used to reply to your enquiry.</p>
+          <p><i className="fas fa-lock" /> {f.privacyNote}</p>
           <button type="submit" className="btn btn--primary btn--lg" disabled={status === 'sending'}>
-            {status === 'sending' ? <><span className="btn-spinner" /> Sending…</> : <><i className="fas fa-paper-plane" /> Send message</>}
+            {status === 'sending' ? <><span className="btn-spinner" /> Sending…</> : <><i className="fas fa-paper-plane" /> {f.sendLabel}</>}
           </button>
         </div>
       </form>
@@ -144,26 +136,32 @@ const ContactForm = () => {
 };
 
 export const ContactPage = () => {
-  const { today, open } = officeStatus();
+  const site = useSite();
+  const c = usePageContent('contact');
+  const { whatsappHref, mapsHref } = site;
+  const methods = contactMethods(site, c.methods);
+  const { today, open } = officeStatus(new Date(), site.hours);
 
   return (
     <>
       <PageHero
-        eyebrow="Contact"
-        title="Let’s talk about your next project"
+        eyebrow={c.hero.eyebrow}
+        title={c.hero.title}
         art={<div className="art-frame art-frame--dark"><ContactArt /></div>}
         actions={
           <>
             <a href={telHref(site.phones[0])} className="btn btn--primary">
-              <i className="fas fa-phone" /> Call {site.phones[0]}
+              <i className="fas fa-phone" /> {fill(c.hero.callLabel, { phone: site.phones[0] })}
             </a>
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost-light">
-              <i className="fab fa-whatsapp" /> WhatsApp us
-            </a>
+            {whatsappHref && (
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost-light">
+                <i className="fab fa-whatsapp" /> {c.hero.whatsappLabel}
+              </a>
+            )}
           </>
         }
       >
-        Whether it’s a new project, a training programme or a scholarship question, our team is ready to help.
+        {c.hero.lead}
       </PageHero>
 
       {/* Ways to reach us */}
@@ -196,35 +194,33 @@ export const ContactPage = () => {
           <aside className="contact-aside">
             <div className="aside-card">
               <div className="aside-card__head">
-                <h3><i className="far fa-clock" /> Office hours</h3>
+                <h3><i className="far fa-clock" /> {c.hours.title}</h3>
                 <span className={`status-pill${open ? ' is-open' : ''}`}>
-                  <span className="status-pill__dot" /> {open ? 'Open now' : 'Closed now'}
+                  <span className="status-pill__dot" /> {open ? c.hours.openLabel : c.hours.closedLabel}
                 </span>
               </div>
               <dl className="hours-list">
                 {site.hours.map((h) => (
                   <div key={h.days} className={h === today ? 'is-today' : ''}>
-                    <dt>{h.short}{h === today && <span className="today-tag">Today</span>}</dt>
+                    <dt>{h.short}{h === today && <span className="today-tag">{c.hours.todayLabel}</span>}</dt>
                     <dd>{h.time}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="aside-note">All times are Freetown time (GMT).</p>
+              <p className="aside-note">{c.hours.note}</p>
             </div>
 
             <div className="aside-card">
-              <h3><i className="fas fa-share-nodes" /> Follow us</h3>
-              <p className="aside-note aside-note--top">News, projects, training intakes and scholarship updates.</p>
+              <h3><i className="fas fa-share-nodes" /> {c.follow.title}</h3>
+              <p className="aside-note aside-note--top">{c.follow.text}</p>
               <SocialLinks labeled />
             </div>
 
             <div className="aside-card aside-card--soft">
-              <h3><i className="fas fa-graduation-cap" /> Students</h3>
-              <p className="aside-note aside-note--top">
-                Asking about a scholarship or course? Create a free account to track your applications.
-              </p>
+              <h3><i className="fas fa-graduation-cap" /> {c.students.title}</h3>
+              <p className="aside-note aside-note--top">{c.students.text}</p>
               <Link to="/register" className="link-arrow">
-                Create an account <i className="fas fa-arrow-right" />
+                {c.students.link} <i className="fas fa-arrow-right" />
               </Link>
             </div>
           </aside>
@@ -233,8 +229,8 @@ export const ContactPage = () => {
 
       <section className="map-section">
         <iframe
-          title="ADRAM Technologies location: Freetown, Sierra Leone"
-          src="https://maps.google.com/maps?q=Freetown%2C%20Sierra%20Leone&z=12&output=embed"
+          title={`${site.name} location: ${site.location}`}
+          src={`https://maps.google.com/maps?q=${encodeURIComponent(site.location)}&z=12&output=embed`}
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />
@@ -245,7 +241,7 @@ export const ContactPage = () => {
               <h3>{site.name}</h3>
               <p>{site.location}</p>
               <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="btn btn--primary btn--sm">
-                <i className="fas fa-diamond-turn-right" /> Get directions
+                <i className="fas fa-diamond-turn-right" /> {c.map.button}
               </a>
             </div>
           </div>

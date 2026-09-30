@@ -13,6 +13,7 @@ import { Alert } from '../../components/ui/Form';
 import { StageBadge } from '../../components/portal/ApplicationCard';
 import { ScholarshipRow } from '../../components/portal/PortalPieces';
 import { MessagesPanel, SecurityPanel } from '../../components/portal/OverviewPanels';
+import LearningSnapshot from '../../components/lms/LearningSnapshot';
 
 const todayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -102,6 +103,7 @@ export const StudentDashboard = () => {
           <div className="ov-hero__actions">
             <Link to="/scholarships" className="btn btn--light btn--sm"><i className="fas fa-magnifying-glass" /> Find scholarships</Link>
             <Link to="/student/applications" className="btn btn--ghost-light btn--sm"><i className="fas fa-list-check" /> My applications</Link>
+            <Link to="/student/learning" className="btn btn--ghost-light btn--sm"><i className="fas fa-circle-play" /> My learning</Link>
           </div>
         </div>
         <DashboardArt className="ov-hero__art" />
@@ -124,6 +126,8 @@ export const StudentDashboard = () => {
           tone={deadlines[0] && daysUntil(deadlines[0].date) <= 14 ? 'red' : 'cyan'}
         />
       </div>
+
+      <LearningSnapshot />
 
       <div className="ov-grid">
         <div className="stack-lg">

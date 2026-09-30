@@ -9,6 +9,7 @@ import Brand from '../ui/Brand';
 import Avatar from '../ui/Avatar';
 import ThemeMenu from './ThemeMenu';
 import CallOverlay from '../chat/CallOverlay';
+import NotificationBell from '../lms/NotificationBell';
 import { watchIncomingCalls } from '../chat/callStore';
 import { SIDEBARS, usePortalPrefs } from './portalPrefs';
 import '../../styles/portal.css';
@@ -185,51 +186,6 @@ const MessagesMenu = ({ isAdmin, onCount }) => {
   );
 };
 
-// Bell: everything with a waiting count in the sidebar, in one list.
-const Notifications = ({ items }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const total = items.reduce((n, i) => n + i.count, 0);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
-    const onKey = (e) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', onDown);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="topbar__notify" ref={ref}>
-      <button type="button" className="topbar__icon" aria-label={total ? `${total} items waiting` : 'Notifications'} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <i className="far fa-bell" />
-        {total > 0 && <span className="topbar__dot">{total > 99 ? '99+' : total}</span>}
-      </button>
-      {open && (
-        <div className="topbar__menu-pop" role="dialog" aria-label="Waiting for you">
-          <p className="topbar__pop-title">Waiting for you</p>
-          {items.length === 0 && <p className="topbar__pop-empty"><i className="fas fa-circle-check" /> You’re all caught up.</p>}
-          <ul>
-            {items.map((i) => (
-              <li key={i.to}>
-                <Link to={i.to} onClick={() => setOpen(false)}>
-                  <span className="topbar__pop-icon"><i className={`fas ${i.icon}`} aria-hidden="true" /></span>
-                  <span>{i.label}</span>
-                  <strong>{i.count}</strong>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 // Shortcuts in the account menu, by role (the full navigation stays in the sidebar).
@@ -240,7 +196,14 @@ const accountLinks = (role) =>
         { to: '/admin/messages', icon: 'fa-inbox', label: 'Enquiries' },
         { href: `${BACKEND_URL}/admin/`, icon: 'fa-screwdriver-wrench', label: 'Django admin' },
       ]
+    : role === 'INSTRUCTOR'
+    ? [
+        { to: '/instructor/courses', icon: 'fa-chalkboard-user', label: 'My courses' },
+        { to: '/instructor/earnings', icon: 'fa-wallet', label: 'Earnings' },
+      ]
     : [
+        { to: '/student/learning', icon: 'fa-circle-play', label: 'My learning' },
+        { to: '/cart', icon: 'fa-cart-shopping', label: 'Cart' },
         { to: '/student/applications', icon: 'fa-list-check', label: 'My applications' },
         { to: '/student/saved', icon: 'fa-bookmark', label: 'Saved scholarships' },
       ];
@@ -490,7 +453,7 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
           <div className="topbar__tools">
             <ThemeMenu prefs={prefs} onChange={setPrefs} />
             <MessagesMenu isAdmin={user?.role === 'ADMIN'} onCount={setMessageCount} />
-            <Notifications items={waiting} />
+            <NotificationBell waiting={waiting} />
             <UserMenu user={user} mode={mode} onMode={(m) => setPrefs({ mode: m })} onLogout={handleLogout} />
           </div>
         </header>

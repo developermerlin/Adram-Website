@@ -1,5 +1,7 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { commonDocuments, FUNDING } from '../../data/scholarships';
+import { FUNDING } from '../../data/scholarships';
+import { fill } from '../../content/merge';
+import { usePageContent } from '../../content/useContent';
 import { useScholarship, useScholarships } from '../../data/useCatalog';
 import { formatDate } from '../../utils/format';
 import { CtaBand, IconTile, PageHero, Spinner } from '../../components/ui/Section';
@@ -15,6 +17,8 @@ import '../../styles/pages.css';
 
 export const ScholarshipDetailPage = () => {
   const { scholarshipId } = useParams();
+  const c = usePageContent('scholarships');
+  const L = c.detail;
   const { pathname } = useLocation();
   const { data: s, loading, error } = useScholarship(scholarshipId);
   const { data: all } = useScholarships();
@@ -101,16 +105,16 @@ export const ScholarshipDetailPage = () => {
         <div className="container detail-layout">
           <div className="detail-main">
             <section className="detail-block">
-              <span className="eyebrow">Overview</span>
-              <h2>About this scholarship</h2>
+              <span className="eyebrow">{L.overviewEyebrow}</span>
+              <h2>{L.overviewTitle}</h2>
               <p className="detail-lead">{s.summary}</p>
             </section>
 
             <section className="detail-block" id="key-dates">
-              <h3 className="detail-title">Key dates</h3>
+              <h3 className="detail-title">{L.keyDates}</h3>
               <KeyDatesTimeline scholarship={s} />
               <p className="sch-disclaimer">
-                <i className="fas fa-circle-info" aria-hidden="true" /> Dates can change each year; ADRAM updates them when the provider announces the new cycle.
+                <i className="fas fa-circle-info" aria-hidden="true" /> {L.datesNote}
               </p>
             </section>
 
@@ -136,7 +140,7 @@ export const ScholarshipDetailPage = () => {
 
             {s.covers.length > 0 && (
               <section className="detail-block">
-                <h3 className="detail-title">What it covers</h3>
+                <h3 className="detail-title">{L.covers}</h3>
                 <div className="included-grid">
                   {s.covers.map((c) => (
                     <div key={c} className="included">
@@ -173,7 +177,7 @@ export const ScholarshipDetailPage = () => {
 
             {s.eligibility.length > 0 && (
               <section className="detail-block">
-                <h3 className="detail-title">Who can apply</h3>
+                <h3 className="detail-title">{L.eligibility}</h3>
                 <ul className="check-list check-list--lg">
                   {s.eligibility.map((e) => (
                     <li key={e}>{e}</li>
@@ -184,7 +188,7 @@ export const ScholarshipDetailPage = () => {
 
             {s.steps.length > 0 && (
               <section className="detail-block">
-                <h3 className="detail-title">How to apply</h3>
+                <h3 className="detail-title">{L.steps}</h3>
                 <ol className="timeline">
                   {s.steps.map((step, i) => (
                     <li key={step}>
@@ -199,9 +203,9 @@ export const ScholarshipDetailPage = () => {
             )}
 
             <section className="detail-block">
-              <h3 className="detail-title">Documents to prepare</h3>
+              <h3 className="detail-title">{L.documents}</h3>
               <div className="included-grid">
-                {commonDocuments.map((d) => (
+                {c.docs.items.map((d) => (
                   <div key={d} className="included included--doc">
                     <i className="far fa-file-lines" aria-hidden="true" />
                     {d}
@@ -226,14 +230,11 @@ export const ScholarshipDetailPage = () => {
               <div className="help-banner">
                 <IconTile name="support" tone="glow" />
                 <div>
-                  <h3>Apply with ADRAM’s support</h3>
-                  <p>
-                    Our counsellors review your eligibility, help you write strong essays and statements, check your
-                    documents and keep you on track for every deadline.
-                  </p>
+                  <h3>{L.helpTitle}</h3>
+                  <p>{L.helpText}</p>
                 </div>
                 <Link to={consultLink} className="btn btn--primary">
-                  <i className="fas fa-comments" /> Book a consultation
+                  <i className="fas fa-comments" /> {L.helpButton}
                 </Link>
               </div>
             </section>
@@ -241,7 +242,7 @@ export const ScholarshipDetailPage = () => {
 
           <aside className="detail-aside">
             <div className="aside-card">
-              <h3>Key facts</h3>
+              <h3>{L.keyFacts}</h3>
               <dl className="facts-list">
                 {facts.map((f) => (
                   <div key={f.label}>
@@ -267,7 +268,7 @@ export const ScholarshipDetailPage = () => {
 
             {related.length > 0 && (
               <div className="aside-card">
-                <h3>More scholarships</h3>
+                <h3>{L.moreTitle}</h3>
                 <ul className="aside-links">
                   {related.map((r) => (
                     <li key={r.slug}>
@@ -280,31 +281,27 @@ export const ScholarshipDetailPage = () => {
                   ))}
                 </ul>
                 <Link to="/scholarships#finder" className="link-arrow">
-                  Browse all scholarships <i className="fas fa-arrow-right" />
+                  {L.moreLink} <i className="fas fa-arrow-right" />
                 </Link>
               </div>
             )}
 
             <div className="aside-card aside-card--cta">
               <IconTile name="graduate" tone="glow" />
-              <h3>Track your application</h3>
-              <p>Create a free ADRAM account to save scholarships, track deadlines and work with a counsellor.</p>
+              <h3>{L.trackTitle}</h3>
+              <p>{L.trackText}</p>
               <Link to="/register" className="btn btn--primary btn--block">
-                <i className="fas fa-user-plus" /> Create free account
+                <i className="fas fa-user-plus" /> {L.trackButton}
               </Link>
               <Link to={consultLink} className="btn btn--ghost-light btn--block aside-card__second">
-                <i className="fas fa-envelope" /> Ask a question
+                <i className="fas fa-envelope" /> {L.questionButton}
               </Link>
             </div>
           </aside>
         </div>
       </section>
 
-      <CtaBand
-        title={`Thinking about the ${s.name}?`}
-        text="Tell us about your background and goals. A counsellor will help you decide if it’s the right fit and how to apply."
-        to={consultLink}
-      />
+      <CtaBand title={fill(L.bannerTitle, { name: s.name })} text={L.bannerText} to={consultLink} />
     </>
   );
 };

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import BrandIcon from '../brand/BrandIcon';
+import { useSite } from '../../content/useContent';
+import { assetUrl } from '../../utils/assets';
 
 export const SectionHeading = ({ eyebrow, title, children, center = false }) => (
   <div className={`section-heading${center ? ' section-heading--center' : ''}`}>
@@ -15,7 +17,7 @@ export const SectionHeading = ({ eyebrow, title, children, center = false }) => 
 export const PageHero = ({ eyebrow, title, children, art, crumbs, actions, background }) => (
   <section
     className={`page-hero${art ? ' page-hero--art' : ''}${background ? ' page-hero--photo' : ''}`}
-    style={background ? { '--hero-photo': `url("${background}")` } : undefined}
+    style={background ? { '--hero-photo': `url("${assetUrl(background)}")` } : undefined}
   >
     <div className="container page-hero__inner">
       <div className="page-hero__copy">
@@ -48,7 +50,9 @@ export const CtaBand = ({
   title = 'Have a project in mind?',
   text = 'Tell us what you need. We’ll get back to you within one working day with next steps.',
   to = '/contact',
-}) => (
+}) => {
+  const { whatsappHref } = useSite();
+  return (
   <section className="section">
     <div className="container">
       <div className="cta-band">
@@ -60,14 +64,17 @@ export const CtaBand = ({
           <Link to={to} className="btn btn--primary">
             <i className="fas fa-envelope" /> Contact us
           </Link>
-          <a href="https://wa.me/23276978720" target="_blank" rel="noopener noreferrer" className="btn btn--ghost-light">
-            <i className="fab fa-whatsapp" /> WhatsApp
-          </a>
+          {whatsappHref && (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost-light">
+              <i className="fab fa-whatsapp" /> WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </div>
   </section>
-);
+  );
+};
 
 export const Spinner = ({ label = 'Loading…' }) => (
   <div className="spinner-screen" role="status">

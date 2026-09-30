@@ -42,7 +42,7 @@ const icons = {
       <circle cx="16" cy="21" r="3.6" fill={A} stroke="none" />
     </>
   ),
-  design: (
+  photo: (
     <>
       <path d="M4 10h5l2-3h10l2 3h5v17H4z" />
       <circle cx="16" cy="18" r="5" fill={A} stroke="none" />
@@ -391,5 +391,9 @@ export const BrandDefs = () => (
     </defs>
   </svg>
 );
+
+// Every icon name, for the icon picker in the admin's content editor.
+// eslint-disable-next-line react-refresh/only-export-components
+export const ICON_NAMES = Object.keys(icons);
 
 export default BrandIcon;

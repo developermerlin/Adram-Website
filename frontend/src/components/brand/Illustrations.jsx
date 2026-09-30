@@ -355,7 +355,7 @@ const DesignScene = () => (
       <Bar x={204} y={182} w={60} fill="#fff" />
     </Window>
     <g className="art-float">
-      <Tile x={318} y={70} icon="design" size={64} dark />
+      <Tile x={318} y={70} icon="photo" size={64} dark />
     </g>
     <g className="art-float" style={{ animationDelay: '-1.6s' }}>
       <Tile x={338} y={196} icon="web" size={56} />

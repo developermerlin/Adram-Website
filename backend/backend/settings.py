@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'accounts',
     'contact',
     'catalog',
+    'cms',
+    'lms',
     'portal',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
@@ -160,6 +162,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # User uploads (e.g. profile pictures)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+# Serve the built website (frontend/dist) from Django too, with the edited search and link-preview tags.
+# Off by default: in development Vite serves the site and the API root shows the API docs.
+# Largest lesson video an administrator can upload, in megabytes (bigger ones belong on YouTube or Vimeo)
+LMS_MAX_VIDEO_MB = config('LMS_MAX_VIDEO_MB', default=1500, cast=int)
+SERVE_FRONTEND = config('SERVE_FRONTEND', default=False, cast=bool)
+FRONTEND_DIST = config('FRONTEND_DIST', default=str(BASE_DIR.parent / 'frontend' / 'dist'))
 # Payment receipts and application documents: never served directly, only through the portal API.
 PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 

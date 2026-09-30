@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { lmsAPI } from '../../services/api';
+import '../../styles/lms.css';
 import usePortal from '../../data/usePortal';
 import { formatDate } from '../../utils/format';
 import PortalLayout from '../../components/layout/PortalLayout';
@@ -16,6 +19,11 @@ const STATUS_TEXT = {
 export const StudentTrainingPage = () => {
   const portal = usePortal();
   const { data } = portal;
+  // Programmes that have a course portal: progress and where to continue
+  const [learning, setLearning] = useState({});
+  useEffect(() => {
+    lmsAPI.mine().then(({ data: list }) => setLearning(Object.fromEntries(list.map((l) => [l.course.slug, l])))).catch(() => {});
+  }, []);
 
   return (
     <PortalLayout
@@ -51,6 +59,18 @@ export const StudentTrainingPage = () => {
             </dl>
             {t.course.topics?.length > 0 && (
               <div className="program-card__topics">{t.course.topics.map((topic) => <span key={topic} className="tag">{topic}</span>)}</div>
+            )}
+            {learning[t.course.slug] && (
+              <div className="training-card__learn">
+                <div className="lms-progress"><span style={{ width: `${learning[t.course.slug].progress.percent}%` }} /></div>
+                <small>{learning[t.course.slug].progress.percent}% complete · {learning[t.course.slug].progress.completed} of {learning[t.course.slug].progress.total} lessons</small>
+                <Link to={`/learn/${t.course.slug}${learning[t.course.slug].progress.resume_id && !learning[t.course.slug].certificate_code ? `/lesson/${learning[t.course.slug].progress.resume_id}` : ''}`} className="btn btn--primary btn--sm">
+                  <i className="fas fa-circle-play" /> {learning[t.course.slug].progress.completed ? 'Continue learning' : 'Start learning'}
+                </Link>
+                {learning[t.course.slug].certificate_code && (
+                  <Link to={`/certificate/${learning[t.course.slug].certificate_code}`} className="btn btn--outline btn--sm"><i className="fas fa-certificate" /> My certificate</Link>
+                )}
+              </div>
             )}
             <p className="training-card__status">{STATUS_TEXT[t.status]}</p>
             {t.note && <p className="training-card__note"><strong>From ADRAM:</strong> {t.note}</p>}

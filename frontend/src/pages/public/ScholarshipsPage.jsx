@@ -1,33 +1,14 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { commonDocuments, destinations, FUNDING, LEVELS } from '../../data/scholarships';
+import { destinations, FUNDING, LEVELS } from '../../data/scholarships';
+import { usePageContent } from '../../content/useContent';
+import { assetUrl } from '../../utils/assets';
 import { useScholarships } from '../../data/useCatalog';
 import { OfficialLink } from '../../components/ui/ScholarshipActions';
 import { DeadlineBadge } from '../../components/ui/KeyDates';
 import { CtaBand, IconTile, PageHero, SectionHeading } from '../../components/ui/Section';
 import Flag from '../../components/ui/Flag';
 import '../../styles/pages.css';
-
-const support = [
-  { icon: 'discover', title: 'Finding the right fit', text: 'We match your profile to scholarships you have a real chance of winning.' },
-  { icon: 'design', title: 'Application review', text: 'Feedback on your essays, statement of purpose, CV and documents before you submit.' },
-  { icon: 'clock', title: 'Deadline tracking', text: 'Your student portal keeps every application and deadline in one place.' },
-  { icon: 'globe', title: 'Pre-departure advice', text: 'Guidance on visas, travel and settling in once you’re accepted.' },
-];
-
-const steps = [
-  { title: 'Create an account', text: 'Register on the ADRAM portal and complete your student profile.' },
-  { title: 'Consultation', text: 'Meet a counsellor to agree your goals and shortlist scholarships.' },
-  { title: 'Prepare & submit', text: 'Gather documents, polish your essays and submit before the deadline.' },
-  { title: 'Track & decide', text: 'Follow progress in your dashboard and get support with offers and visas.' },
-];
-
-const faqs = [
-  { q: 'Does ADRAM award these scholarships?', a: 'No. Each scholarship is awarded by its own provider, such as a government, foundation or university. ADRAM helps you choose the right ones and prepare strong applications.' },
-  { q: 'Can I apply for more than one scholarship?', a: 'Usually yes, and applying to several improves your chances. Check each programme’s rules, as a few limit parallel applications.' },
-  { q: 'When should I start preparing?', a: 'Early. Many deadlines fall six to twelve months before the course starts, and gathering documents and references takes time.' },
-  { q: 'Do I need IELTS or TOEFL?', a: 'It depends on the programme and university. Some accept proof that your previous degree was taught in English; others require a test score.' },
-];
 
 const ScholarshipCard = ({ s }) => (
   <article className="sch-card">
@@ -79,6 +60,7 @@ const CardSkeletons = () => (
 );
 
 export const ScholarshipsPage = () => {
+  const c = usePageContent('scholarships');
   const [params, setParams] = useSearchParams();
   const { data, loading, error } = useScholarships();
   const scholarships = useMemo(() => data || [], [data]);
@@ -119,31 +101,30 @@ export const ScholarshipsPage = () => {
   };
 
   const stats = [
-    { icon: 'award', value: data ? scholarships.length : '—', label: 'Scholarships listed' },
-    { icon: 'globe', value: data ? Object.keys(countryCounts).length : '—', label: 'Study destinations' },
-    { icon: 'finance', value: data ? scholarships.filter((s) => s.funding === 'full').length : '—', label: 'Fully funded' },
-    { icon: 'graduate', value: `${LEVELS.length} levels`, label: 'Undergraduate to PhD' },
+    { icon: 'award', value: data ? scholarships.length : '—', label: c.stats.listed },
+    { icon: 'globe', value: data ? Object.keys(countryCounts).length : '—', label: c.stats.destinations },
+    { icon: 'finance', value: data ? scholarships.filter((s) => s.funding === 'full').length : '—', label: c.stats.funded },
+    { icon: 'graduate', value: `${LEVELS.length} levels`, label: c.stats.levels },
   ];
 
   return (
     <>
       <PageHero
-        eyebrow="Scholarships"
-        title="Study abroad on an international scholarship"
-        background="/scholarship/scholarship-hero.jpg"
+        eyebrow={c.hero.eyebrow}
+        title={c.hero.title}
+        background={c.hero.image || undefined}
         actions={
           <>
             <a href="#finder" className="btn btn--primary">
-              <i className="fas fa-magnifying-glass" /> Browse scholarships
+              <i className="fas fa-magnifying-glass" /> {c.hero.primaryLabel}
             </a>
             <Link to="/contact?subject=Scholarship%20consultation" className="btn btn--ghost-light">
-              <i className="fas fa-comments" /> Book a consultation
+              <i className="fas fa-comments" /> {c.hero.secondaryLabel}
             </Link>
           </>
         }
       >
-        Explore fully funded opportunities in the UK, USA, Canada, Europe, China and more, and get expert help
-        preparing a winning application.
+        {c.hero.lead}
       </PageHero>
 
       {/* Headline figures (counted from the list, so they stay accurate) */}
@@ -165,8 +146,8 @@ export const ScholarshipsPage = () => {
       <section className="section" id="finder">
         <div className="container">
           <div className="section-head">
-            <SectionHeading eyebrow="Scholarship finder" title="Find a scholarship that fits you">
-              Filter by destination, level of study and funding. Every listing links to its official website.
+            <SectionHeading eyebrow={c.finder.eyebrow} title={c.finder.title}>
+              {c.finder.intro}
             </SectionHeading>
           </div>
 
@@ -249,9 +230,7 @@ export const ScholarshipsPage = () => {
           ))}
 
           <p className="sch-disclaimer">
-            <i className="fas fa-circle-info" aria-hidden="true" /> Scholarships are awarded by their providers, not by
-            ADRAM Technologies. Eligibility, benefits and deadlines change each year, so always confirm the details on the
-            official website before applying.
+            <i className="fas fa-circle-info" aria-hidden="true" /> {c.finder.disclaimer}
           </p>
         </div>
       </section>
@@ -259,8 +238,8 @@ export const ScholarshipsPage = () => {
       {/* ---------- Destinations ---------- */}
       <section className="section section--surface" id="destinations">
         <div className="container">
-          <SectionHeading eyebrow="Study destinations" title="Where our students can study" center>
-            Choose a destination to see the scholarships available there.
+          <SectionHeading eyebrow={c.destinations.eyebrow} title={c.destinations.title} center>
+            {c.destinations.intro}
           </SectionHeading>
           <div className="dest-grid">
             {Object.entries(destinations).map(([code, d]) => (
@@ -283,20 +262,21 @@ export const ScholarshipsPage = () => {
       <section className="section" id="support">
         <div className="container sch-help">
           <div>
-            <span className="eyebrow">How we help</span>
-            <h2>Support at every stage of your application</h2>
-            <p className="muted">
-              Scholarship applications are competitive. Our counsellors help you choose wisely, present yourself well and
-              meet every deadline.
-            </p>
-            <figure className="sch-photo">
-              <img src="/scholarship/scholarship-help.jpg" alt="" loading="lazy" width="1100" height="619" />
-              <figcaption>
-                <i className="fas fa-graduation-cap" aria-hidden="true" /> Your future starts with the right application
-              </figcaption>
-            </figure>
+            <span className="eyebrow">{c.help.eyebrow}</span>
+            <h2>{c.help.title}</h2>
+            <p className="muted">{c.help.intro}</p>
+            {c.help.image && (
+              <figure className="sch-photo">
+                <img src={assetUrl(c.help.image)} alt="" loading="lazy" width="1100" height="619" />
+                {c.help.caption && (
+                  <figcaption>
+                    <i className="fas fa-graduation-cap" aria-hidden="true" /> {c.help.caption}
+                  </figcaption>
+                )}
+              </figure>
+            )}
             <div className="sch-help__grid">
-              {support.map((s) => (
+              {c.help.items.map((s) => (
                 <div key={s.title} className="benefit">
                   <IconTile name={s.icon} />
                   <div>
@@ -310,10 +290,10 @@ export const ScholarshipsPage = () => {
 
           <div className="sch-process" id="process">
             <h3>
-              <i className="fas fa-route" aria-hidden="true" /> Your application journey
+              <i className="fas fa-route" aria-hidden="true" /> {c.journey.title}
             </h3>
             <ol className="timeline timeline--light">
-              {steps.map((s, i) => (
+              {c.journey.steps.map((s, i) => (
                 <li key={s.title}>
                   <span className="timeline__num">{i + 1}</span>
                   <div>
@@ -325,10 +305,10 @@ export const ScholarshipsPage = () => {
             </ol>
             <div className="sch-process__actions">
               <Link to="/register" className="btn btn--primary">
-                <i className="fas fa-user-plus" /> Create your account
+                <i className="fas fa-user-plus" /> {c.journey.createLabel}
               </Link>
               <Link to="/login" className="btn btn--ghost-light">
-                <i className="fas fa-right-to-bracket" /> Sign in
+                <i className="fas fa-right-to-bracket" /> {c.journey.signInLabel}
               </Link>
             </div>
           </div>
@@ -339,21 +319,21 @@ export const ScholarshipsPage = () => {
       <section className="section section--surface" id="requirements">
         <div className="container sch-docs">
           <div className="aside-card sch-docs__card">
-            <img className="sch-docs__img" src="/scholarship/scholarship-docs.jpg" alt="" loading="lazy" width="900" height="563" />
+            {c.docs.image && <img className="sch-docs__img" src={assetUrl(c.docs.image)} alt="" loading="lazy" width="900" height="563" />}
             <IconTile name="certificate" />
-            <h3>Documents to prepare</h3>
-            <p className="muted">Most applications ask for these. Start gathering them early.</p>
+            <h3>{c.docs.title}</h3>
+            <p className="muted">{c.docs.intro}</p>
             <ul className="check-list">
-              {commonDocuments.map((d) => (
+              {c.docs.items.map((d) => (
                 <li key={d}>{d}</li>
               ))}
             </ul>
           </div>
           <div>
-            <span className="eyebrow">Questions</span>
-            <h2>Frequently asked questions</h2>
+            <span className="eyebrow">{c.faqs.eyebrow}</span>
+            <h2>{c.faqs.title}</h2>
             <div className="faq">
-              {faqs.map((f, i) => (
+              {c.faqs.items.map((f, i) => (
                 <details key={f.q} open={i === 0}>
                   <summary>
                     {f.q}
@@ -367,11 +347,7 @@ export const ScholarshipsPage = () => {
         </div>
       </section>
 
-      <CtaBand
-        title="Ready to start your scholarship journey?"
-        text="Book a consultation and we’ll help you shortlist the right scholarships and plan your application."
-        to="/contact?subject=Scholarship%20consultation"
-      />
+      <CtaBand title={c.cta.title} text={c.cta.text} to="/contact?subject=Scholarship%20consultation" />
     </>
   );
 };

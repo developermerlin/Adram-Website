@@ -282,6 +282,8 @@ class UserDetailView(APIView):
             user.delete()   # their applications, messages, notes and history go with the account
             # Kept on the admin's own log, since the deleted user's log goes with them.
             log_activity(request.user, ActivityLog.ACCOUNT_DEACTIVATION, f'Deleted the account of {name} ({email})', request)
+            from lms import audit
+            audit.record(request, 'user_deleted', label=f'{name} ({email})')
         for field in uploads:   # files last, once the rows are gone for good
             try:
                 field.delete(save=False)
@@ -309,6 +311,11 @@ def apply_action(admin, user, action, request, role=None, reason=''):
     """
     if user.pk == admin.pk and action in ('reject', 'suspend', 'set_role'):
         return 'You can’t change the status or role of your own account.'
+    if action == 'set_role' and User.ADMIN in (role, user.role) and not admin.is_superuser:
+        return 'Only a super administrator can give or remove the Administrator role.'
+    if action == 'suspend' and user.is_superuser and not admin.is_superuser:
+        return 'Only a super administrator can suspend a super administrator.'
+    from lms import audit  # the platform audit trail
 
     now = timezone.now()
     if action == 'approve':
@@ -333,6 +340,7 @@ def apply_action(admin, user, action, request, role=None, reason=''):
         user.save(update_fields=['is_active', 'updated_at'])
         sign_out_everywhere(user)
         log_activity(user, ActivityLog.ACCOUNT_DEACTIVATION, f'Disabled by {admin.get_full_name()}', request)
+        audit.record(request, 'user_suspended', user, label=f'{user.get_full_name()} ({user.email})')
         transaction.on_commit(lambda: send_suspended_email(user))
 
     elif action == 'activate':
@@ -341,6 +349,7 @@ def apply_action(admin, user, action, request, role=None, reason=''):
         user.is_active = True
         user.save(update_fields=['is_active', 'updated_at'])
         log_activity(user, ActivityLog.ACCOUNT_ACTIVATION, f'Enabled by {admin.get_full_name()}', request)
+        audit.record(request, 'user_activated', user, label=f'{user.get_full_name()} ({user.email})')
         transaction.on_commit(lambda: send_reactivated_email(user))
 
     elif action == 'set_role':
@@ -351,6 +360,7 @@ def apply_action(admin, user, action, request, role=None, reason=''):
         user.save(update_fields=['role', 'updated_at'])
         sign_out_everywhere(user)  # tokens carry the role, so make them sign in again
         log_activity(user, ActivityLog.ROLE_CHANGE, f'Role changed from {old} to {user.get_role_display()} by {admin.get_full_name()}', request)
+        audit.record(request, 'user_role_changed', user, label=f'{user.get_full_name()} ({user.email})', before=old, after=user.get_role_display())
     return None
 
 

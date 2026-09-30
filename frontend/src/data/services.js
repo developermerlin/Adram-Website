@@ -98,7 +98,7 @@ export const services = [
   },
   {
     id: 'graphic-design',
-    brandIcon: 'design',
+    brandIcon: 'photo',
     icon: 'fas fa-palette',
     image: '/graphics/graphics-card.jpg',
     heroImage: '/graphics/graphics-hero.jpg',

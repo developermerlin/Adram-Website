@@ -1,15 +1,13 @@
+import { usePageContent } from '../../content/useContent';
+import { assetUrl } from '../../utils/assets';
 import '../../styles/hero-brand.css';
 
 // The ADRAM logo in a white badge, framed by soft rings, a tilted orbit and four service badges.
 // variant="interactive" (home hero): sits in 3D, tilts towards the pointer and reacts to hover.
 // variant="flat" (About page): the same scene as a calm navy card with no tilt.
 
-const SATELLITES = [
-  { icon: 'fa-code', label: 'Software' },
-  { icon: 'fa-network-wired', label: 'Networks' },
-  { icon: 'fa-graduation-cap', label: 'Scholarships' },
-  { icon: 'fa-laptop-code', label: 'Training' },
-];
+// The icons are fixed; their labels are editable (home content: hero.badges)
+const SATELLITE_ICONS = ['fa-code', 'fa-network-wired', 'fa-graduation-cap', 'fa-laptop-code'];
 
 // Tilt towards the pointer (up to 10°) and move the light sheen with it.
 // Skipped for touch and for people who've asked their device for less motion.
@@ -33,6 +31,8 @@ const resetTilt = (e) => {
 
 export const HeroBrand = ({ variant = 'interactive' }) => {
   const interactive = variant === 'interactive';
+  const { hero } = usePageContent('home');
+  const { name, heroLogo } = usePageContent('site');
   return (
     <div className="hero-brand-scene">
       <div
@@ -45,12 +45,12 @@ export const HeroBrand = ({ variant = 'interactive' }) => {
         <span className="hero-brand__ring hero-brand__ring--inner" aria-hidden="true" />
         <span className="hero-brand__orbit" aria-hidden="true" />
         <div className="hero-brand__badge">
-          <img src="/brand.png" alt="ADRAM Technologies logo" width="1254" height="1254" />
+          <img src={assetUrl(heroLogo)} alt={`${name} logo`} width="1254" height="1254" />
         </div>
         <div className="hero-brand__satellites">
-          {SATELLITES.map((s) => (
-            <span key={s.label} className="hero-brand__satellite" data-label={s.label} title={s.label}>
-              <i className={`fas ${s.icon}`} aria-hidden="true" />
+          {SATELLITE_ICONS.map((icon, i) => (
+            <span key={icon} className="hero-brand__satellite" data-label={hero.badges[i] || ''} title={hero.badges[i] || ''}>
+              <i className={`fas ${icon}`} aria-hidden="true" />
             </span>
           ))}
         </div>

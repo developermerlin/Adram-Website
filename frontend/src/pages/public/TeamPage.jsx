@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { team } from '../../data/team';
+import { usePageContent } from '../../content/useContent';
+import { assetUrl } from '../../utils/assets';
 import { CtaBand, PageHero } from '../../components/ui/Section';
 import '../../styles/pages.css';
 
@@ -29,7 +30,7 @@ const MemberCard = ({ member, index }) => {
     <article className={`team-card team-card--${index % 4}`}>
       <div className="team-card__cover" aria-hidden="true" />
       <div className="team-card__avatar">
-        {photo ? <img src={photo} alt={`${name}, ${role}`} loading="lazy" width="200" height="200" /> : <span aria-hidden="true">{initials(name)}</span>}
+        {photo ? <img src={assetUrl(photo)} alt={`${name}, ${role}`} loading="lazy" width="200" height="200" /> : <span aria-hidden="true">{initials(name)}</span>}
       </div>
       <div className="team-card__body">
         <h3>{name}</h3>
@@ -69,39 +70,46 @@ const MemberCard = ({ member, index }) => {
   );
 };
 
-export const TeamPage = () => (
-  <>
-    <PageHero
-      eyebrow="Our team"
-      title="The people behind ADRAM Technologies"
-      crumbs={[{ to: '/about', label: 'About' }, { label: 'Our team' }]}
-      background="/consultancy/consult-hero.jpg"
-      actions={
-        <>
-          <Link to="/contact?subject=Working%20with%20the%20team" className="btn btn--primary">
-            <i className="fas fa-envelope" /> Work with us
-          </Link>
-          <Link to="/about" className="btn btn--ghost-light">
-            <i className="fas fa-building" /> About the company
-          </Link>
-        </>
-      }
-    >
-      Engineers, trainers and advisers who build dependable technology and help people grow their skills.
-    </PageHero>
+export const TeamPage = () => {
+  const c = usePageContent('team');
+  return (
+    <>
+      <PageHero
+        eyebrow={c.hero.eyebrow}
+        title={c.hero.title}
+        crumbs={[{ to: '/about', label: 'About' }, { label: c.hero.eyebrow }]}
+        background={c.hero.image || undefined}
+        actions={
+          <>
+            {c.hero.primaryLabel && (
+              <Link to="/contact?subject=Working%20with%20the%20team" className="btn btn--primary">
+                <i className="fas fa-envelope" /> {c.hero.primaryLabel}
+              </Link>
+            )}
+            {c.hero.secondaryLabel && (
+              <Link to="/about" className="btn btn--ghost-light">
+                <i className="fas fa-building" /> {c.hero.secondaryLabel}
+              </Link>
+            )}
+          </>
+        }
+      >
+        {c.hero.lead}
+      </PageHero>
 
-    <section className="section">
-      <div className="container">
-        <div className="team-grid">
-          {team.map((m, i) => (
-            <MemberCard key={m.name} member={m} index={i} />
-          ))}
+      <section className="section">
+        <div className="container">
+          <div className="team-grid">
+            {c.members.map((m, i) => (
+              <MemberCard key={`${m.name}-${i}`} member={m} index={i} />
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <CtaBand title="Let’s work together" text="Tell us about your project or the skills you want to learn, and the right person on the team will get back to you." />
-  </>
-);
+      <CtaBand title={c.cta.title} text={c.cta.text} />
+    </>
+  );
+};
 
 export default TeamPage;

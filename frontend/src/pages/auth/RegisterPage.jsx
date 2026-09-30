@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { usePageContent } from '../../content/useContent';
 import { parseApiErrors } from '../../services/api';
 import { countries } from '../../data/countries';
 import AuthLayout from '../../components/layout/AuthLayout';
@@ -21,17 +22,6 @@ const initialForm = {
 
 // Fields on step 1; server errors for these send the user back to that step.
 const STEP_ONE_FIELDS = ['first_name', 'last_name', 'email', 'phone_number', 'country'];
-
-const panel = {
-  eyebrow: 'Free student account',
-  heading: 'Start your journey with ADRAM today.',
-  text: 'One account for scholarship applications, training programmes and support from our counsellors.',
-  points: [
-    { icon: 'award', title: 'Apply for scholarships', text: 'Find opportunities abroad and track every application.' },
-    { icon: 'laptop', title: 'Enrol in training', text: 'Practical tech courses taught by professionals.' },
-    { icon: 'support', title: 'Expert guidance', text: 'Counsellors who help you at every step.' },
-  ],
-};
 
 const STEPS = ['About you', 'Secure account', 'Verify email'];
 
@@ -54,6 +44,7 @@ const Stepper = ({ step }) => (
 );
 
 export const RegisterPage = () => {
+  const c = usePageContent('accounts').register;
   const { register, verifyOtp } = useAuth();
   const location = useLocation(); // state.from: where to go after sign-up (set by the Join page)
   const [step, setStep] = useState(1);
@@ -117,7 +108,7 @@ export const RegisterPage = () => {
 
   if (done) {
     return (
-      <AuthLayout title="Email verified" panel={panel} switchTo={{ text: 'Already approved?', to: '/login', label: 'Sign in' }}>
+      <AuthLayout title="Email verified" panel={c} switchTo={{ text: 'Already approved?', to: '/login', label: 'Sign in' }}>
         <div className="auth-success">
           <span className="auth-success__icon"><i className="fas fa-check" /></span>
           <h2 className="auth-success__title">You’re all set, {form.first_name}!</h2>
@@ -140,10 +131,10 @@ export const RegisterPage = () => {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Free for students and trainees. It takes about two minutes."
-      panel={panel}
-      switchTo={{ text: 'Already have an account?', to: '/login', label: 'Sign in' }}
+      title={c.title}
+      subtitle={c.subtitle}
+      panel={c}
+      switchTo={{ text: c.switchText, to: '/login', label: c.switchLabel }}
       wide
     >
       <Stepper step={step} />

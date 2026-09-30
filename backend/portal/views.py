@@ -129,13 +129,27 @@ class MyTrainingView(APIView):
     def post(self, request):
         from catalog.models import Course
         course = get_object_or_404(Course, slug=request.data.get('slug', ''), is_published=True)
-        enrollment, created = TrainingEnrollment.objects.get_or_create(student=request.user, course=course)
+        if not course.is_free:
+            # A paid course is bought through the cart and checkout, which take the payment before opening the lessons
+            return Response({'detail': 'This course has a price. Add it to your cart to buy it.', 'code': 'payment_required',
+                             'checkout': '/cart'}, status=status.HTTP_402_PAYMENT_REQUIRED)
+        # Open courses give instant access; the others wait for ADRAM to confirm the place
+        instant = course.enrollment_mode == course.OPEN
+        wanted = TrainingEnrollment.ACTIVE if instant else TrainingEnrollment.REQUESTED
+        enrollment, created = TrainingEnrollment.objects.get_or_create(student=request.user, course=course, defaults={'status': wanted})
         if not created and enrollment.status == TrainingEnrollment.CANCELLED:
-            enrollment.status, created = TrainingEnrollment.REQUESTED, True
+            enrollment.status, created = wanted, True
+            enrollment.save(update_fields=['status', 'updated_at'])
+        elif not created and instant and enrollment.status == TrainingEnrollment.REQUESTED:
+            enrollment.status = TrainingEnrollment.ACTIVE  # the course was opened after they asked
             enrollment.save(update_fields=['status', 'updated_at'])
         if created:
-            track(request.user, PortalEvent.TRAINING, label=course.title, detail='Asked to enroll')
-            after_commit(emails.notify_team_training, enrollment)
+            track(request.user, PortalEvent.TRAINING, label=course.title, detail='Enrolled' if instant else 'Asked to enroll')
+            if instant:
+                from lms.notify import notify
+                notify(request.user, 'enrollment', f'You’re enrolled on {course.title}', 'Every lesson is now open.', f'/courses/{course.slug}')
+            if not instant:
+                after_commit(emails.notify_team_training, enrollment)
         return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def delete(self, request, pk):

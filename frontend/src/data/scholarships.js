@@ -18,13 +18,3 @@ export const destinations = {
   in: { name: 'India', city: 'Delhi, Mumbai, Bengaluru…' },
   africa: { name: 'Africa & worldwide', city: 'Partner universities' },
 };
-
-// Typical documents most scholarship applications ask for.
-export const commonDocuments = [
-  'Valid international passport',
-  'Academic certificates and transcripts (WASSCE, degree)',
-  'Statement of purpose or personal essays',
-  'Two or three reference letters',
-  'CV / résumé',
-  'English test results (IELTS / TOEFL) where required',
-];

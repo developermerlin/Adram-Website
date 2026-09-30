@@ -1,0 +1,679 @@
+/* The course marketplace, administrator side: LMS overview, course reviews, categories, moderation,
+   certificates, audit log, orders & coupons, and the LMS additions to the course editor and users. */
+
+/* ---------- Shared ---------- */
+.la-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.la-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.la-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.la-toolbar__filters .input {
+  width: auto;
+  min-width: 180px;
+  padding-block: 9px;
+}
+
+.la-toolbar__filters .input-icon {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.la-toolbar__filters .input-icon .input {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .la-toolbar__filters,
+  .la-toolbar__filters > *,
+  .la-toolbar__filters .input,
+  .la-toolbar__filters .input-icon {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.la-tabs {
+  margin-bottom: 0;
+}
+
+.la-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.la-empty > i {
+  font-size: 1.8rem;
+  color: var(--blue-600);
+  opacity: 0.7;
+}
+
+.la-empty strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.la-empty p {
+  margin: 0;
+  max-width: 440px;
+}
+
+.la-thumb {
+  flex: none;
+  width: 72px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: var(--blue-50) center / cover no-repeat;
+  display: grid;
+  place-items: center;
+  color: var(--blue-700);
+  overflow: hidden;
+}
+
+.la-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.la-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.la-note {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--blue-600);
+  border-radius: 0 8px 8px 0;
+  background: var(--blue-50);
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.la-note--warn {
+  border-left-color: #d97706;
+  background: #fffbeb;
+}
+
+.la-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.la-chip {
+  display: inline-flex;
+  gap: 4px;
+  max-width: 260px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface, #f1f5f9);
+  color: var(--text);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.la-chip b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.la-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.la-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.la-meta i {
+  margin-right: 4px;
+}
+
+.la-error {
+  margin: 6px 0 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+
+.la-dialog .modal__card {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.la-dialog textarea.input {
+  resize: vertical;
+}
+
+/* ---------- LMS overview ---------- */
+.la-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.la-kpis .kpi {
+  min-width: 0;
+}
+
+.la-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .la-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.la-charts .card {
+  min-width: 0;
+}
+
+.la-charts svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- Course review queue ---------- */
+.la-queue {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-queue__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 18px;
+}
+
+.la-queue__item .la-thumb {
+  width: 112px;
+}
+
+.la-queue__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.la-queue__title a {
+  color: inherit;
+}
+
+.la-queue__side {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  text-align: right;
+}
+
+.la-queue__side .la-actions {
+  justify-content: flex-end;
+  max-width: 320px;
+}
+
+@media (max-width: 760px) {
+  .la-queue__item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .la-queue__item .la-thumb {
+    width: 80px;
+  }
+
+  .la-queue__side {
+    grid-column: 1 / -1;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .la-queue__side .la-actions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
+/* ---------- Categories ---------- */
+.la-cats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .la-cats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.la-tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-tree > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.la-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.la-tree__row--child {
+  padding-left: 46px;
+  background: var(--surface, #f8fafc);
+}
+
+.la-tree__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.la-tree__main strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.la-tree__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--blue-50);
+  color: var(--blue-700);
+  overflow: hidden;
+}
+
+.la-tree__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.la-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-cats__form {
+  position: sticky;
+  top: 90px;
+}
+
+@media (max-width: 980px) {
+  .la-cats__form {
+    position: static;
+  }
+}
+
+.la-form {
+  display: grid;
+  gap: 4px;
+}
+
+.la-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.la-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------- Moderation ---------- */
+.la-cards {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+@media (max-width: 700px) {
+  .la-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+.la-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.la-card p {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.la-card.is-hidden {
+  opacity: 0.8;
+  background: var(--surface, #f8fafc);
+}
+
+.la-card__side {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: end;
+}
+
+@media (max-width: 700px) {
+  .la-card__side {
+    justify-items: start;
+  }
+}
+
+/* ---------- Orders & coupons ---------- */
+.la-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.la-summary .card {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.la-summary strong {
+  font-size: 1.25rem;
+}
+
+.la-rowlink {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--blue-700);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.la-rowlink:hover {
+  text-decoration: underline;
+}
+
+.table tr.is-clickable {
+  cursor: pointer;
+}
+
+.la-order__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-order__items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.la-order__items li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.la-totals {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+}
+
+.la-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.la-totals div:last-child {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.la-totals dt,
+.la-totals dd {
+  margin: 0;
+}
+
+.la-drawer .drawer__panel {
+  width: min(560px, 100%);
+}
+
+.la-drawer .drawer__body > section + section {
+  margin-top: 20px;
+}
+
+.la-drawer__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.la-split {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .la-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.la-multi {
+  display: grid;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.la-multi label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.la-multi label:hover {
+  background: var(--blue-50);
+}
+
+.la-multi input {
+  flex: none;
+}
+
+.la-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.la-settings {
+  max-width: 640px;
+}
+
+/* ---------- Course editor additions ---------- */
+.la-faq {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-faq li {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.la-faq__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.la-review-box {
+  display: grid;
+  gap: 8px;
+}
+
+.la-review-box .panel__head {
+  margin-bottom: 0;
+}
+
+/* ---------- Users additions ---------- */
+.la-learning {
+  display: grid;
+  gap: 14px;
+}
+
+.la-learning h5 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+}
+
+.la-learning ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-learning li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  font-size: 0.88rem;
+}
+
+.la-learning li > span:first-child {
+  min-width: 0;
+  flex: 1 1 180px;
+  overflow-wrap: anywhere;
+}
+
+.la-learning .lms-progress {
+  flex: 0 0 90px;
+}
+
+.la-grant {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.la-grant select {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.la-bar {
+  display: inline-block;
+  width: 80px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.la-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--blue-600);
+}

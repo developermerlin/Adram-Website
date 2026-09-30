@@ -158,3 +158,14 @@ class ManageCatalogTests(TestCase):
         student.force_authenticate(make_user(User.STUDENT))
         self.assertEqual(student.get(f'{BASE}/manage/scholarships/').status_code, 403)
         self.assertEqual(APIClient().post(f'{BASE}/manage/courses/', {}, format='json').status_code, 401)
+
+
+class CourseListWithoutLmsTablesTests(TestCase):
+    def test_the_public_list_survives_missing_course_portal_tables(self):
+        from django.db import DatabaseError
+        from unittest import mock
+        with mock.patch('lms.models.Lesson.objects') as manager:
+            manager.filter.side_effect = DatabaseError('no such table: lms_lesson')
+            resp = self.client.get(f'{BASE}/courses/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(all(c['lesson_count'] == 0 for c in resp.data))

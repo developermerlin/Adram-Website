@@ -1,0 +1,144 @@
+/* ------------------------------------------------------------------
+   Instructor pages, the course editor stepper, and course-builder
+   extras (drag and drop, quiz settings, grading, FAQs).
+   ------------------------------------------------------------------ */
+
+.in-page { display: grid; gap: 20px; }
+.in-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 14px; }
+.in-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 18px; }
+.in-grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.in-pad { padding: 0 20px 20px; }
+.in-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.in-filters .input, .in-toolbar .input { width: auto; max-width: 100%; }
+.in-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.in-toolbar .lms-tabs { margin: 0; }
+
+.in-earn { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 18px 22px; }
+.in-earn div { display: grid; }
+.in-earn small { color: var(--muted); font-weight: 600; }
+.in-earn strong { font-size: 1.3rem; }
+.in-earn .btn { margin-left: auto; }
+
+.in-course { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.in-thumb { flex: 0 0 64px; display: grid; place-items: center; width: 64px; height: 36px; overflow: hidden; border-radius: 6px; background: var(--blue-50, #eef3ff); color: #2563eb; }
+.in-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.in-actions { white-space: nowrap; }
+.in-empty { display: grid; justify-items: center; gap: 8px; padding: 30px 20px; text-align: center; }
+.in-empty > i { font-size: 2rem; color: #2563eb; }
+
+.in-feed { list-style: none; margin: 10px 0 0; padding: 0; }
+.in-feed li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.in-feed li:last-child { border-bottom: 0; }
+.in-feed i { margin-top: 3px; color: #2563eb; }
+.in-feed div { display: grid; gap: 2px; min-width: 0; }
+.in-feed small { color: var(--muted); }
+.in-feed span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.in-courses { display: grid; gap: 14px; }
+.in-ccard { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; padding: 14px; }
+.in-ccard__thumb { display: block; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; background: var(--blue-50, #eef3ff); }
+.in-ccard__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.in-ccard__thumb span { display: grid; place-items: center; height: 100%; }
+.in-ccard__body { display: grid; gap: 6px; align-content: start; justify-items: start; min-width: 0; }
+.in-ccard__title { font-weight: 700; font-size: 1.08rem; color: var(--text); }
+.in-ccard__note { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fef3c7; color: #92400e; font-size: 0.88rem; }
+.in-ccard__facts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 0.85rem; }
+.in-ccard__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+.in-questions, .in-reviews { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.in-questions a { display: flex; align-items: center; gap: 14px; padding: 14px 18px; color: inherit; }
+.in-q__mark { font-size: 1.3rem; color: #b45309; }
+.in-q__mark.is-done { color: #16a34a; }
+.in-q__text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.in-q__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.in-reviews li { padding: 14px 18px; }
+.in-reviews p { margin: 6px 0 0; }
+.in-reviews__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.in-rating { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-bottom: 16px; padding: 18px 22px; }
+.in-rating__score { display: grid; justify-items: center; gap: 4px; }
+.in-rating__score strong { font-size: 2.6rem; line-height: 1; color: #b4690e; }
+.in-rating__bars { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 220px; display: grid; gap: 6px; }
+.in-rating__bars li { display: grid; grid-template-columns: 38px 1fr 30px; align-items: center; gap: 10px; font-size: 0.85rem; }
+
+/* ---- course editor ---- */
+.ie-banner { display: flex; gap: 14px; margin-bottom: 18px; padding: 14px 18px; border-radius: 12px; background: #f1f5f9; }
+.ie-banner > i { margin-top: 3px; font-size: 1.3rem; }
+.ie-banner p { margin: 3px 0 0; }
+.ie-banner__note { padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.7); }
+.ie-banner--submitted, .ie-banner--in_review { background: #fef6e4; color: #7c4a03; }
+.ie-banner--approved { background: #e0ecff; color: #1e3a8a; }
+.ie-banner--published { background: #e7f7ef; color: #0f5132; }
+.ie-banner--changes_requested, .ie-banner--rejected { background: #fdeceb; color: #7f1d1d; }
+.ie { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 22px; align-items: start; }
+.ie-steps { position: sticky; top: 90px; display: grid; gap: 4px; }
+.ie-steps button { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.ie-steps button:hover { background: var(--blue-50, #eef3ff); }
+.ie-steps button.is-active { background: #2563eb; color: #fff; }
+.ie-steps__num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(37, 99, 235, 0.12); font-size: 0.75rem; }
+.ie-steps button.is-active .ie-steps__num { background: rgba(255, 255, 255, 0.25); }
+.ie-main { min-width: 0; }
+.ie-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ie-price-preview { margin: 0; padding: 12px 14px; border-radius: 10px; background: #f8fafc; }
+.ie-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ie-flow { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; padding: 0; counter-reset: step; }
+.ie-flow li { position: relative; padding: 6px 14px 6px 32px; border-radius: 999px; background: #f1f5f9; color: var(--muted); font-size: 0.85rem; font-weight: 600; counter-increment: step; }
+.ie-flow li::before { content: counter(step); position: absolute; left: 8px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #cbd5e1; color: #fff; font-size: 0.7rem; }
+.ie-flow li.is-done { background: #e7f7ef; color: #0f5132; }
+.ie-flow li.is-done::before { content: '✓'; background: #16a34a; }
+.ie-flow li.is-now { background: #2563eb; color: #fff; }
+.ie-flow li.is-now::before { background: rgba(255, 255, 255, 0.3); }
+.ie-problems { margin: 6px 0 0; padding-left: 18px; }
+
+.faq-editor { display: grid; gap: 10px; justify-items: start; }
+.faq-editor__item { position: relative; display: grid; gap: 6px; width: 100%; margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.faq-editor__item legend { padding: 0 4px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.faq-editor__tools { position: absolute; top: -12px; right: 10px; display: flex; gap: 4px; background: var(--white, #fff); }
+
+/* ---- course builder ---- */
+.lb-drag { display: inline-grid; place-items: center; width: 22px; color: #94a3b8; cursor: grab; }
+.lb-drag:active { cursor: grabbing; }
+.lb-section.is-drop { outline: 2px dashed #2563eb; outline-offset: 2px; }
+.lb-lessons li.is-drop { box-shadow: inset 0 3px 0 #2563eb; }
+.lb-lessons li.is-dragging { opacity: 0.45; }
+.lb-lesson { display: flex; align-items: center; }
+.lb-current--doc { display: flex; align-items: center; gap: 12px; }
+.lb-current--doc > i { font-size: 1.8rem; color: #2563eb; }
+.lb-inline-check { align-self: end; }
+
+.qb-settings { display: grid; gap: 12px; margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
+.qb-settings legend { padding: 0 6px; font-weight: 700; }
+.qb-settings__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.qb-settings__grid label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+.qb-settings__flags { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 14px; }
+.qb-check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.qb-check input { width: 16px; height: 16px; accent-color: #2563eb; }
+.qb-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.qb-row select { flex: 1; min-width: 200px; }
+.qb-points { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; }
+.qb-points .input { width: 80px; }
+.qb-tf { display: flex; gap: 8px; }
+.qb-accepted { display: grid; gap: 6px; }
+.qb-accepted__row { display: flex; gap: 6px; }
+.qb-accepted__row .input { flex: 1; }
+.qb-add { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-question { display: grid; gap: 8px; }
+
+/* ---- grading ---- */
+.sp { display: grid; gap: 14px; }
+.sp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sp-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 18px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sp-item__who { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.sp-item__grade { font-weight: 800; }
+.sp-body { display: grid; gap: 12px; justify-items: start; padding: 0 18px 18px; }
+.sp-grade { display: grid; gap: 10px; width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
+.sp-grade .field { margin: 0; }
+.sp-grade__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.asg-sub__text { width: 100%; padding: 12px 14px; border-radius: 8px; background: #f8fafc; }
+
+@media (max-width: 900px) {
+  .ie { grid-template-columns: minmax(0, 1fr); }
+  .ie-steps { position: static; display: flex; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .ie-steps button { flex: 0 0 auto; white-space: nowrap; }
+  .in-ccard { grid-template-columns: minmax(0, 1fr); }
+  .in-earn .btn { margin-left: 0; }
+}

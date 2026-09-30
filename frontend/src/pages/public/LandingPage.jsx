@@ -1,48 +1,29 @@
 import { Link } from 'react-router-dom';
-import { services } from '../../data/services';
+import { useServices } from '../../content/useServices';
 import { useCourses } from '../../data/useCatalog';
-import { site } from '../../config/site';
+import { fill } from '../../content/merge';
+import { usePageContent, useSite } from '../../content/useContent';
 import { CtaBand, IconTile, SectionHeading } from '../../components/ui/Section';
+import SmartLink from '../../components/ui/SmartLink';
 import { AboutArt } from '../../components/brand/Illustrations';
 import HeroBrand from '../../components/brand/HeroBrand';
+import { assetUrl } from '../../utils/assets';
 import '../../styles/landing.css';
 
-const highlights = [
-  { icon: 'software', title: 'Software & web', text: 'Websites, apps and management systems.', to: '/services/software-development' },
-  { icon: 'network', title: 'Networks & IT support', text: 'Cabling, Wi-Fi, servers and maintenance.', to: '/services/networking' },
-  { icon: 'laptop', title: 'Tech training', text: 'Practical courses for people and teams.', to: '/courses' },
-  { icon: 'graduate', title: 'Scholarship guidance', text: 'Support for students applying abroad.', to: '/scholarships' },
-];
-
-const reasons = [
-  { icon: 'location', title: 'Local and reachable', text: `Based in ${site.location}, with support you can meet in person.` },
-  { icon: 'layers', title: 'End-to-end delivery', text: 'Networks, software and training from one accountable team.' },
-  { icon: 'shield', title: 'Secure and documented', text: 'Work your organisation can own, maintain and grow.' },
-];
-
-const steps = [
-  { icon: 'discover', title: 'Discover', text: 'We learn your goals, users, budget and constraints.' },
-  { icon: 'design', title: 'Design', text: 'A clear plan and prototype you approve before we build.' },
-  { icon: 'build', title: 'Build', text: 'Short stages with regular demos, so nothing surprises you.' },
-  { icon: 'support', title: 'Support', text: 'Staff training, then maintenance whenever you need it.' },
-];
-
-const sectors = [
-  { icon: 'graduate', title: 'Education', text: 'School portals, results systems and computer labs.' },
-  { icon: 'health', title: 'Healthcare', text: 'Patient records, clinic software and reliable networks.' },
-  { icon: 'community', title: 'NGOs & development', text: 'Data collection, reporting and field connectivity.' },
-  { icon: 'government', title: 'Public sector', text: 'Digital services and records for institutions.' },
-  { icon: 'growth', title: 'Business & retail', text: 'Websites, stock and sales systems, online payments.' },
-  { icon: 'finance', title: 'Finance', text: 'Secure systems, dashboards and process automation.' },
-];
-
+// All wording, links and photos on this page come from the editable "home" content (see content/defaults.js).
 export const LandingPage = () => {
   const { data: programs } = useCourses();
-  // Only facts that are true today: counts come from the data; reply time matches the contact promise.
+  const site = useSite();
+  const { services } = useServices();
+  const c = usePageContent('home');
+  // {location}, {name} and {count} in the text are filled in automatically
+  const t = (text, extra) => fill(text, { ...site, count: services.length, ...extra });
+
+  // Only facts that are true today: counts come from the data; reply time is set in the content.
   const facts = [
-    { value: services.length, label: 'Service areas' },
-    { value: programs ? programs.length : '—', label: 'Training tracks' },
-    { value: '1 day', label: 'Typical reply time' },
+    { value: services.length, label: c.about.serviceCountLabel },
+    { value: programs ? programs.length : '—', label: c.about.trainingCountLabel },
+    { value: c.about.replyValue, label: c.about.replyLabel },
   ];
 
   return (
@@ -52,27 +33,28 @@ export const LandingPage = () => {
         <div className="container home-hero__inner">
           <div className="home-hero__copy">
             <span className="badge-line">
-              <i className="fas fa-location-dot" aria-hidden="true" /> IT company in {site.location}
+              <i className="fas fa-location-dot" aria-hidden="true" /> {t(c.hero.badge)}
             </span>
             <h1>
-              Building solutions for a <span className="accent">better future</span>
+              {c.hero.titleStart} <span className="accent">{c.hero.titleAccent}</span>
             </h1>
-            <p className="home-hero__lead">
-              We design, build and support the software, networks and digital systems organisations run on, and we train
-              the next generation of tech talent.
-            </p>
+            <p className="home-hero__lead">{t(c.hero.lead)}</p>
             <div className="home-hero__actions">
-              <Link to="/contact?subject=New%20project" className="btn btn--primary btn--lg">
-                <i className="fas fa-paper-plane" /> Start a project
-              </Link>
-              <Link to="/services" className="btn btn--outline btn--lg">
-                <i className="fas fa-grip" /> Our services
-              </Link>
+              {c.hero.primaryLabel && (
+                <SmartLink to={c.hero.primaryLink} className="btn btn--primary btn--lg">
+                  <i className="fas fa-paper-plane" /> {c.hero.primaryLabel}
+                </SmartLink>
+              )}
+              {c.hero.secondaryLabel && (
+                <SmartLink to={c.hero.secondaryLink} className="btn btn--outline btn--lg">
+                  <i className="fas fa-grip" /> {c.hero.secondaryLabel}
+                </SmartLink>
+              )}
             </div>
             <ul className="home-hero__trust">
-              <li><i className="fas fa-circle-check" /> End-to-end delivery</li>
-              <li><i className="fas fa-circle-check" /> Local support team</li>
-              <li><i className="fas fa-circle-check" /> Staff training included</li>
+              {c.hero.trust.map((item) => (
+                <li key={item}><i className="fas fa-circle-check" /> {item}</li>
+              ))}
             </ul>
           </div>
           {/* The ADRAM logo scene: tilts towards the pointer and reacts on hover (see HeroBrand) */}
@@ -83,15 +65,15 @@ export const LandingPage = () => {
       {/* ---------- Highlights ---------- */}
       <section className="highlights">
         <div className="container highlights__grid">
-          {highlights.map((h) => (
-            <Link key={h.title} to={h.to} className="highlight">
+          {c.highlights.map((h) => (
+            <SmartLink key={h.title} to={h.link} className="highlight">
               <IconTile name={h.icon} />
               <div>
                 <h3>{h.title}</h3>
                 <p>{h.text}</p>
               </div>
               <i className="fas fa-chevron-right highlight__arrow" aria-hidden="true" />
-            </Link>
+            </SmartLink>
           ))}
         </div>
       </section>
@@ -100,11 +82,11 @@ export const LandingPage = () => {
       <section className="section" id="services">
         <div className="container">
           <div className="section-head">
-            <SectionHeading eyebrow="What we do" title="IT services for growing organisations">
-              From a single website to a full digital transformation, we plan, build and support it.
+            <SectionHeading eyebrow={c.services.eyebrow} title={c.services.title}>
+              {c.services.intro}
             </SectionHeading>
             <Link to="/services" className="btn btn--outline">
-              <i className="fas fa-grip" /> View all services
+              <i className="fas fa-grip" /> {c.services.headerButton}
             </Link>
           </div>
           <div className="service-grid">
@@ -113,14 +95,14 @@ export const LandingPage = () => {
                 // Services with a photo: the image on top, the icon overlapping its lower edge
                 <Link key={s.id} to={`/services/${s.id}`} className="service-card service-card--media">
                   <span className="service-card__media">
-                    <img src={s.image} alt="" loading="lazy" width="1200" height="800" />
+                    <img src={assetUrl(s.image)} alt="" loading="lazy" width="1200" height="800" />
                   </span>
                   <span className="service-card__body">
                     <IconTile name={s.brandIcon} />
                     <h3>{s.title}</h3>
                     <p>{s.summary}</p>
                     <span className="service-card__more">
-                      Learn more <i className="fas fa-arrow-right" />
+                      {c.services.cardButton} <i className="fas fa-arrow-right" />
                     </span>
                   </span>
                 </Link>
@@ -130,23 +112,23 @@ export const LandingPage = () => {
                   <h3>{s.title}</h3>
                   <p>{s.summary}</p>
                   <span className="service-card__more">
-                    Learn more <i className="fas fa-arrow-right" />
+                    {c.services.cardButton} <i className="fas fa-arrow-right" />
                   </span>
                 </Link>
               ),
             )}
-            <Link to="/contact?subject=Help%20choosing%20a%20service" className="service-card service-card--cta">
+            <SmartLink to={c.services.helpLink} className="service-card service-card--cta">
               <span className="service-card__cta-icon"><i className="fas fa-comments" /></span>
-              <h3>Not sure what you need?</h3>
-              <p>Tell us the problem and we’ll recommend the right approach, free of charge.</p>
+              <h3>{c.services.helpTitle}</h3>
+              <p>{c.services.helpText}</p>
               <span className="service-card__more">
-                Talk to us <i className="fas fa-arrow-right" />
+                {c.services.helpButton} <i className="fas fa-arrow-right" />
               </span>
-            </Link>
+            </SmartLink>
           </div>
           <div className="service-more">
             <Link to="/services" className="btn btn--primary btn--lg">
-              View all {services.length} services <i className="fas fa-arrow-right" />
+              {t(c.services.allButton)} <i className="fas fa-arrow-right" />
             </Link>
           </div>
         </div>
@@ -159,19 +141,16 @@ export const LandingPage = () => {
             <AboutArt />
           </div>
           <div>
-            <span className="eyebrow">Who we are</span>
-            <h2>A technology partner you can rely on</h2>
-            <p className="muted">
-              ADRAM Technologies is a Sierra Leonean IT company. We understand the realities of working here, from
-              connectivity to budgets, and build solutions that fit them.
-            </p>
+            <span className="eyebrow">{c.about.eyebrow}</span>
+            <h2>{c.about.title}</h2>
+            <p className="muted">{t(c.about.text)}</p>
             <ul className="reason-list">
-              {reasons.map((r) => (
+              {c.about.reasons.map((r) => (
                 <li key={r.title}>
                   <IconTile name={r.icon} />
                   <div>
                     <h3>{r.title}</h3>
-                    <p>{r.text}</p>
+                    <p>{t(r.text)}</p>
                   </div>
                 </li>
               ))}
@@ -184,9 +163,11 @@ export const LandingPage = () => {
                 </div>
               ))}
             </dl>
-            <Link to="/about" className="btn btn--outline">
-              <i className="fas fa-building" /> More about us
-            </Link>
+            {c.about.button && (
+              <SmartLink to={c.about.buttonLink} className="btn btn--outline">
+                <i className="fas fa-building" /> {c.about.button}
+              </SmartLink>
+            )}
           </div>
         </div>
       </section>
@@ -194,11 +175,11 @@ export const LandingPage = () => {
       {/* ---------- Process ---------- */}
       <section className="section section--dark process">
         <div className="container">
-          <SectionHeading eyebrow="How we work" title="A simple, transparent process" center>
-            Four clear steps, so you always know what’s happening and what comes next.
+          <SectionHeading eyebrow={c.process.eyebrow} title={c.process.title} center>
+            {c.process.intro}
           </SectionHeading>
           <ol className="process__steps">
-            {steps.map((step, i) => (
+            {c.process.steps.map((step, i) => (
               <li key={step.title} className="process__step">
                 <span className="process__num">0{i + 1}</span>
                 <IconTile name={step.icon} tone="glow" />
@@ -213,11 +194,11 @@ export const LandingPage = () => {
       {/* ---------- Sectors ---------- */}
       <section className="section">
         <div className="container">
-          <SectionHeading eyebrow="Who we work with" title="Solutions for every sector" center>
-            Organisations across Sierra Leone rely on technology to serve people better.
+          <SectionHeading eyebrow={c.sectors.eyebrow} title={c.sectors.title} center>
+            {c.sectors.intro}
           </SectionHeading>
           <div className="sectors">
-            {sectors.map((s) => (
+            {c.sectors.items.map((s) => (
               <div key={s.title} className="sector">
                 <IconTile name={s.icon} />
                 <div>
@@ -233,40 +214,50 @@ export const LandingPage = () => {
       {/* ---------- Training & scholarships ---------- */}
       <section className="section section--surface">
         <div className="container">
-          <SectionHeading eyebrow="Beyond projects" title="Growing tech talent in Sierra Leone" center>
-            Hands-on training and guidance towards study opportunities abroad.
+          <SectionHeading eyebrow={c.talent.eyebrow} title={c.talent.title} center>
+            {c.talent.intro}
           </SectionHeading>
           <div className="talent-grid">
             <article className="talent-card">
               <div className="talent-card__photo">
-                <img src="/typing/typing-card.jpg" alt="" loading="lazy" width="1100" height="688" />
-                <span className="talent-card__tag"><i className="fas fa-laptop-code" aria-hidden="true" /> {programs ? `${programs.length} programmes` : 'Training'}</span>
+                <img src={assetUrl(c.talent.training.image)} alt="" loading="lazy" width="1100" height="688" />
+                {c.talent.training.tag && (
+                  <span className="talent-card__tag">
+                    <i className="fas fa-laptop-code" aria-hidden="true" /> {t(c.talent.training.tag, { count: programs ? programs.length : '' })}
+                  </span>
+                )}
               </div>
               <div className="talent-card__body">
-                <span className="eyebrow">Training & courses</span>
-                <h3>Practical skills, taught by practitioners</h3>
-                <p>Programming, web and mobile development, software engineering and AI, plus tailored corporate training.</p>
-                <Link to="/courses" className="btn btn--primary btn--sm">
-                  <i className="fas fa-laptop-code" /> Browse programmes
-                </Link>
+                <span className="eyebrow">{c.talent.training.eyebrow}</span>
+                <h3>{c.talent.training.title}</h3>
+                <p>{c.talent.training.text}</p>
+                <SmartLink to={c.talent.training.link} className="btn btn--primary btn--sm">
+                  <i className="fas fa-laptop-code" /> {c.talent.training.button}
+                </SmartLink>
               </div>
             </article>
             <article className="talent-card">
               <div className="talent-card__photo">
-                <img src="/scholarship/scholarship-card.jpg" alt="" loading="lazy" width="1100" height="688" />
-                <span className="talent-card__tag"><i className="fas fa-graduation-cap" aria-hidden="true" /> Study abroad</span>
+                <img src={assetUrl(c.talent.scholarships.image)} alt="" loading="lazy" width="1100" height="688" />
+                {c.talent.scholarships.tag && (
+                  <span className="talent-card__tag">
+                    <i className="fas fa-graduation-cap" aria-hidden="true" /> {c.talent.scholarships.tag}
+                  </span>
+                )}
               </div>
               <div className="talent-card__body">
-                <span className="eyebrow">Scholarships</span>
-                <h3>Your path to studying abroad</h3>
-                <p>Find suitable international scholarships, prepare strong applications and track them to a decision.</p>
+                <span className="eyebrow">{c.talent.scholarships.eyebrow}</span>
+                <h3>{c.talent.scholarships.title}</h3>
+                <p>{c.talent.scholarships.text}</p>
                 <div className="talent-card__actions">
-                  <Link to="/scholarships" className="btn btn--primary btn--sm">
-                    <i className="fas fa-graduation-cap" /> Explore scholarships
-                  </Link>
-                  <Link to="/register" className="btn btn--outline btn--sm">
-                    <i className="fas fa-user-plus" /> Create account
-                  </Link>
+                  <SmartLink to={c.talent.scholarships.link} className="btn btn--primary btn--sm">
+                    <i className="fas fa-graduation-cap" /> {c.talent.scholarships.button}
+                  </SmartLink>
+                  {c.talent.scholarships.secondaryButton && (
+                    <SmartLink to={c.talent.scholarships.secondaryLink} className="btn btn--outline btn--sm">
+                      <i className="fas fa-user-plus" /> {c.talent.scholarships.secondaryButton}
+                    </SmartLink>
+                  )}
                 </div>
               </div>
             </article>
@@ -274,7 +265,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <CtaBand />
+      <CtaBand title={c.cta.title} text={c.cta.text} />
     </>
   );
 };

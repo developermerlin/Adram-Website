@@ -1,0 +1,667 @@
+// The original wording and images of each editable page. The admin's edits (saved on the server) are laid on
+// top of these, so removing an edit ("Reset to default") brings this text back.
+//
+// In text, {location}, {name}, {tagline} and {count} are filled in automatically from the site-wide details.
+import { site } from '../config/site';
+import { team } from '../data/team';
+import { services } from '../data/services';
+import { serviceDetails } from '../data/serviceDetails';
+
+// Each service as one editable item: its card details and its full page together.
+const serviceItems = services.map((s) => {
+  const d = serviceDetails[s.id] || {};
+  return {
+    id: s.id,
+    title: s.title,
+    icon: s.brandIcon,
+    summary: s.summary,
+    includes: s.includes,
+    image: s.image || '',
+    heroImage: s.heroImage || '',
+    featured: Boolean(s.featured),
+    details: {
+      tagline: d.tagline || '',
+      overview: d.overview || [],
+      idealFor: d.idealFor || [],
+      benefits: d.benefits || [],
+      process: d.process || [],
+      overviewImage: d.overviewImage || '',
+      asideImage: d.asideImage || '',
+      featuredTech: d.featuredTech || [],
+      techStack: (d.techStack || []).map((g) => ({ group: g.group, icon: g.icon, items: g.items.map(([name, logo]) => ({ name, logo })) })),
+      faqs: d.faqs || [],
+    },
+  };
+});
+
+const cta = {
+  title: 'Have a project in mind?',
+  text: 'Tell us what you need. We’ll get back to you within one working day with next steps.',
+};
+
+export const defaults = {
+  // ---------------------------------------------------------------- Site-wide details
+  site: {
+    name: site.name,
+    shortName: site.shortName,
+    tagline: site.tagline,
+    email: site.email,
+    phones: site.phones,
+    location: site.location,
+    favicon: '',
+    share: { title: '', description: '', image: '' },
+    brandName: 'ADRAM',
+    brandSub: 'Technologies',
+    logo: '/brand/mark-192.png',
+    heroLogo: '/brand.png',
+    footerBlurb: 'An IT company in {location} delivering software, networks and digital systems, plus practical tech training and scholarship guidance.',
+    hours: site.hours,
+    socials: site.socials.map(({ id, href }) => ({ id, href })),
+  },
+
+  // ---------------------------------------------------------------- Home
+  home: {
+    seo: {
+      title: 'ADRAM Technologies | Building Solutions for a Better Future',
+      description: 'ADRAM Technologies is an IT company in Freetown, Sierra Leone: web and mobile development, networking, software, AI and IT consultancy, plus professional training and scholarship guidance.',
+    },
+    hero: {
+      badge: 'IT company in {location}',
+      titleStart: 'Building solutions for a',
+      titleAccent: 'better future',
+      lead: 'We design, build and support the software, networks and digital systems organisations run on, and we train the next generation of tech talent.',
+      primaryLabel: 'Start a project',
+      primaryLink: '/contact?subject=New%20project',
+      secondaryLabel: 'Our services',
+      secondaryLink: '/services',
+      trust: ['End-to-end delivery', 'Local support team', 'Staff training included'],
+      badges: ['Software', 'Networks', 'Scholarships', 'Training'],
+    },
+    highlights: [
+      { icon: 'software', title: 'Software & web', text: 'Websites, apps and management systems.', link: '/services/software-development' },
+      { icon: 'network', title: 'Networks & IT support', text: 'Cabling, Wi-Fi, servers and maintenance.', link: '/services/networking' },
+      { icon: 'laptop', title: 'Tech training', text: 'Practical courses for people and teams.', link: '/courses' },
+      { icon: 'graduate', title: 'Scholarship guidance', text: 'Support for students applying abroad.', link: '/scholarships' },
+    ],
+    services: {
+      eyebrow: 'What we do',
+      title: 'IT services for growing organisations',
+      intro: 'From a single website to a full digital transformation, we plan, build and support it.',
+      headerButton: 'View all services',
+      cardButton: 'Learn more',
+      helpTitle: 'Not sure what you need?',
+      helpText: 'Tell us the problem and we’ll recommend the right approach, free of charge.',
+      helpButton: 'Talk to us',
+      helpLink: '/contact?subject=Help%20choosing%20a%20service',
+      allButton: 'View all {count} services',
+    },
+    about: {
+      eyebrow: 'Who we are',
+      title: 'A technology partner you can rely on',
+      text: 'ADRAM Technologies is a Sierra Leonean IT company. We understand the realities of working here, from connectivity to budgets, and build solutions that fit them.',
+      reasons: [
+        { icon: 'location', title: 'Local and reachable', text: 'Based in {location}, with support you can meet in person.' },
+        { icon: 'layers', title: 'End-to-end delivery', text: 'Networks, software and training from one accountable team.' },
+        { icon: 'shield', title: 'Secure and documented', text: 'Work your organisation can own, maintain and grow.' },
+      ],
+      serviceCountLabel: 'Service areas',
+      trainingCountLabel: 'Training tracks',
+      replyLabel: 'Typical reply time',
+      replyValue: '1 day',
+      button: 'More about us',
+      buttonLink: '/about',
+    },
+    process: {
+      eyebrow: 'How we work',
+      title: 'A simple, transparent process',
+      intro: 'Four clear steps, so you always know what’s happening and what comes next.',
+      steps: [
+        { icon: 'discover', title: 'Discover', text: 'We learn your goals, users, budget and constraints.' },
+        { icon: 'design', title: 'Design', text: 'A clear plan and prototype you approve before we build.' },
+        { icon: 'build', title: 'Build', text: 'Short stages with regular demos, so nothing surprises you.' },
+        { icon: 'support', title: 'Support', text: 'Staff training, then maintenance whenever you need it.' },
+      ],
+    },
+    sectors: {
+      eyebrow: 'Who we work with',
+      title: 'Solutions for every sector',
+      intro: 'Organisations across Sierra Leone rely on technology to serve people better.',
+      items: [
+        { icon: 'graduate', title: 'Education', text: 'School portals, results systems and computer labs.' },
+        { icon: 'health', title: 'Healthcare', text: 'Patient records, clinic software and reliable networks.' },
+        { icon: 'community', title: 'NGOs & development', text: 'Data collection, reporting and field connectivity.' },
+        { icon: 'government', title: 'Public sector', text: 'Digital services and records for institutions.' },
+        { icon: 'growth', title: 'Business & retail', text: 'Websites, stock and sales systems, online payments.' },
+        { icon: 'finance', title: 'Finance', text: 'Secure systems, dashboards and process automation.' },
+      ],
+    },
+    talent: {
+      eyebrow: 'Beyond projects',
+      title: 'Growing tech talent in Sierra Leone',
+      intro: 'Hands-on training and guidance towards study opportunities abroad.',
+      training: {
+        image: '/typing/typing-card.jpg',
+        tag: '{count} programmes',
+        eyebrow: 'Training & courses',
+        title: 'Practical skills, taught by practitioners',
+        text: 'Programming, web and mobile development, software engineering and AI, plus tailored corporate training.',
+        button: 'Browse programmes',
+        link: '/courses',
+      },
+      scholarships: {
+        image: '/scholarship/scholarship-card.jpg',
+        tag: 'Study abroad',
+        eyebrow: 'Scholarships',
+        title: 'Your path to studying abroad',
+        text: 'Find suitable international scholarships, prepare strong applications and track them to a decision.',
+        button: 'Explore scholarships',
+        link: '/scholarships',
+        secondaryButton: 'Create account',
+        secondaryLink: '/register',
+      },
+    },
+    cta,
+  },
+
+  // ---------------------------------------------------------------- About
+  about: {
+    seo: {
+      title: 'About us | ADRAM Technologies',
+      description: 'Learn about ADRAM Technologies: our mission, vision and values, and the team building technology, training and scholarship opportunities in Sierra Leone.',
+    },
+    hero: {
+      eyebrow: 'About us',
+      title: 'ADRAM Technologies: building solutions for a better future',
+      lead: 'A technology company in {location} helping organisations work smarter and helping people build careers in tech.',
+      image: '/consultancy/consult-hero.jpg',
+    },
+    who: {
+      eyebrow: 'Who we are',
+      title: 'A trusted partner in technology, training and educational opportunity',
+      lead: 'ADRAM Technologies delivers IT solutions for businesses, schools, NGOs and public institutions, from websites and custom software to office networks and AI-powered tools.',
+      text: 'We also believe technology only works when people can use it. That’s why we train individuals and teams, and why we guide young Sierra Leoneans towards international scholarships that open doors to world-class education.',
+    },
+    pillars: [
+      { icon: 'server', title: 'IT services', text: 'Software, web and mobile apps, networks, hardware, AI, data analytics, consultancy, creative design and touch-typing training.', link: '/services' },
+      { icon: 'laptop', title: 'Training', text: 'Practical courses for individuals and organisations.', link: '/courses' },
+      { icon: 'graduate', title: 'Scholarships', text: 'Guidance for students pursuing study abroad.', link: '/scholarships' },
+    ],
+    mission: {
+      icon: 'innovation',
+      eyebrow: 'Our mission',
+      title: 'Make dependable technology and digital skills accessible to everyone we serve.',
+      text: 'We deliver solutions that solve real problems, and we share our knowledge so the people and organisations we work with can grow with confidence.',
+    },
+    vision: {
+      icon: 'discover',
+      eyebrow: 'Our vision',
+      title: 'A Sierra Leone where every organisation and every young person can thrive in the digital economy.',
+      text: 'We aim to be the region’s most trusted partner for technology, training and educational opportunity.',
+    },
+    values: {
+      eyebrow: 'How we work',
+      title: 'Our values',
+      items: [
+        { icon: 'partnership', title: 'Partnership', text: 'We work alongside our clients and students, not just for them.' },
+        { icon: 'quality', title: 'Quality', text: 'Secure, well-documented work we’re proud to put our name on.' },
+        { icon: 'innovation', title: 'Innovation', text: 'Modern tools and ideas, adapted to local realities.' },
+        { icon: 'people', title: 'Empowerment', text: 'Every project and course leaves people more capable than before.' },
+      ],
+    },
+    cta: { title: 'Let’s build something together', text: cta.text },
+  },
+
+  // ---------------------------------------------------------------- Services
+  services: {
+    seo: {
+      title: 'IT services | ADRAM Technologies',
+      description: 'Web and mobile development, software, networking, hardware, AI, data analytics, consultancy, design and typing training from ADRAM Technologies in Freetown.',
+    },
+    hero: {
+      eyebrow: 'Services',
+      title: 'IT services for organisations that want to do more',
+      lead: '{count} practice areas, one team. Choose a single service or let us handle the whole journey from plan to support.',
+      image: '/transform/transform-hero.jpg',
+      primaryLabel: 'Get a free consultation',
+      secondaryLabel: 'Call us',
+    },
+    labels: {
+      included: 'What’s included',
+      viewDetails: 'View full details',
+      contact: 'Contact us',
+      overviewEyebrow: 'Overview',
+      overview: 'What we offer',
+      idealFor: 'Who it’s for',
+      benefits: 'Why it matters',
+      process: 'How we deliver it',
+      tools: 'Tools & technologies',
+      faqs: 'Frequently asked questions',
+      badgeTitle: 'Modern, proven technology',
+      badgeText: 'Chosen to fit your project and budget',
+      otherServices: 'Other services',
+      contactButton: 'Contact us about this service',
+      callButton: 'Call us',
+      asideTitle: 'Interested in {service}?',
+      asideText: 'Tell us about your project. The first consultation is free and we usually reply within one working day.',
+      bannerTitle: 'Ready to start your {service} project?',
+      bannerText: 'Share a few details and we’ll get back to you with next steps and a clear plan.',
+    },
+    cta: { title: 'Not sure which service you need?', text: 'Describe the problem you’re trying to solve and we’ll recommend the right approach, free of charge.' },
+    items: serviceItems,
+  },
+
+  // ---------------------------------------------------------------- Team
+  team: {
+    seo: {
+      title: 'Our team | ADRAM Technologies',
+      description: 'Meet the engineers, trainers and advisers behind ADRAM Technologies.',
+    },
+    hero: {
+      eyebrow: 'Our team',
+      title: 'The people behind ADRAM Technologies',
+      lead: 'Engineers, trainers and advisers who build dependable technology and help people grow their skills.',
+      image: '/consultancy/consult-hero.jpg',
+      primaryLabel: 'Work with us',
+      secondaryLabel: 'About the company',
+    },
+    members: team,
+    cta: {
+      title: 'Let’s work together',
+      text: 'Tell us about your project or the skills you want to learn, and the right person on the team will get back to you.',
+    },
+  },
+
+  // ---------------------------------------------------------------- Training (courses)
+  courses: {
+    seo: {
+      title: 'Training programmes | ADRAM Technologies',
+      description: 'Practical, project-based tech training in Freetown: programming, web, mobile, networking, data, design and more, with a certificate on completion.',
+    },
+    hero: {
+      eyebrow: 'Training',
+      title: 'Learn the skills the digital economy runs on',
+      lead: 'Practical, project-based programmes taught by people who build software and networks for a living.',
+      image: '/typing/typing-hero.jpg',
+      primaryLabel: 'Browse programmes',
+      secondaryLabel: 'Call us',
+    },
+    stats: [
+      { value: '{count}', label: 'programmes' },
+      { value: '100%', label: 'hands-on and project-based' },
+      { value: 'Certificate', label: 'on every completed programme' },
+      { value: 'Freetown', label: 'in-person and corporate classes' },
+    ],
+    programmes: {
+      eyebrow: 'Programmes',
+      title: 'Choose your track',
+      intro: 'Every programme ends with a real project you can show to employers.',
+      allLabel: 'All programmes',
+      enrollLabel: 'Enroll',
+      askDatesLabel: 'Ask about dates & fees',
+      askQuestionLabel: 'Ask a question',
+      serviceLabel: 'We also offer this as a service',
+    },
+    groups: [
+      { id: 'foundations', label: 'Digital skills' },
+      { id: 'development', label: 'Software & web' },
+      { id: 'data', label: 'Data & AI' },
+      { id: 'infrastructure', label: 'Networks & hardware' },
+      { id: 'business', label: 'Business & consulting' },
+      { id: 'creative', label: 'Design' },
+    ],
+    meta: [
+      { slug: 'touch-typing', image: '/typing/typing-card.jpg', group: 'foundations', service: 'typing' },
+      { slug: 'programming', image: '/software/soft4.jpg', group: 'foundations', service: '' },
+      { slug: 'professional-training', image: '/consultancy/consult-aside.jpg', group: 'business', service: '' },
+      { slug: 'it-consultancy', image: '/consultancy/consult-card.jpg', group: 'business', service: 'it-consultancy' },
+      { slug: 'digital-transformation', image: '/transform/transform-card.jpg', group: 'business', service: 'digital-transformation' },
+      { slug: 'web-development', image: '/web/heroimg-card.jpg', group: 'development', service: 'web-development' },
+      { slug: 'software-engineering', image: '/software/cardimg.jpg', group: 'development', service: 'software-development' },
+      { slug: 'mobile-development', image: '/mobile/app4.jpg', group: 'development', service: 'mobile-development' },
+      { slug: 'ai-machine-learning', image: '/ai/ai-card.jpg', group: 'data', service: 'ai-machine-learning' },
+      { slug: 'data-analytics', image: '/analytics/analytics-card.jpg', group: 'data', service: 'data-analytics' },
+      { slug: 'computer-networking', image: '/network/net-card.jpg', group: 'infrastructure', service: 'networking' },
+      { slug: 'computer-hardware', image: '/hardware/hardware-card.jpg', group: 'infrastructure', service: 'hardware' },
+      { slug: 'graphic-design', image: '/graphics/graphics-card.jpg', group: 'creative', service: 'graphic-design' },
+    ],
+    reasons: {
+      eyebrow: 'Why train with ADRAM',
+      title: 'Skills you can use on Monday',
+      items: [
+        { icon: 'laptop', title: 'Hands-on lab time', text: 'You learn by doing, on real equipment, in every session.' },
+        { icon: 'build', title: 'Real projects', text: 'Every programme ends with work you can show to employers or clients.' },
+        { icon: 'people', title: 'Taught by practitioners', text: 'Your trainers build software, networks and systems for a living.' },
+        { icon: 'certificate', title: 'Certificate of completion', text: 'A certificate for every programme you finish.' },
+      ],
+    },
+    how: {
+      eyebrow: 'How it works',
+      title: 'From first question to certificate',
+      intro: 'Four simple steps, with our team on hand at every one.',
+      steps: [
+        { title: 'Choose a programme', text: 'Browse the programmes above, or tell us your goal and we will suggest where to start.' },
+        { title: 'Enrol', text: 'Create a free account and enrol in one click. Your programme then appears in your student portal.' },
+        { title: 'Learn and practise', text: 'Attend the sessions, work through the exercises and build your project with your trainer’s feedback.' },
+        { title: 'Finish and get certified', text: 'Complete your project, collect your certificate and take the next step in your studies or career.' },
+      ],
+    },
+    formats: {
+      eyebrow: 'How you learn',
+      title: 'Flexible ways to train',
+      items: [
+        { icon: 'classroom', title: 'In-person classes', text: 'Instructor-led sessions in Freetown with hands-on lab time.' },
+        { icon: 'building', title: 'Corporate training', text: 'Courses delivered at your organisation, tailored to your team’s needs.' },
+        { icon: 'certificate', title: 'Certificates', text: 'A certificate of completion for every programme you finish.' },
+      ],
+    },
+    faqs: {
+      eyebrow: 'Questions',
+      title: 'Good to know before you enrol',
+      items: [
+        { q: 'Do I need any experience?', a: 'Not for our foundation programmes such as Touch Typing and Programming Foundations. They start from zero. If you are unsure whether a programme suits you, ask us and we will advise.' },
+        { q: 'How do I enrol?', a: 'Create a free account, then press Enroll on the programme you want. Your enrolment appears in your student portal, and we contact you with the start date and next steps.' },
+        { q: 'How much do programmes cost, and when do they start?', a: 'Each programme shows its fee and next intake once they are confirmed. If they are not shown yet, use “Ask about dates & fees” and we will reply within one working day.' },
+        { q: 'Will I get a certificate?', a: 'Yes. Everyone who completes a programme receives a certificate of completion.' },
+        { q: 'Can you train our staff or students as a group?', a: 'Yes. We deliver corporate and group training at your organisation, tailored to your team’s needs. Contact us with your goals and group size.' },
+      ],
+    },
+    cta: { title: 'Ready to start learning?', text: 'Tell us which programme interests you and we’ll send the next intake dates and fees.' },
+  },
+
+  // ---------------------------------------------------------------- Scholarships
+  scholarships: {
+    seo: {
+      title: 'Scholarships | ADRAM Technologies',
+      description: 'Find international scholarships, get expert help preparing your application and track every deadline with ADRAM Technologies.',
+    },
+    hero: {
+      eyebrow: 'Scholarships',
+      title: 'Study abroad on an international scholarship',
+      lead: 'Explore fully funded opportunities in the UK, USA, Canada, Europe, China and more, and get expert help preparing a winning application.',
+      image: '/scholarship/scholarship-hero.jpg',
+      primaryLabel: 'Browse scholarships',
+      secondaryLabel: 'Book a consultation',
+    },
+    stats: { listed: 'Scholarships listed', destinations: 'Study destinations', funded: 'Fully funded', levels: 'Undergraduate to PhD' },
+    finder: {
+      eyebrow: 'Scholarship finder',
+      title: 'Find a scholarship that fits you',
+      intro: 'Filter by destination, level of study and funding. Every listing links to its official website.',
+      disclaimer: 'Scholarships are awarded by their providers, not by ADRAM Technologies. Eligibility, benefits and deadlines change each year, so always confirm the details on the official website before applying.',
+    },
+    destinations: {
+      eyebrow: 'Study destinations',
+      title: 'Where our students can study',
+      intro: 'Choose a destination to see the scholarships available there.',
+    },
+    help: {
+      eyebrow: 'How we help',
+      title: 'Support at every stage of your application',
+      intro: 'Scholarship applications are competitive. Our counsellors help you choose wisely, present yourself well and meet every deadline.',
+      image: '/scholarship/scholarship-help.jpg',
+      caption: 'Your future starts with the right application',
+      items: [
+        { icon: 'discover', title: 'Finding the right fit', text: 'We match your profile to scholarships you have a real chance of winning.' },
+        { icon: 'design', title: 'Application review', text: 'Feedback on your essays, statement of purpose, CV and documents before you submit.' },
+        { icon: 'clock', title: 'Deadline tracking', text: 'Your student portal keeps every application and deadline in one place.' },
+        { icon: 'globe', title: 'Pre-departure advice', text: 'Guidance on visas, travel and settling in once you’re accepted.' },
+      ],
+    },
+    journey: {
+      title: 'Your application journey',
+      createLabel: 'Create your account',
+      signInLabel: 'Sign in',
+      steps: [
+        { title: 'Create an account', text: 'Register on the ADRAM portal and complete your student profile.' },
+        { title: 'Consultation', text: 'Meet a counsellor to agree your goals and shortlist scholarships.' },
+        { title: 'Prepare & submit', text: 'Gather documents, polish your essays and submit before the deadline.' },
+        { title: 'Track & decide', text: 'Follow progress in your dashboard and get support with offers and visas.' },
+      ],
+    },
+    docs: {
+      title: 'Documents to prepare',
+      intro: 'Most applications ask for these. Start gathering them early.',
+      image: '/scholarship/scholarship-docs.jpg',
+      items: [
+        'Valid international passport',
+        'Academic certificates and transcripts (WASSCE, degree)',
+        'Statement of purpose or personal essays',
+        'Two or three reference letters',
+        'CV / résumé',
+        'English test results (IELTS / TOEFL) where required',
+      ],
+    },
+    faqs: {
+      eyebrow: 'Questions',
+      title: 'Frequently asked questions',
+      items: [
+        { q: 'Does ADRAM award these scholarships?', a: 'No. Each scholarship is awarded by its own provider, such as a government, foundation or university. ADRAM helps you choose the right ones and prepare strong applications.' },
+        { q: 'Can I apply for more than one scholarship?', a: 'Usually yes, and applying to several improves your chances. Check each programme’s rules, as a few limit parallel applications.' },
+        { q: 'When should I start preparing?', a: 'Early. Many deadlines fall six to twelve months before the course starts, and gathering documents and references takes time.' },
+        { q: 'Do I need IELTS or TOEFL?', a: 'It depends on the programme and university. Some accept proof that your previous degree was taught in English; others require a test score.' },
+      ],
+    },
+    cta: {
+      title: 'Ready to start your scholarship journey?',
+      text: 'Book a consultation and we’ll help you shortlist the right scholarships and plan your application.',
+    },
+    detail: {
+      overviewEyebrow: 'Overview',
+      overviewTitle: 'About this scholarship',
+      keyDates: 'Key dates',
+      datesNote: 'Dates can change each year; ADRAM updates them when the provider announces the new cycle.',
+      covers: 'What it covers',
+      eligibility: 'Who can apply',
+      steps: 'How to apply',
+      documents: 'Documents to prepare',
+      helpTitle: 'Apply with ADRAM’s support',
+      helpText: 'Our counsellors review your eligibility, help you write strong essays and statements, check your documents and keep you on track for every deadline.',
+      helpButton: 'Book a consultation',
+      keyFacts: 'Key facts',
+      moreTitle: 'More scholarships',
+      moreLink: 'Browse all scholarships',
+      trackTitle: 'Track your application',
+      trackText: 'Create a free ADRAM account to save scholarships, track deadlines and work with a counsellor.',
+      trackButton: 'Create free account',
+      questionButton: 'Ask a question',
+      bannerTitle: 'Thinking about the {name}?',
+      bannerText: 'Tell us about your background and goals. A counsellor will help you decide if it’s the right fit and how to apply.',
+    },
+  },
+
+  // ---------------------------------------------------------------- Contact
+  contact: {
+    seo: {
+      title: 'Contact us | ADRAM Technologies',
+      description: 'Call, WhatsApp, email or visit ADRAM Technologies in Freetown, Sierra Leone. We reply within one working day.',
+    },
+    hero: {
+      eyebrow: 'Contact',
+      title: 'Let’s talk about your next project',
+      lead: 'Whether it’s a new project, a training programme or a scholarship question, our team is ready to help.',
+      callLabel: 'Call {phone}',
+      whatsappLabel: 'WhatsApp us',
+    },
+    methods: {
+      callTitle: 'Call us',
+      callAction: 'Call now',
+      whatsappTitle: 'WhatsApp',
+      whatsappValue: 'Chat with our team',
+      whatsappAction: 'Start chat',
+      emailTitle: 'Email',
+      emailAction: 'Send email',
+      visitTitle: 'Visit us',
+      visitAction: 'Get directions',
+    },
+    topics: ['Web development', 'Mobile app', 'Custom software', 'Networking', 'AI & automation', 'IT consultancy', 'Training', 'Scholarships'],
+    form: {
+      title: 'Send us a message',
+      intro: 'Fill in the form and the right person on our team will get back to you.',
+      badge: 'Replies within 1 working day',
+      topicsLabel: 'What can we help with?',
+      nameLabel: 'Full name',
+      namePlaceholder: 'Your name',
+      emailLabel: 'Email address',
+      emailPlaceholder: 'you@example.com',
+      subjectLabel: 'Subject',
+      subjectPlaceholder: 'e.g. New website for our school',
+      messageLabel: 'Message',
+      messagePlaceholder: 'Tell us about your project, timeline and any questions you have…',
+      privacyNote: 'Your details are only used to reply to your enquiry.',
+      sendLabel: 'Send message',
+      sentTitle: 'Message sent. Thank you!',
+      sentText: 'We’ve received your message and will reply within one working day. For anything urgent, call or WhatsApp us.',
+      sentAgainLabel: 'Send another message',
+      sentWhatsappLabel: 'Chat on WhatsApp',
+    },
+    hours: { title: 'Office hours', openLabel: 'Open now', closedLabel: 'Closed now', todayLabel: 'Today', note: 'All times are Freetown time (GMT).' },
+    follow: { title: 'Follow us', text: 'News, projects, training intakes and scholarship updates.' },
+    students: { title: 'Students', text: 'Asking about a scholarship or course? Create a free account to track your applications.', link: 'Create an account' },
+    map: { button: 'Get directions' },
+  },
+
+  // ---------------------------------------------------------------- Header and footer navigation
+  navigation: {
+    labels: { home: 'Home', about: 'About', services: 'Services', training: 'Training', scholarships: 'Scholarships', contact: 'Contact', signIn: 'Sign in', signUp: 'Sign up', dashboard: 'My dashboard' },
+    limits: { dropdown: 6, footerServices: 5 },
+    aboutMenu: [
+      { label: 'Company overview', link: '/about', icon: 'building' },
+      { label: 'Mission & vision', link: '/about#mission', icon: 'innovation' },
+      { label: 'Our values', link: '/about#values', icon: 'quality' },
+      { label: 'Our team', link: '/about/team', icon: 'people' },
+    ],
+    scholarshipsMenu: [
+      { label: 'Find a scholarship', link: '/scholarships#finder', icon: 'award' },
+      { label: 'Study destinations', link: '/scholarships#destinations', icon: 'globe' },
+      { label: 'How we help', link: '/scholarships#support', icon: 'support' },
+      { label: 'Documents & FAQs', link: '/scholarships#requirements', icon: 'certificate' },
+    ],
+    menuFooters: { services: 'All services', servicesMany: 'All {count} services', training: 'All programmes', trainingMany: 'All {count} programmes', scholarships: 'All scholarships' },
+    footer: {
+      servicesTitle: 'Services',
+      servicesMore: 'View all services',
+      companyTitle: 'Company',
+      company: [
+        { label: 'About us', link: '/about' },
+        { label: 'Mission & vision', link: '/about#mission' },
+        { label: 'Our team', link: '/about/team' },
+        { label: 'Our services', link: '/services' },
+        { label: 'Contact us', link: '/contact' },
+        { label: 'Our values', link: '/about#values' },
+      ],
+      studentsTitle: 'Students',
+      students: [
+        { label: 'Training programmes', link: '/courses' },
+        { label: 'Scholarships', link: '/scholarships' },
+        { label: 'How to apply', link: '/scholarships#process' },
+        { label: 'Create an account', link: '/register' },
+        { label: 'Student portal', link: '/login' },
+      ],
+      contactTitle: 'Contact',
+      rights: 'All rights reserved.',
+      bottomLinks: [
+        { label: 'About', link: '/about' },
+        { label: 'Services', link: '/services' },
+        { label: 'Contact', link: '/contact' },
+      ],
+      backToTop: 'Back to top',
+    },
+  },
+
+  // ---------------------------------------------------------------- Join and error pages
+  other: {
+    seo: {
+      title: 'Join ADRAM | ADRAM Technologies',
+      description: 'Create a free ADRAM account to enroll in training, save scholarships and track your applications.',
+    },
+    join: {
+      eyebrow: 'Join ADRAM',
+      titleTraining: 'Create a free account to enroll in training',
+      titleScholarship: 'Create a free account to see official scholarship websites',
+      leadTraining: 'Enrolling, and following your programme in your own portal, is for ADRAM members. It takes about a minute.',
+      leadScholarship: 'Official links, saved scholarships and application tracking are available to ADRAM members. It takes about a minute.',
+      targetLabel: 'You’re about to open',
+      cardTitle: 'Join us to continue',
+      stepOne: 'Create your free account',
+      stepTwo: 'Confirm your email with the 6-digit code we send',
+      stepTrainingLast: 'You’re taken back to the Training page, where you can enroll in one click',
+      stepScholarshipLast: 'You’re taken straight back to the scholarship, with its official website unlocked',
+      createLabel: 'Create free account',
+      signInLabel: 'I already have an account',
+      backLabel: 'Back to {name}',
+      whyEyebrow: 'Why join',
+      whyTitle: 'Everything for your scholarship journey in one place',
+      benefits: [
+        { icon: 'globe', title: 'Official scholarship websites', text: 'Open the provider’s own site for every scholarship we list.' },
+        { icon: 'award', title: 'Save and track applications', text: 'Keep a shortlist, follow each application’s stage and never miss a deadline.' },
+        { icon: 'certificate', title: 'Documents checklist', text: 'Tick off your passport, transcripts, references and essays as you go.' },
+        { icon: 'support', title: 'Help from a counsellor', text: 'ADRAM’s team can see your progress and guide your next steps.' },
+      ],
+    },
+    errors: {
+      notFoundTitle: 'Page not found',
+      notFoundText: 'The page you’re looking for doesn’t exist or has moved.',
+      deniedTitle: 'Access denied',
+      deniedText: 'Your account doesn’t have permission to view this page.',
+      homeLabel: 'Back to home',
+      contactLabel: 'Contact us',
+    },
+  },
+  // ---------------------------------------------------------------- Interface wording (portal, admin, forms)
+  interface: { items: [] },
+
+  // ---------------------------------------------------------------- Sign in, register and password reset
+  accounts: {
+    shared: {
+      backLabel: 'Back to website',
+      helpTitle: 'Need help with your account?',
+      helpEmailLabel: 'Email us',
+      legal: 'Secure sign-in · Your details are only used for your ADRAM account ·',
+      legalLink: 'Contact support',
+    },
+    login: {
+      title: 'Sign in to your account',
+      subtitle: 'Welcome back! Choose how you’d like to sign in.',
+      eyebrow: 'ADRAM portal',
+      heading: 'Welcome back. Pick up right where you left off.',
+      text: 'Sign in to manage your applications, training and account in one secure place.',
+      points: [
+        { icon: 'graduate', title: 'Scholarship applications', text: 'Track progress and deadlines for every application.' },
+        { icon: 'shield', title: 'Protected with email codes', text: 'Every sign-in is confirmed with a one-time code.' },
+        { icon: 'discover', title: 'Your counsellor', text: 'Stay in touch with the ADRAM team.' },
+      ],
+      switchText: 'New to ADRAM?',
+      switchLabel: 'Create an account',
+    },
+    register: {
+      title: 'Create your account',
+      subtitle: 'Free for students and trainees. It takes about two minutes.',
+      eyebrow: 'Free student account',
+      heading: 'Start your journey with ADRAM today.',
+      text: 'One account for scholarship applications, training programmes and support from our counsellors.',
+      points: [
+        { icon: 'award', title: 'Apply for scholarships', text: 'Find opportunities abroad and track every application.' },
+        { icon: 'laptop', title: 'Enrol in training', text: 'Practical tech courses taught by professionals.' },
+        { icon: 'support', title: 'Expert guidance', text: 'Counsellors who help you at every step.' },
+      ],
+      switchText: 'Already have an account?',
+      switchLabel: 'Sign in',
+    },
+    forgot: {
+      title: 'Reset your password',
+      subtitle: 'Enter the email you signed up with and we’ll send you a 6-digit code.',
+      eyebrow: 'Account recovery',
+      heading: 'Locked out? We’ll help you get back in.',
+      text: 'Resetting your password only takes a moment. Your applications and progress stay safe.',
+      points: [
+        { icon: 'mail', title: 'Get a code by email', text: 'We send a 6-digit code to the address on your account.' },
+        { icon: 'shield', title: 'Choose a new password', text: 'Pick a strong password you don’t use elsewhere.' },
+        { icon: 'support', title: 'Still stuck?', text: 'Our team can help you by phone, WhatsApp or email.' },
+      ],
+      switchText: 'Remembered it?',
+      switchLabel: 'Sign in',
+    },
+  },
+};
+
+export default defaults;

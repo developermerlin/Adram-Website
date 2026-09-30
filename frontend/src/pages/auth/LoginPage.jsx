@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { usePageContent } from '../../content/useContent';
 import { parseApiErrors } from '../../services/api';
 import AuthLayout from '../../components/layout/AuthLayout';
 import { Alert, PasswordField, TextField } from '../../components/ui/Form';
@@ -8,18 +9,8 @@ import OAuthButtons from '../../components/ui/OAuthButtons';
 import OtpVerify from '../../components/ui/OtpVerify';
 import { isInfoCode, oauthErrorMessage } from '../../utils/oauth';
 
-const panel = {
-  eyebrow: 'ADRAM portal',
-  heading: 'Welcome back. Pick up right where you left off.',
-  text: 'Sign in to manage your applications, training and account in one secure place.',
-  points: [
-    { icon: 'graduate', title: 'Scholarship applications', text: 'Track progress and deadlines for every application.' },
-    { icon: 'shield', title: 'Protected with email codes', text: 'Every sign-in is confirmed with a one-time code.' },
-    { icon: 'discover', title: 'Your counsellor', text: 'Stay in touch with the ADRAM team.' },
-  ],
-};
-
 export const LoginPage = () => {
+  const c = usePageContent('accounts').login;
   const { login, verifyOtp } = useAuth();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -76,8 +67,8 @@ export const LoginPage = () => {
       <AuthLayout
         title={verifyingEmail ? 'Verify your email' : 'Check your email'}
         subtitle={verifyingEmail ? 'Confirm your email address to finish setting up your account.' : 'Enter the code to finish signing in.'}
-        panel={panel}
-        switchTo={{ text: 'New to ADRAM?', to: '/register', label: 'Create an account' }}
+        panel={c}
+        switchTo={{ text: c.switchText, to: '/register', label: c.switchLabel }}
       >
         <OtpVerify
           challenge={challenge.challenge}
@@ -92,10 +83,10 @@ export const LoginPage = () => {
 
   return (
     <AuthLayout
-      title="Sign in to your account"
-      subtitle="Welcome back! Choose how you’d like to sign in."
-      panel={panel}
-      switchTo={{ text: 'New to ADRAM?', to: '/register', label: 'Create an account' }}
+      title={c.title}
+      subtitle={c.subtitle}
+      panel={c}
+      switchTo={{ text: c.switchText, to: '/register', label: c.switchLabel }}
     >
       {from && !message && <Alert type="info">Please sign in to continue to that page.</Alert>}
       {message && <Alert type={message.type}>{message.text}</Alert>}

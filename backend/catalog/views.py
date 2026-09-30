@@ -113,3 +113,20 @@ class CourseManageViewSet(ManageViewSet):
     serializer_class = CourseManageSerializer
     permission_classes = [IsAdmin]
     search_fields = ['title', 'summary']
+
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related('instructor', 'category', 'subcategory')
+        wanted = self.request.query_params.get('status')
+        return queryset.filter(status=wanted) if wanted else queryset
+
+    def perform_update(self, serializer):
+        from lms import audit
+        was_published = serializer.instance.is_published
+        course = serializer.save()
+        if course.is_published != was_published:
+            audit.record(self.request, 'course_published' if course.is_published else 'course_unpublished', course)
+
+    def perform_destroy(self, instance):
+        from lms import audit
+        audit.record(self.request, 'course_deleted', instance)
+        instance.delete()

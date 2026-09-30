@@ -1,29 +1,12 @@
-import { Link } from 'react-router-dom';
-import { site, telHref } from '../../config/site';
-import { services } from '../../data/services';
+import SmartLink from '../ui/SmartLink';
+import { telHref } from '../../config/site';
+import { fill } from '../../content/merge';
+import { usePageContent, useSite } from '../../content/useContent';
+import { useServices } from '../../content/useServices';
 import Brand from '../ui/Brand';
 import SocialLinks from '../ui/SocialLinks';
 
-const company = [
-  { to: '/about', label: 'About us' },
-  { to: '/about#mission', label: 'Mission & vision' },
-  { to: '/about/team', label: 'Our team' },
-  { to: '/services', label: 'Our services' },
-  { to: '/contact', label: 'Contact us' },
-  { to: '/about#values', label: 'Our values' },
-];
-
-const students = [
-  { to: '/courses', label: 'Training programmes' },
-  { to: '/scholarships', label: 'Scholarships' },
-  { to: '/scholarships#process', label: 'How to apply' },
-  { to: '/register', label: 'Create an account' },
-  { to: '/login', label: 'Student portal' },
-];
-
 // The footer lists only the first few services, then a plain link to the full list.
-const FOOTER_SERVICES = 5;
-
 // `more` (optional): { to, label } adds a "view all" link after the list.
 const FooterLinks = ({ title, links, more }) => (
   <div className="footer-col">
@@ -31,43 +14,46 @@ const FooterLinks = ({ title, links, more }) => (
     <ul>
       {links.map((l) => (
         <li key={l.to + l.label}>
-          <Link to={l.to}>{l.label}</Link>
+          <SmartLink to={l.to}>{l.label}</SmartLink>
         </li>
       ))}
       {more && (
         <li>
-          <Link to={more.to} className="footer-col__more">
+          <SmartLink to={more.to} className="footer-col__more">
             {more.label} <i className="fas fa-arrow-right" aria-hidden="true" />
-          </Link>
+          </SmartLink>
         </li>
       )}
     </ul>
   </div>
 );
 
-export const SiteFooter = () => (
+export const SiteFooter = () => {
+  const site = useSite();
+  const { services } = useServices();
+  const { footerBlurb } = usePageContent('site');
+  const { footer: f, limits } = usePageContent('navigation');
+  const toLinks = (list) => list.map((l) => ({ to: l.link, label: l.label }));
+  return (
   <footer className="site-footer">
     <div className="container">
       <div className="site-footer__grid">
         <div className="site-footer__about">
           <Brand light />
-          <p>
-            An IT company in {site.location} delivering software, networks and digital systems, plus practical tech
-            training and scholarship guidance.
-          </p>
+          <p>{fill(footerBlurb, site)}</p>
           <SocialLinks />
         </div>
 
         <FooterLinks
-          title="Services"
-          links={services.slice(0, FOOTER_SERVICES).map((s) => ({ to: `/services/${s.id}`, label: s.title }))}
-          more={{ to: '/services', label: 'View all services' }}
+          title={f.servicesTitle}
+          links={services.slice(0, limits.footerServices).map((s) => ({ to: `/services/${s.id}`, label: s.title }))}
+          more={{ to: '/services', label: f.servicesMore }}
         />
-        <FooterLinks title="Company" links={company} />
-        <FooterLinks title="Students" links={students} />
+        <FooterLinks title={f.companyTitle} links={toLinks(f.company)} />
+        <FooterLinks title={f.studentsTitle} links={toLinks(f.students)} />
 
         <div className="footer-col footer-col--contact">
-          <h4>Contact</h4>
+          <h4>{f.contactTitle}</h4>
           <ul>
             <li className="contact-line">
               <i className="fas fa-location-dot" />
@@ -96,18 +82,19 @@ export const SiteFooter = () => (
       </div>
 
       <div className="site-footer__bottom">
-        <span>© {new Date().getFullYear()} {site.name}. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} {site.name}. {f.rights}</span>
         <nav className="site-footer__legal" aria-label="Footer">
-          <Link to="/about">About</Link>
-          <Link to="/services">Services</Link>
-          <Link to="/contact">Contact</Link>
+          {f.bottomLinks.map((l) => (
+            <SmartLink key={l.link + l.label} to={l.link}>{l.label}</SmartLink>
+          ))}
           <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            Back to top <i className="fas fa-arrow-up" />
+            {f.backToTop} <i className="fas fa-arrow-up" />
           </button>
         </nav>
       </div>
     </div>
   </footer>
-);
+  );
+};
 
 export default SiteFooter;

@@ -49,6 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     SCHOLARSHIP_MANAGER = 'SCHOLARSHIP_MANAGER'
     FINANCE_MANAGER = 'FINANCE_MANAGER'
     COUNSELLOR = 'COUNSELLOR'
+    INSTRUCTOR = 'INSTRUCTOR'
     STUDENT = 'STUDENT'
 
     ROLE_CHOICES = [
@@ -56,6 +57,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         (SCHOLARSHIP_MANAGER, 'Scholarship Manager'),
         (FINANCE_MANAGER, 'Finance Manager'),
         (COUNSELLOR, 'Counsellor'),
+        (INSTRUCTOR, 'Instructor'),
         (STUDENT, 'Student'),
     ]
 
@@ -166,6 +168,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_student(self):
         """Check if user is a student."""
         return self.role == self.STUDENT
+
+    def is_instructor(self):
+        """Check if user teaches courses."""
+        return self.role == self.INSTRUCTOR
 
     @property
     def is_approved(self):

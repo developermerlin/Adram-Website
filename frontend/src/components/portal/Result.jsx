@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { openPrivateFile, parseApiErrors, privateFileUrl } from '../../services/api';
-import { site, telHref } from '../../config/site';
+import { telHref } from '../../config/site';
+import { useSite } from '../../content/useContent';
 import { formatDate, formatDateTime } from '../../utils/format';
 import { daysUntil, resultState } from '../../utils/applicationStages';
 
-const whatsapp = site.socials.find((s) => s.id === 'whatsapp')?.href;
 const openResult = (id) => openPrivateFile('results', id).catch(() => toast.error('Could not open the file.'));
 
 // datetime-local inputs work in local time; the API stores UTC.
@@ -92,6 +92,8 @@ const InterviewDetails = ({ application: a }) => {
 
 /** The scholarship result as the student sees it: amber while waiting, green when awarded, red when not. */
 export const ResultBanner = ({ application: a }) => {
+  const site = useSite();
+  const whatsapp = site.whatsappHref;
   const r = resultState(a.stage);
   if (!r) return null;
   const resultsIn = a.result_expected_on ? daysUntil(a.result_expected_on) : null;
