@@ -17,13 +17,16 @@ def notify(users, kind, title, body='', link=''):
         return
     if isinstance(users, User):
         users = [users]
+    users = [u for u in users if u is not None]
     try:
         Notification.objects.bulk_create([
             Notification(user=u, kind=kind, title=title[:200], body=(body or '')[:500], link=(link or '')[:300])
-            for u in users if u is not None
+            for u in users
         ])
     except Exception:
         logger.exception('Could not save notifications (%s)', kind)
+    from .mobile import push  # and to their phones, when they use the app
+    push([u.pk for u in users], title, body, link)
 
 
 def notify_admins(kind, title, body='', link=''):

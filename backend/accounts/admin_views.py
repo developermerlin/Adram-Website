@@ -47,6 +47,8 @@ class UserListView(generics.ListAPIView):
         params = self.request.query_params
         if params.get('role'):
             queryset = queryset.filter(role=params['role'])
+        if params.get('track') in ('training', 'scholarships'):
+            queryset = queryset.filter(**{f"in_{params['track']}": True})
         if params.get('status') in STATUS_FILTERS:
             queryset = queryset.filter(STATUS_FILTERS[params['status']])
         return queryset

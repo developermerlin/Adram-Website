@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import Brand from '../../components/ui/Brand';
 import { Spinner } from '../../components/ui/Section';
 import ShareButtons from '../../components/lms/ShareButtons';
-import { assetUrl } from '../../utils/assets';
+import CertificateView from '../../components/lms/CertificateView';
 import { formatDate } from '../../utils/format';
 import { NotFoundPage } from './StatusPages';
 import '../../styles/lms.css';
@@ -38,7 +37,7 @@ export const CertificatePage = () => {
   if (error) return <NotFoundPage />;
   if (!c) return <Spinner label="Loading certificate…" />;
 
-  const url = `${window.location.origin}/certificate/${c.code}`;
+  const url = c.verify_url || `${window.location.origin}/certificate/${c.code}`;
   const back = user?.role === 'STUDENT' ? '/student/certificates' : '/courses';
 
   if (c.revoked) {
@@ -68,30 +67,13 @@ export const CertificatePage = () => {
           <Link to={back} className="btn btn--outline"><i className="fas fa-arrow-left" /> Back</Link>
         </div>
 
-        <article className="cert" aria-label={`Certificate of completion for ${c.student_name}`}>
-          <div className="cert__brand"><Brand /></div>
-          <p className="cert__kicker">Certificate of completion</p>
-          <h1>Congratulations</h1>
-          <p className="cert__lead">This certifies that</p>
-          <p className="cert__name">{c.student_name}</p>
-          <p className="cert__lead">has successfully completed the course</p>
-          <p className="cert__course">{c.course_title}</p>
-          <p className="cert__lead cert__by">
-            taught by <strong>{c.instructor_name}</strong>{c.hours > 0 && <> · {c.hours} {c.hours === 1 ? 'hour' : 'hours'} of content</>}
-          </p>
-          <div className="cert__foot">
-            <div><strong>{formatDate(c.issued_at)}</strong>Date of completion</div>
-            <span className="cert__seal" aria-hidden="true"><i className="fas fa-award" /></span>
-            <div className="cert__sign">
-              {c.signature ? <img src={assetUrl(c.signature)} alt="" /> : <span className="cert__sign-line" />}
-              <strong>{c.signer_name || c.platform_name}</strong>
-              {c.signer_title || 'Authorised signature'}
-            </div>
-          </div>
-          <p className="cert__id">Certificate ID <strong>{c.code}</strong> · Issued by {c.platform_name}</p>
-        </article>
+        <CertificateView c={c} />
         <div className="cert-verify">
           <p><i className="fas fa-shield-halved" /> This certificate is genuine. Anyone can confirm it at <Link to={`/verify?code=${c.code}`}>{window.location.host}/verify</Link> with the ID {c.code}.</p>
+          <div className="cert-linkedin">
+            <a href={c.linkedin_url} className="btn btn--linkedin btn--sm" target="_blank" rel="noopener noreferrer"><i className="fab fa-linkedin" /> Add to LinkedIn profile</a>
+            <small className="muted">Adds it under “Licences & certifications”, linked to this page.</small>
+          </div>
           <ShareButtons url={url} text={`I earned a certificate in ${c.course_title} from ${c.platform_name}!`} />
         </div>
       </div>

@@ -215,8 +215,8 @@ class ServiceRequest(models.Model):
         (PAYMENT_REJECTED, 'Payment not confirmed: upload again'),
         (PAID, 'Paid: ADRAM is working on the application'),
     ]
-    AFRIMONEY, ORANGE_MONEY = 'afrimoney', 'orange_money'
-    METHOD_CHOICES = [(AFRIMONEY, 'Afrimoney'), (ORANGE_MONEY, 'Orange Money')]
+    AFRIMONEY, ORANGE_MONEY, CARD = 'afrimoney', 'orange_money', 'card'
+    METHOD_CHOICES = [(AFRIMONEY, 'Afrimoney'), (ORANGE_MONEY, 'Orange Money'), (CARD, 'Card')]
 
     application = models.OneToOneField(Application, on_delete=models.CASCADE, related_name='service')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=REQUESTED)
@@ -229,6 +229,7 @@ class ServiceRequest(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(max_length=20, choices=METHOD_CHOICES, blank=True)
     transaction_id = models.CharField(max_length=100, blank=True)
+    payer = models.CharField(max_length=100, blank=True, help_text='The number paid from, or the name on the card.')
     receipt = models.FileField(upload_to=receipt_upload_to, storage=private_storage, blank=True)
     receipt_name = models.CharField(max_length=200, blank=True)
     payment_submitted_at = models.DateTimeField(null=True, blank=True)
@@ -251,6 +252,13 @@ class PaymentSettings(models.Model):
     afrimoney_name = models.CharField('Afrimoney account name', max_length=100, blank=True)
     orange_money_number = models.CharField(max_length=30, blank=True)
     orange_money_name = models.CharField('Orange Money account name', max_length=100, blank=True)
+    afrimoney_steps = models.TextField(blank=True, help_text='Step-by-step for Afrimoney, one step per line (optional).')
+    orange_money_steps = models.TextField(blank=True, help_text='Step-by-step for Orange Money, one step per line (optional).')
+    # Card: no gateway yet. A card-payment link from the bank or a payment service, and/or how to pay by card
+    card_link = models.URLField('card payment link', max_length=500, blank=True,
+                                help_text='A hosted card-payment page (from your bank or payment service). Students pay there, then upload the confirmation.')
+    card_label = models.CharField(max_length=60, blank=True, default='Visa / Mastercard')
+    card_steps = models.TextField(blank=True, help_text='How to pay by card, one step per line (e.g. at the ADRAM office).')
     instructions = models.TextField(blank=True, help_text='How to pay, shown on the payment page.')
     terms = models.TextField('terms and conditions', blank=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -262,6 +270,21 @@ class PaymentSettings(models.Model):
     @classmethod
     def load(cls):
         return cls.objects.first() or cls.objects.create(terms=DEFAULT_TERMS)
+
+    def methods(self):
+        """The ways to pay that ADRAM has set up, for every payment page (courses and scholarship services)."""
+        steps = lambda text: [line.strip() for line in (text or '').splitlines() if line.strip()]  # noqa: E731
+        found = []
+        if self.orange_money_number:
+            found.append({'id': 'orange_money', 'kind': 'mobile', 'label': 'Orange Money', 'number': self.orange_money_number,
+                          'name': self.orange_money_name, 'steps': steps(self.orange_money_steps)})
+        if self.afrimoney_number:
+            found.append({'id': 'afrimoney', 'kind': 'mobile', 'label': 'Afrimoney', 'number': self.afrimoney_number,
+                          'name': self.afrimoney_name, 'steps': steps(self.afrimoney_steps)})
+        if self.card_link or self.card_steps:
+            found.append({'id': 'card', 'kind': 'card', 'label': 'Card', 'cards': self.card_label or 'Visa / Mastercard',
+                          'link': self.card_link, 'steps': steps(self.card_steps)})
+        return found
 
 
 class StaffNote(models.Model):
@@ -328,12 +351,13 @@ class ResultFile(models.Model):
 
 class TrainingEnrollment(models.Model):
     """A student signed up for a training programme. Only enrolled programmes appear in their portal."""
-    REQUESTED, ACTIVE, COMPLETED, CANCELLED = 'requested', 'active', 'completed', 'cancelled'
+    REQUESTED, ACTIVE, COMPLETED, CANCELLED, DECLINED = 'requested', 'active', 'completed', 'cancelled', 'declined'
     STATUS_CHOICES = [
         (REQUESTED, 'Enrollment requested'),
         (ACTIVE, 'Enrolled'),
         (COMPLETED, 'Completed'),
         (CANCELLED, 'Cancelled'),
+        (DECLINED, 'Not accepted'),
     ]
 
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='training_enrollments')
@@ -341,6 +365,9 @@ class TrainingEnrollment(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default=REQUESTED)
     start_date = models.DateField(null=True, blank=True)
     note = models.CharField(max_length=500, blank=True, help_text='Message from ADRAM, shown to the student (class times, what to bring…).')
+    # Who confirmed or declined the request, and when (for the admin's records)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

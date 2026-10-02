@@ -1,0 +1,52 @@
+/* My progress: streak and goal card, chart, forecast, results, skills */
+.sg-card { display: grid; gap: 14px; }
+.sg-row { display: grid; gap: 16px; }
+.sg-streak { display: flex; align-items: center; gap: 12px; }
+.sg-streak > i { display: grid; flex: none; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--surface, #f1f5f9); color: #cbd5e1; font-size: 1.5rem; }
+.sg-streak.is-on > i { background: #fff7ed; color: #f97316; }
+.sg-streak > div, .sg-goal > div { display: grid; gap: 1px; }
+.sg-streak strong { font-size: 1.25rem; }
+.sg-goal { display: flex; align-items: center; gap: 12px; }
+.sg-ring {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(#16a34a var(--pct), var(--surface, #e2e8f0) 0);
+}
+.sg-ring > span { display: grid; place-items: center; align-content: center; width: 58px; height: 58px; border-radius: 50%; background: var(--white, #fff); line-height: 1.05; }
+.sg-ring strong { font-size: 1.05rem; }
+.sg-ring small { color: var(--muted, #64748b); font-size: 0.6rem; white-space: nowrap; }
+.sg-change { justify-self: start; font-size: 0.85rem; }
+.sg-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sg-week li { display: grid; justify-items: center; gap: 4px; padding: 6px 0; border-radius: 8px; background: var(--surface, #f1f5f9); color: var(--muted, #94a3b8); font-size: 0.75rem; }
+.sg-week li i { font-size: 0.75rem; }
+.sg-week li.is-some { background: #fef9c3; color: #a16207; }
+.sg-week li.is-met { background: #dcfce7; color: #15803d; }
+.sg-goals { display: flex; flex-wrap: wrap; gap: 6px; }
+.sg-goal-pill { padding: 5px 12px; border: 1px solid var(--line, #dfe5ef); border-radius: 999px; background: var(--white, #fff); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.sg-goal-pill.is-on { border-color: #16a34a; background: #dcfce7; color: #15803d; font-weight: 600; }
+.sg-more { justify-self: start; }
+
+.pg-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 18px; margin: 18px 0; align-items: start; }
+.pg-grid--even { grid-template-columns: 1fr 1fr; }
+.pg-forecast { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.pg-forecast li { display: grid; gap: 6px; }
+.pg-forecast__head { display: flex; justify-content: space-between; gap: 12px; }
+.pg-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 10px; color: var(--muted, #64748b); font-size: 0.9rem; }
+.pg-stats strong { color: var(--text, #111827); font-size: 1.1rem; }
+.pg-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pg-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line, #eef2f7); }
+.pg-list li:last-child { border-bottom: 0; }
+.pg-list li > span:first-child { display: grid; min-width: 0; }
+.pg-skills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-skill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 0.88rem; font-weight: 600; }
+
+@media (max-width: 900px) {
+  .pg-grid, .pg-grid--even { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .viz-root .chart-card .panel__head { flex-wrap: wrap; }
+}

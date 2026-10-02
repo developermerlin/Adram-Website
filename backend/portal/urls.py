@@ -1,5 +1,7 @@
 from django.urls import path
 
+from lms.enrolment import MyEnrollmentsView
+
 from . import calls, messaging, views
 
 app_name = 'portal'
@@ -10,8 +12,9 @@ urlpatterns = [
     path('me/goals/', views.MyGoalsView.as_view(), name='goals'),
     path('me/summary/', views.MySummaryView.as_view(), name='summary'),
     path('me/actions/', views.MyActionsView.as_view(), name='actions'),
-    path('me/training/', views.MyTrainingView.as_view(), name='training'),
-    path('me/training/<int:pk>/', views.MyTrainingView.as_view(), name='training_detail'),
+    # Old addresses for enrolling on training, kept for links already out there; the training side lives in lms/enrolment.py
+    path('me/training/', MyEnrollmentsView.as_view(), name='training'),
+    path('me/training/<int:pk>/', MyEnrollmentsView.as_view(), name='training_detail'),
     path('me/saved/', views.MySavedView.as_view(), name='saved'),
     path('me/saved/<slug:slug>/', views.MySavedView.as_view(), name='saved_detail'),
     path('me/applications/', views.MyApplicationsView.as_view(), name='applications'),

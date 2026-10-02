@@ -212,3 +212,10 @@
 .lp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .lp-list li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .lp-done { color: #12805c; font-weight: 700; }
+
+/* Following an instructor */
+.ip-follow { width: 100%; justify-content: center; margin-top: 14px; }
+@media (max-width: 960px) {
+  .ip-follow { width: auto; margin-top: 0; }
+}
+.ip-video { max-width: 640px; margin: 22px 0 6px; border-radius: 12px; overflow: hidden; }

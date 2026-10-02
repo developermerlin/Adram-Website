@@ -9,6 +9,8 @@ import Avatar from '../../components/ui/Avatar';
 import { Alert, PasswordChecklist, PasswordField, TextField } from '../../components/ui/Form';
 import { isStrongPassword } from '../../utils/password';
 import LearningProfileCard from '../../components/lms/LearningProfileCard';
+import EmailPrefsCard from '../../components/account/EmailPrefsCard';
+import { DevicesCard, TwoStepCard } from '../../components/account/SecurityCards';
 
 const MAX_PHOTO_MB = 5;
 const emptyPasswords = { old_password: '', new_password: '', new_password_confirm: '' };
@@ -191,7 +193,12 @@ export const ProfilePage = () => {
         <ProfileForm />
         <PasswordForm />
       </div>
+      <div className="grid grid-2 align-start">
+        <TwoStepCard />
+        <DevicesCard />
+      </div>
       {['STUDENT', 'INSTRUCTOR'].includes(user?.role) && <LearningProfileCard />}
+      {['STUDENT', 'INSTRUCTOR'].includes(user?.role) && <EmailPrefsCard />}
     </PortalLayout>
   );
 };

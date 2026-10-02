@@ -52,8 +52,6 @@ export const usePortal = () => {
     isSaved,
     applicationFor,
     enrollmentFor,
-    enroll: (course) => run(() => portalAPI.enroll(course.slug), 'Enrollment requested: ADRAM will contact you'),
-    cancelEnrollment: (id) => run(() => portalAPI.cancelEnrollment(id), 'Enrollment request cancelled'),
     toggleSave: (s) => (isSaved(s.slug) ? run(() => portalAPI.unsave(s.slug), 'Removed from saved') : run(() => portalAPI.save(s.slug), 'Saved to your portal')),
     startApplication: (s) => run(() => portalAPI.startApplication(s.slug), 'Added to My applications'),
     saveGoals: (goals) => run(() => portalAPI.saveGoals(goals), 'Study goals saved'),

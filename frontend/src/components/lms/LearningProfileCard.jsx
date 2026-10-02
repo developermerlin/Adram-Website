@@ -107,6 +107,7 @@ export const LearningProfileCard = () => {
         <div className="lp-links">
           {LINK_FIELDS.map(([key, label]) => <TextField key={key} label={label} type="url" placeholder="https://…" {...input(key)} />)}
         </div>
+        {teacher && <TextField label="Intro video (optional)" type="url" placeholder="A YouTube or Vimeo link introducing yourself" {...input('intro_video_url')} />}
         {teacher && (
           <div className="field">
             <label htmlFor="lp-payout">How you want to be paid <span className="optional">(private)</span></label>

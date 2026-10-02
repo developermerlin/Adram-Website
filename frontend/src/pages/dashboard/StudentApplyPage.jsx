@@ -10,15 +10,12 @@ import { ReceiptButton } from '../../components/portal/ServiceStatus';
 import { ProgressSummary, ProgressTimeline, ReturnReason, ReviewBadge } from '../../components/portal/Progress';
 import { ResultBanner } from '../../components/portal/Result';
 import { resultState } from '../../utils/applicationStages';
+import HowToPay from '../../components/payments/HowToPay';
+import { kindOf, PROOF } from '../../config/payments';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx';
 
 const copy = (text) => navigator.clipboard?.writeText(text).then(() => toast.success('Copied'), () => {});
-
-const METHODS = [
-  { id: 'afrimoney', label: 'Afrimoney', numberKey: 'afrimoney_number', nameKey: 'afrimoney_name' },
-  { id: 'orange_money', label: 'Orange Money', numberKey: 'orange_money_number', nameKey: 'orange_money_name' },
-];
 
 // One checklist item with its upload.
 const DocumentUpload = ({ doc, onChanged }) => {
@@ -91,6 +88,7 @@ export const StudentApplyPage = () => {
   const [error, setError] = useState('');
   const [method, setMethod] = useState('');
   const [transactionId, setTransactionId] = useState('');
+  const [payer, setPayer] = useState('');
   const [receipt, setReceipt] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -127,6 +125,8 @@ export const StudentApplyPage = () => {
   }
 
   const pay = s.payment || {};
+  const methods = pay.methods || [];
+  const proof = PROOF[kindOf(methods, method)];
   const canPay = s.status === 'approved' || s.status === 'payment_rejected';
   const uploaded = a.documents.filter((d) => d.has_file).length;
   const acceptedCount = a.documents.filter((d) => d.review_status === 'accepted').length;
@@ -138,13 +138,13 @@ export const StudentApplyPage = () => {
     e.preventDefault();
     const missing = {};
     if (!method) missing.payment_method = 'Choose how you paid.';
-    if (!transactionId.trim()) missing.transaction_id = 'Enter the transaction ID from your confirmation SMS.';
+    if (!transactionId.trim()) missing.transaction_id = `Enter the ${proof.transaction.toLowerCase()}.`;
     if (!receipt) missing.receipt = 'Upload a photo or PDF of your receipt.';
     setErrors(missing);
     if (Object.keys(missing).length) return;
     setSubmitting(true);
     try {
-      await portalAPI.submitPayment(a.id, { paymentMethod: method, transactionId: transactionId.trim(), receipt });
+      await portalAPI.submitPayment(a.id, { paymentMethod: method, transactionId: transactionId.trim(), payer: payer.trim(), receipt });
       toast.success('Payment submitted. We’ll confirm it shortly.');
       setReceipt(null);
       await load();
@@ -219,29 +219,11 @@ export const StudentApplyPage = () => {
       {!paid && (
       <div className="apply-grid">
         <section className="card panel">
-          <h2 className="h3"><span className="apply-step">1</span> Pay by mobile money</h2>
-          <p className="muted small">Send <strong>{formatMoney(s.amount)}</strong> to one of these numbers and use <strong>{s.reference}</strong> as the reference.</p>
-          <div className="pay-methods">
-            {METHODS.map((m) => (
-              <div key={m.id} className={`pay-method pay-method--${m.id}`}>
-                <span className="pay-method__name">{m.label}</span>
-                {pay[m.numberKey] ? (
-                  <>
-                    <span className="pay-method__number">
-                      {pay[m.numberKey]}
-                      <button type="button" className="icon-btn" aria-label={`Copy ${m.label} number`} onClick={() => copy(pay[m.numberKey])}><i className="far fa-copy" /></button>
-                    </span>
-                    {pay[m.nameKey] && <small>Account name: {pay[m.nameKey]}</small>}
-                  </>
-                ) : (
-                  <small>Not available yet</small>
-                )}
-              </div>
-            ))}
-          </div>
-          {pay.instructions && <div className="pay-instructions">{pay.instructions}</div>}
-          {!pay.afrimoney_number && !pay.orange_money_number && (
-            <Alert type="info">ADRAM hasn’t added its payment numbers yet. Please <Link to="/contact?subject=Application%20payment">contact us</Link> before paying.</Alert>
+          <h2 className="h3"><span className="apply-step">1</span> Pay {formatMoney(s.amount)}</h2>
+          {methods.length ? (
+            <HowToPay methods={methods} amount={formatMoney(s.amount)} reference={s.reference} selected={method} onSelect={setMethod} note={pay.instructions} />
+          ) : (
+            <Alert type="info">ADRAM hasn’t added its payment details yet. Please <Link to="/contact?subject=Application%20payment">contact us</Link> before paying.</Alert>
           )}
         </section>
 
@@ -249,27 +231,21 @@ export const StudentApplyPage = () => {
           <h2 className="h3"><span className="apply-step">2</span> Upload your payment receipt</h2>
           {canPay ? (
             <form className="form-grid" onSubmit={submit} noValidate>
-              <fieldset className="field">
-                <legend className="field__label">How did you pay?</legend>
-                <div className="method-choice">
-                  {METHODS.map((m) => (
-                    <label key={m.id} className={`method-choice__option${method === m.id ? ' is-active' : ''}`}>
-                      <input type="radio" name="payment_method" value={m.id} checked={method === m.id} onChange={() => setMethod(m.id)} />
-                      {m.label}
-                    </label>
-                  ))}
-                </div>
-                {errors.payment_method && <p className="field-error">{errors.payment_method}</p>}
-              </fieldset>
+              {!method && <p className="muted small">Choose how you’re paying in step 1 first.</p>}
+              {errors.payment_method && <p className="field-error">{errors.payment_method}</p>}
               <div className="field">
-                <label htmlFor="transaction_id">Transaction ID</label>
-                <input id="transaction_id" className="input" maxLength={100} value={transactionId} aria-invalid={Boolean(errors.transaction_id)} onChange={(e) => setTransactionId(e.target.value)} placeholder="From your confirmation SMS" />
+                <label htmlFor="transaction_id">{proof.transaction}</label>
+                <input id="transaction_id" className="input" maxLength={100} value={transactionId} aria-invalid={Boolean(errors.transaction_id)} onChange={(e) => setTransactionId(e.target.value)} placeholder={proof.transactionHint} />
                 {errors.transaction_id && <p className="field-error">{errors.transaction_id}</p>}
+              </div>
+              <div className="field">
+                <label htmlFor="payer">{proof.payer} <span className="optional">(helps us find it)</span></label>
+                <input id="payer" className="input" maxLength={100} value={payer} onChange={(e) => setPayer(e.target.value)} placeholder={proof.payerHint} />
               </div>
               <div className="field">
                 <label htmlFor="receipt">Receipt</label>
                 <input id="receipt" className="input" type="file" accept={ACCEPT} aria-invalid={Boolean(errors.receipt)} onChange={(e) => setReceipt(e.target.files[0] || null)} />
-                {errors.receipt ? <p className="field-error">{errors.receipt}</p> : <p className="hint">A screenshot of the confirmation SMS, a photo or a PDF (up to 10 MB).</p>}
+                {errors.receipt ? <p className="field-error">{errors.receipt}</p> : <p className="hint">{proof.receipt} (up to 10 MB).</p>}
               </div>
               {errors.form && <Alert>{errors.form}</Alert>}
               <button type="submit" className="btn btn--primary" disabled={submitting}>

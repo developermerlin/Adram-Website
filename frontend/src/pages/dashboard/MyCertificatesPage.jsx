@@ -54,6 +54,7 @@ export const MyCertificatesPage = () => {
               <div className="mc-card__actions">
                 <Link to={`/certificate/${c.code}`} className="btn btn--primary btn--sm"><i className="fas fa-eye" /> View</Link>
                 <Link to={`/certificate/${c.code}?print=1`} className="btn btn--outline btn--sm"><i className="fas fa-download" /> Download</Link>
+                <a href={c.linkedin_url} className="btn btn--outline btn--sm" target="_blank" rel="noopener noreferrer"><i className="fab fa-linkedin" /> Add to LinkedIn</a>
                 <button type="button" className="btn btn--text btn--sm" onClick={() => setSharing(sharing === c.code ? null : c.code)} aria-expanded={sharing === c.code}>
                   <i className="fas fa-share-nodes" /> Share
                 </button>

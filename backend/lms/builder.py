@@ -8,7 +8,8 @@ Building a course's curriculum: administrators for every course, instructors for
   PATCH  /lms/manage/lessons/<id>/    DELETE      JSON, or multipart when uploading a video or document
   POST   /lms/manage/lessons/<id>/resources/      multipart: title, file
   DELETE /lms/manage/resources/<id>/
-  PUT    /lms/manage/lessons/<id>/quiz/           quiz settings and {questions: [{kind, text, explanation, points, choices|accepted_answers}]}
+  PUT    /lms/manage/lessons/<id>/quiz/           quiz settings, {questions: [{kind, text, explanation, points, difficulty,
+                                                    choices|accepted_answers|data}]} and optional {rules: [{bank, category, difficulty, count}]}
   POST   /lms/manage/courses/<slug>/reorder/      {sections: [ids], lessons: {section_id: [ids]}}  (drag and drop)
   GET    /lms/manage/courses/<slug>/students/     who is learning, how far they are, quiz scores and time spent
   GET    /lms/manage/courses/<slug>/submissions/?status=   assignment hand-ins to grade
@@ -30,9 +31,12 @@ from portal.models import TrainingEnrollment
 
 from . import access
 from .media import MAX_RESOURCE_MB, VIDEO_EXTENSIONS, embed_url, looks_like_video, max_video_bytes, sign
-from .models import Certificate, Choice, Lesson, Progress, Question, QuizAttempt, Resource, Section, Submission
+from .models import Certificate, Choice, Lesson, Progress, Question, QuestionCategory, QuizAttempt, QuizRule, Resource, Section, Submission
 from .notify import notify
-from .views import BLOCKED_EXTENSIONS, submission_data
+from . import assignments
+from .question_bank import banks_for
+from .questions import clean_question, for_author
+from .views import BLOCKED_EXTENSIONS, quiz_ready, submission_data
 
 DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.odp', '.txt', '.rtf', '.epub'}
 
@@ -70,17 +74,24 @@ def lesson_admin_data(lesson, user_id):
         'show_answers': lesson.show_answers,
         'max_points': lesson.max_points,
         'allow_resubmit': lesson.allow_resubmit,
+        'due_at': lesson.due_at,
+        'due_days': lesson.due_days,
+        'late_policy': lesson.late_policy,
+        'late_penalty_percent': lesson.late_penalty_percent,
+        'max_files': lesson.max_files,
+        'rubric': lesson.rubric or [],
         'resources': [
             {'id': r.id, 'title': r.title, 'filename': r.filename, 'size': r.size,
              'url': f'/api/v1/lms/media/resource/{r.id}/?t={sign("resource", r.id, user_id)}'}
             for r in lesson.resources.all()
         ],
-        'questions': [
-            {'id': q.id, 'kind': q.kind, 'text': q.text, 'explanation': q.explanation, 'points': q.points,
-             'accepted_answers': q.accepted_answers,
-             'choices': [{'id': c.id, 'text': c.text, 'is_correct': c.is_correct} for c in q.choices.all()]}
-            for q in lesson.questions.all()
-        ],
+        'questions': [for_author(q) for q in lesson.questions.all()],
+        'rules': [
+            {'id': r.id, 'bank': r.bank_id, 'bank_title': r.bank.title, 'category': r.category_id,
+             'category_name': r.category.name if r.category_id else '', 'difficulty': r.difficulty, 'count': r.count,
+             'available': r.pool().count()}
+            for r in lesson.quiz_rules.select_related('bank', 'category')
+        ] if lesson.kind == Lesson.QUIZ else [],
     }
 
 
@@ -122,6 +133,18 @@ class LessonInput(serializers.Serializer):
     show_answers = serializers.BooleanField(required=False)
     max_points = serializers.IntegerField(min_value=1, max_value=1000, required=False)
     allow_resubmit = serializers.BooleanField(required=False)
+    due_at = serializers.DateTimeField(required=False, allow_null=True)
+    due_days = serializers.IntegerField(min_value=0, max_value=365, required=False)
+    late_policy = serializers.ChoiceField(choices=[k for k, _ in Lesson.LATE_POLICIES], required=False)
+    late_penalty_percent = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    max_files = serializers.IntegerField(min_value=1, max_value=assignments.MAX_FILES, required=False)
+    rubric = serializers.JSONField(required=False)
+
+    def validate_rubric(self, value):
+        try:
+            return assignments.clean_rubric(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from None
 
     def validate_video_file(self, upload):
         extension = os.path.splitext(upload.name)[1].lower()
@@ -143,7 +166,7 @@ class LessonInput(serializers.Serializer):
 
 SIMPLE_FIELDS = ('title', 'kind', 'summary', 'body', 'duration_seconds', 'is_preview', 'is_published', 'is_required', 'pass_mark',
                  'time_limit_minutes', 'max_attempts', 'questions_per_attempt', 'shuffle_questions', 'shuffle_choices', 'show_answers',
-                 'max_points', 'allow_resubmit')
+                 'max_points', 'allow_resubmit', 'due_at', 'due_days', 'late_policy', 'late_penalty_percent', 'max_files', 'rubric')
 
 
 def apply_lesson(lesson, data):
@@ -173,6 +196,8 @@ def apply_lesson(lesson, data):
         lesson.document_file = data['document_file']
         lesson.document_name = os.path.basename(data['document_file'].name)[:200]
 
+    if lesson.rubric:  # with a rubric, the grade is out of the criteria's total
+        lesson.max_points = min(1000, sum(c['points'] for c in lesson.rubric))
     if lesson.video_source == Lesson.EMBED and not embed_url(lesson.video_url):
         errors['video_url'] = 'Paste a YouTube or Vimeo link, for example https://www.youtube.com/watch?v=…'
     if lesson.video_source == Lesson.UPLOAD and not lesson.video_file:
@@ -190,7 +215,7 @@ def publish_problem(lesson):
         return 'Upload the document before publishing this lesson.'
     if lesson.kind == Lesson.ASSIGNMENT and not lesson.body.strip():
         return 'Write the assignment instructions before publishing it.'
-    if lesson.kind == Lesson.QUIZ and not lesson.questions.exists():
+    if lesson.kind == Lesson.QUIZ and not quiz_ready(lesson):
         return 'Add at least one question before publishing this quiz.'
     return None
 
@@ -348,43 +373,32 @@ class ResourceDetailView(Manage):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-def clean_question(number, item):
-    """(fields, choices) for one question, or raises ValueError with the problem."""
-    item = item if isinstance(item, dict) else {}
-    kind = item.get('kind') or Question.SINGLE
-    if kind not in dict(Question.KINDS):
-        raise ValueError(f'Question {number} has an unknown type.')
-    text = str(item.get('text', '')).strip()
-    if not text:
-        raise ValueError(f'Question {number} needs some text.')
-    try:
-        points = max(1, min(int(item.get('points') or 1), 100))
-    except (TypeError, ValueError):
-        points = 1
-    fields = {'kind': kind, 'text': text[:500], 'explanation': str(item.get('explanation', '')).strip()[:500], 'points': points, 'accepted_answers': []}
-    if kind == Question.SHORT:
-        answers = [str(a).strip()[:200] for a in item.get('accepted_answers') or [] if str(a).strip()]
-        if not answers:
-            raise ValueError(f'Question {number} needs at least one accepted answer.')
-        fields['accepted_answers'] = answers[:20]
-        return fields, []
-    if kind == Question.TRUE_FALSE:
-        choices = [c for c in item.get('choices', []) if isinstance(c, dict)]
-        truth = next((str(c.get('text', '')).strip().lower() == 'true' for c in choices if c.get('is_correct')), None)
-        if truth is None and 'answer' in item:
-            truth = bool(item['answer'])
-        if truth is None:
-            raise ValueError(f'Question {number}: say whether the statement is true or false.')
-        return fields, [{'text': 'True', 'is_correct': truth}, {'text': 'False', 'is_correct': not truth}]
-    choices = [c for c in item.get('choices', []) if isinstance(c, dict) and str(c.get('text', '')).strip()]
-    if len(choices) < 2 or len(choices) > 8:
-        raise ValueError(f'Question {number} needs between 2 and 8 answers.')
-    right = sum(bool(c.get('is_correct')) for c in choices)
-    if kind == Question.SINGLE and right != 1:
-        raise ValueError(f'Question {number} needs exactly one correct answer.')
-    if kind == Question.MULTIPLE and right < 1:
-        raise ValueError(f'Question {number} needs at least one correct answer.')
-    return fields, choices
+def clean_rules(user, rules):
+    """Random draws from the user's question banks: [{bank, category, difficulty, count}]."""
+    if not isinstance(rules, list) or len(rules) > 20:
+        raise ValueError('Send a list of up to 20 rules.')
+    banks = {b.id: b for b in banks_for(user)}
+    out = []
+    for number, rule in enumerate(rules, start=1):
+        rule = rule if isinstance(rule, dict) else {}
+        try:
+            bank = banks[int(rule.get('bank'))]
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f'Rule {number}: choose one of your question banks.') from None
+        category = None
+        if rule.get('category'):
+            category = QuestionCategory.objects.filter(bank=bank, pk=rule['category']).first()
+            if not category:
+                raise ValueError(f'Rule {number}: that category is not in {bank.title}.')
+        difficulty = rule.get('difficulty') or ''
+        if difficulty and difficulty not in dict(Question.DIFFICULTIES):
+            raise ValueError(f'Rule {number}: difficulty must be easy, medium or hard.')
+        try:
+            count = max(1, min(int(rule.get('count') or 1), 50))
+        except (TypeError, ValueError):
+            count = 1
+        out.append({'bank': bank, 'category': category, 'difficulty': difficulty, 'count': count})
+    return out
 
 
 QUIZ_SETTINGS = {'pass_mark': (1, 100), 'time_limit_minutes': (0, 600), 'max_attempts': (0, 100), 'questions_per_attempt': (0, 100)}
@@ -405,6 +419,12 @@ class QuizView(Manage):
                 clean.append(clean_question(number, item))
             except ValueError as exc:
                 return Response({'questions': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        rules = None
+        if request.data.get('rules') is not None:
+            try:
+                rules = clean_rules(request.user, request.data.get('rules'))
+            except ValueError as exc:
+                return Response({'rules': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         changed = []
         for field, (low, high) in QUIZ_SETTINGS.items():
@@ -428,9 +448,12 @@ class QuizView(Manage):
                     Choice(question=question, text=str(c['text']).strip()[:300], is_correct=bool(c.get('is_correct')), sort_order=i)
                     for i, c in enumerate(choices)
                 )
+            if rules is not None:
+                lesson.quiz_rules.all().delete()
+                QuizRule.objects.bulk_create(QuizRule(lesson=lesson, sort_order=i, **r) for i, r in enumerate(rules))
             # Questions changed: attempts in progress would point at questions that no longer exist
             QuizAttempt.objects.filter(lesson=lesson, status=QuizAttempt.IN_PROGRESS).delete()
-            if not clean and lesson.is_published:  # a published quiz must keep its questions
+            if lesson.is_published and not quiz_ready(lesson):  # a published quiz must keep its questions
                 lesson.is_published = False
                 lesson.save(update_fields=['is_published', 'updated_at'])
         return Response(lesson_admin_data(Lesson.objects.get(pk=lesson.pk), request.user.id))
@@ -494,14 +517,16 @@ class StudentsView(Manage):
 class CourseSubmissionsView(Manage):
     def get(self, request, slug):
         course = course_for(request, slug)
-        subs = Submission.objects.filter(lesson__section__course=course).select_related('lesson', 'enrollment__student')
+        subs = Submission.objects.filter(lesson__section__course=course).select_related('lesson', 'enrollment__student').prefetch_related('files')
         wanted = request.query_params.get('status')
         if wanted in dict(Submission.STATUSES):
             subs = subs.filter(status=wanted)
         counts = dict(Submission.objects.filter(lesson__section__course=course).values_list('status').annotate(n=Count('id')))
         return Response({
             'counts': {s: counts.get(s, 0) for s, _ in Submission.STATUSES},
-            'submissions': [{**submission_data(s, request.user.id), 'lesson': {'id': s.lesson_id, 'title': s.lesson.title},
+            'submissions': [{**submission_data(s, request.user.id),
+                             'lesson': {'id': s.lesson_id, 'title': s.lesson.title, 'rubric': s.lesson.rubric or [],
+                                        'due_at': assignments.due_for(s.lesson, s.enrollment)},
                              'student': {'id': s.enrollment.student_id, 'name': s.enrollment.student.get_full_name() or s.enrollment.student.email}}
                             for s in subs[:300]],
         })
@@ -514,7 +539,14 @@ class GradeSubmissionView(Manage):
         decision = request.data.get('status')
         if decision not in (Submission.APPROVED, Submission.REJECTED):
             return Response({'status': 'Choose approved or rejected.'}, status=status.HTTP_400_BAD_REQUEST)
+        scores = []
         grade = request.data.get('grade')
+        if sub.lesson.rubric and request.data.get('rubric_scores') is not None:
+            try:
+                scores = assignments.clean_scores(sub.lesson, request.data.get('rubric_scores'))
+            except ValueError as exc:
+                return Response({'rubric_scores': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            grade = sum(scores)
         if grade not in (None, ''):
             try:
                 grade = int(grade)
@@ -524,7 +556,8 @@ class GradeSubmissionView(Manage):
                 return Response({'grade': f'The grade must be between 0 and {sub.lesson.max_points}.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             grade = None
-        sub.status, sub.grade = decision, grade
+        sub.status, sub.raw_grade, sub.rubric_scores = decision, grade, scores
+        sub.grade = assignments.after_penalty(grade, sub.penalty_percent)  # late work loses its penalty
         sub.feedback = str(request.data.get('feedback', '')).strip()[:5000]
         sub.graded_by, sub.graded_at = request.user, timezone.now()
         sub.save()
@@ -533,7 +566,7 @@ class GradeSubmissionView(Manage):
             access.finish_if_done(sub.enrollment)
         else:
             Progress.objects.filter(enrollment=sub.enrollment, lesson=sub.lesson).update(completed_at=None)
-        mark = f' ({grade}/{sub.lesson.max_points})' if grade is not None else ''
+        mark = f' ({sub.grade}/{sub.lesson.max_points})' if sub.grade is not None else ''
         notify(sub.enrollment.student, 'assignment_graded',
                f'{sub.lesson.title}: {"approved" if decision == Submission.APPROVED else "needs more work"}{mark}',
                sub.feedback[:300], f'/learn/{course.slug}/lesson/{sub.lesson_id}')

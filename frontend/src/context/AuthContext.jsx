@@ -69,10 +69,12 @@ export const AuthProvider = ({ children }) => {
     [storeUser],
   );
 
-  // Social sign-in: the one-time code from the API is swapped for the usual token pair.
+  // Social sign-in: the one-time code from the API is swapped for the usual token pair. Accounts with two-step
+  // sign-in on get a challenge instead ({ mfa }), finished with verifyOtp and the authenticator code.
   const loginWithOAuthCode = useCallback(
     async (code, isNew) => {
       const { data } = await authAPI.oauthExchange(code);
+      if (data.otp_required) return { mfa: data };
       tokenStorage.save(data, true);
       storeUser(data.user);
       toast.success(isNew ? `Welcome to ADRAM, ${data.user.first_name}!` : `Welcome back, ${data.user.first_name}!`);
@@ -108,6 +110,20 @@ export const AuthProvider = ({ children }) => {
   const uploadProfilePicture = useCallback((file) => saveProfile(authAPI.uploadProfilePicture(file), 'Profile photo updated.'), [saveProfile]);
   const removeProfilePicture = useCallback(() => saveProfile(authAPI.removeProfilePicture(), 'Profile photo removed.'), [saveProfile]);
 
+  // Re-reads the account (e.g. the server added the training side when they enrolled on a course).
+  const refreshUser = useCallback(async () => {
+    const { data } = await authAPI.getProfile();
+    storeUser(data);
+    return data;
+  }, [storeUser]);
+
+  // A student adds the training or scholarships side of the portal to their account.
+  const joinTrack = useCallback(async (track) => {
+    const { data } = await authAPI.joinTrack(track);
+    storeUser(data);
+    return data;
+  }, [storeUser]);
+
   const changePassword = useCallback(async (payload) => {
     await authAPI.changePassword(payload);
     toast.success('Password changed.');
@@ -127,8 +143,10 @@ export const AuthProvider = ({ children }) => {
       uploadProfilePicture,
       removeProfilePicture,
       changePassword,
+      refreshUser,
+      joinTrack,
     }),
-    [user, initializing, login, loginWithOAuthCode, verifyOtp, register, logout, updateProfile, uploadProfilePicture, removeProfilePicture, changePassword],
+    [user, initializing, login, loginWithOAuthCode, verifyOtp, register, logout, updateProfile, uploadProfilePicture, removeProfilePicture, changePassword, refreshUser, joinTrack],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

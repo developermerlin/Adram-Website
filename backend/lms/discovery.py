@@ -2,7 +2,8 @@
 Finding courses, and the pages about people.
 
   GET  /lms/catalog/?q=&category=&subcategory=&level=&language=&price=free|paid|discounted&rating=4&duration=short|medium|long
-                    &instructor=<id>&sort=relevance|popular|newest|rating|price_low|price_high&page=&page_size=
+                    &instructor=<id>&sort=relevance|popular|trending|newest|rating|price_low|price_high&page=&page_size=
+                    (a search that finds nothing is retried with spelling corrected: `showing_for` / `searched_for`)
   GET  /lms/catalog/facets/                   what the filters can offer, with counts
   GET  /lms/catalog/home/                     rows for the Training page: popular, new, top rated, free, on sale, recommended
   GET  /lms/courses/<slug>/related/           similar courses
@@ -30,6 +31,8 @@ from portal.models import TrainingEnrollment
 from . import access, recommend
 from .briefs import course_brief, photo_url, public_name
 from .commerce import order_data
+from .followers import follow_data
+from .media import embed_url
 from .models import (
     CartItem, Certificate, CourseViewDay, Notification, Order, Profile, Progress, QuizAttempt, RecentlyViewed, Review, Wishlist,
 )
@@ -83,7 +86,7 @@ def filter_courses(courses, stats, params):
     elif price == 'paid':
         courses = [c for c in courses if not c.is_free]
     elif price == 'discounted':
-        courses = [c for c in courses if c.discount_price is not None and c.price and c.discount_price < c.price]
+        courses = [c for c in courses if c.on_sale]
     try:
         rating = float(params.get('rating') or 0)
     except ValueError:
@@ -101,6 +104,10 @@ def filter_courses(courses, stats, params):
 
 
 def sort_courses(courses, stats, sort, words):
+    if sort == 'trending':
+        from .search import trending_scores
+        scores = trending_scores()
+        return sorted(courses, key=lambda c: (scores.get(c.id, 0), stats[c.id]['student_count']), reverse=True)
     if sort == 'newest':
         return sorted(courses, key=lambda c: c.published_at or c.created_at, reverse=True)
     if sort == 'rating':
@@ -121,6 +128,18 @@ class CatalogView(APIView):
         courses = published()
         stats = stats_for(courses)
         found, words = filter_courses(courses, stats, request.query_params)
+        searched_for = showing_for = None
+        if words and not found and request.query_params.get('exact') != '1':
+            # Nothing matched: try again with the spelling corrected ("javscript" -> "javascript")
+            from .search import correct
+            fixed = correct(words, courses)
+            if fixed:
+                retry, fixed_words = filter_courses(courses, stats, {**request.query_params.dict(), 'q': fixed})
+                if retry:
+                    found, words, searched_for, showing_for = retry, fixed_words, request.query_params.get('q'), fixed
+        if request.query_params.get('q') and request.query_params.get('page', '1') in ('', '1'):
+            from .search import record
+            record(request, showing_for or request.query_params['q'], len(found))  # the corrected words, if corrected
         found = sort_courses(found, stats, request.query_params.get('sort') or ('relevance' if words else 'popular'), words)
         try:
             size = max(1, min(int(request.query_params.get('page_size', 24)), 60))
@@ -129,7 +148,8 @@ class CatalogView(APIView):
             size, page = 24, 1
         pages = max(1, math.ceil(len(found) / size))
         chunk = found[(page - 1) * size:page * size]
-        return Response({'count': len(found), 'page': page, 'pages': pages, 'results': [course_brief(c, stats[c.id]) for c in chunk]})
+        return Response({'count': len(found), 'page': page, 'pages': pages, 'results': [course_brief(c, stats[c.id]) for c in chunk],
+                         'searched_for': searched_for, 'showing_for': showing_for})
 
 
 class FacetsView(APIView):
@@ -161,7 +181,7 @@ class FacetsView(APIView):
             'languages': [{'value': k, 'count': v} for k, v in sorted(count_by(lambda c: c.language).items())],
             'instructors': sorted(teachers.values(), key=lambda r: r['name']),
             'price': {'free': sum(1 for c in courses if c.is_free), 'paid': sum(1 for c in courses if not c.is_free),
-                      'discounted': sum(1 for c in courses if c.discount_price is not None and c.price and c.discount_price < c.price)},
+                      'discounted': sum(1 for c in courses if c.on_sale)},
             'durations': {k: sum(1 for c in courses if lo <= stats[c.id]['total_seconds'] < hi) for k, (lo, hi) in DURATIONS.items()},
             'total': len(courses),
         })
@@ -175,13 +195,16 @@ class HomeRowsView(APIView):
         stats = stats_for(courses)
         brief = lambda rows: [course_brief(c, stats[c.id]) for c in rows]  # noqa: E731
         by = lambda key, rows=courses: sorted(rows, key=key, reverse=True)[:8]  # noqa: E731
+        from .search import trending_ids, trending_scores
+        hot, scores = trending_ids(), trending_scores()
         rows = {
+            'trending': brief(sorted([c for c in courses if c.id in hot], key=lambda c: -scores.get(c.id, 0))),
             'popular': brief(by(lambda c: (stats[c.id]['student_count'], stats[c.id]['rating_count']))),
             'newest': brief(by(lambda c: c.published_at or c.created_at)),
             'top_rated': brief(by(lambda c: (stats[c.id]['rating_average'], stats[c.id]['rating_count']),
                                   [c for c in courses if stats[c.id]['rating_count']])),
             'free': brief([c for c in courses if c.is_free][:8]),
-            'discounted': brief([c for c in courses if c.discount_price is not None and c.price and c.discount_price < c.price][:8]),
+            'discounted': brief([c for c in courses if c.on_sale][:8]),
             'recommended': brief(recommend.get_recommender().recommend(request.user, courses, stats, 8)) if request.user.is_authenticated else [],
         }
         return Response(rows)
@@ -232,6 +255,8 @@ class InstructorProfileView(APIView):
         return Response({
             'id': user.id, 'name': user.get_full_name(), 'photo': photo_url(user), 'headline': profile.headline, 'bio': profile.bio,
             'expertise': profile.expertise, 'links': profile_links(profile), 'country': user.country or '',
+            'intro_video': embed_url(profile.intro_video_url) if profile.intro_video_url else None,
+            **{k: v for k, v in follow_data(user, request.user).items() if k != 'id'},
             'totals': {'courses': len(courses), 'students': TrainingEnrollment.objects.filter(course__in=courses, status__in=LEARNING).values('student').distinct().count(),
                        'reviews': sum(s['rating_count'] for s in rated),
                        'rating': round(sum(s['rating_average'] * s['rating_count'] for s in rated) / sum(s['rating_count'] for s in rated), 1) if rated else 0},
@@ -310,7 +335,13 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['headline', 'bio', 'expertise', 'interests', 'website', 'linkedin', 'twitter', 'youtube', 'github', 'facebook', 'payout_details']
+        fields = ['headline', 'bio', 'expertise', 'interests', 'website', 'linkedin', 'twitter', 'youtube', 'github', 'facebook',
+                  'intro_video_url', 'payout_details']
+
+    def validate_intro_video_url(self, value):
+        if value and not embed_url(value):
+            raise serializers.ValidationError('Paste a YouTube or Vimeo link.')
+        return value
 
 
 class MyProfileView(APIView):

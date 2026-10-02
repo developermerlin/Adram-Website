@@ -174,6 +174,9 @@ class Course(CatalogItem):
                                    related_name='taught_courses', help_text='The instructor account that owns this course.')
     discount_price = models.DecimalField('sale price (NLe)', max_digits=12, decimal_places=2, null=True, blank=True,
                                          help_text='Optional reduced price; used instead of the price while it is lower.')
+    # A timed sale: the sale price only applies between these times (empty = from now / with no end)
+    sale_starts_at = models.DateTimeField(null=True, blank=True)
+    sale_ends_at = models.DateTimeField(null=True, blank=True)
     currency = models.CharField(max_length=8, default='NLe')
     # ---- how the course card looks (set by administrators)
     HIGHLIGHTS = [('', 'None'), ('bestseller', 'Bestseller'), ('highest_rated', 'Highest rated'), ('hot_new', 'Hot & new'), ('new', 'New')]
@@ -181,6 +184,14 @@ class Course(CatalogItem):
     highlight = models.CharField(max_length=20, choices=HIGHLIGHTS, blank=True, default='', help_text='A label on the card, e.g. Bestseller.')
     format_label = models.CharField(max_length=30, default='Course', blank=True, help_text='The type shown on the card: Course, Bootcamp, Workshop…')
     faqs = models.JSONField(default=list, blank=True, help_text='[{question, answer}] shown on the course page.')
+    # ---- more of the course page (Udemy-style), set by administrators
+    caption_languages = models.JSONField(default=list, blank=True, help_text='Subtitle languages shown under the title, e.g. “French [Auto]”.')
+    includes = models.JSONField(default=list, blank=True, help_text='Extra lines for “This course includes”, e.g. “Access on mobile and TV”.')
+    premium_note = models.CharField(max_length=300, blank=True, help_text='Text in the Premium bar under the title (Premium courses only).')
+    feature = models.JSONField(default=dict, blank=True, help_text='A highlighted box on the course page: {title, text, image, link_label, link_url}.')
+    # ---- what enrolled students may download (lesson documents, resources, reading notes, the whole course as a ZIP)
+    allow_downloads = models.BooleanField(default=True, help_text='Enrolled students can download the lesson materials.')
+    allow_video_downloads = models.BooleanField(default=False, help_text='Also let them download uploaded lesson videos (large files).')
     status = models.CharField(max_length=20, choices=STATUSES, default=DRAFT, db_index=True)
     review_note = models.TextField(blank=True, help_text='Feedback from the reviewer to the instructor.')
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -199,13 +210,39 @@ class Course(CatalogItem):
             self.status = self.APPROVED if self.instructor_id else self.DRAFT
         super().save(*args, **kwargs)
 
+    def current_deal(self, now=None):
+        """
+        The best price on offer right now, before coupons: {price, ends_at, label}, or None at full price.
+        Either the course's own sale price (inside its sale window) or a live flash sale, whichever is lower.
+        """
+        from decimal import ROUND_HALF_UP, Decimal
+
+        from django.utils import timezone
+
+        from .pricing import live_flash_sales
+        now = now or timezone.now()
+        price = self.price or 0
+        if price <= 0:
+            return None
+        deals = []
+        in_window = (self.sale_starts_at is None or self.sale_starts_at <= now) and (self.sale_ends_at is None or now < self.sale_ends_at)
+        if self.discount_price is not None and 0 <= self.discount_price < price and in_window:
+            deals.append({'price': self.discount_price, 'ends_at': self.sale_ends_at, 'label': 'Sale'})
+        for sale in live_flash_sales(now):
+            if sale['course_ids'] is None or self.pk in sale['course_ids']:
+                off = (Decimal(price) * (100 - sale['percent']) / 100).quantize(Decimal('0.01'), ROUND_HALF_UP)
+                deals.append({'price': off, 'ends_at': sale['ends_at'], 'label': sale['name'], 'percent': sale['percent']})
+        return min(deals, key=lambda d: d['price']) if deals else None
+
     @property
     def sale_price(self):
-        """What a student pays today (before coupons): the sale price while it is lower than the price."""
-        price = self.price or 0
-        if self.discount_price is not None and 0 <= self.discount_price < price:
-            return self.discount_price
-        return price
+        """What a student pays today (before coupons): the best current deal, else the price."""
+        deal = self.current_deal()
+        return deal['price'] if deal else (self.price or 0)
+
+    @property
+    def on_sale(self):
+        return self.current_deal() is not None
 
     @property
     def is_free(self):
@@ -217,3 +254,35 @@ class Course(CatalogItem):
 
     def __str__(self):
         return self.title
+
+
+class FlashSale(models.Model):
+    """
+    A time-limited sale across courses, e.g. "Easter sale: 30% off from Friday 9am to Monday midnight". With no
+    courses chosen it covers every paid course. A course always gets its best deal (this or its own sale price).
+    """
+    name = models.CharField(max_length=80, help_text='Shown to students, e.g. "Easter sale".')
+    percent_off = models.PositiveSmallIntegerField(help_text='1 to 90.')
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    courses = models.ManyToManyField(Course, blank=True, related_name='flash_sales', help_text='Leave empty for every paid course.')
+    is_enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-starts_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.percent_off}% off)'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from .pricing import forget_flash_sales
+        forget_flash_sales()
+
+    def delete(self, *args, **kwargs):
+        result = super().delete(*args, **kwargs)
+        from .pricing import forget_flash_sales
+        forget_flash_sales()
+        return result

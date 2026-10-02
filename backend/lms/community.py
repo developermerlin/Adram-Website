@@ -8,11 +8,16 @@ Announcements (enrolled students and the course's instructor/administrators read
   GET  /lms/courses/<slug>/announcements/
   POST /lms/manage/courses/<slug>/announcements/   {title, body, notify}   DELETE /lms/manage/announcements/<id>/
 Q&A (enrolled students, the course's instructor and administrators):
-  GET/POST /lms/courses/<slug>/qa/            list (?q=&lesson=&filter=mine|unanswered) / ask {title, body, lesson}
+  GET/POST /lms/courses/<slug>/qa/            list (?q=&lesson=&filter=mine|unanswered|moments&sort=recent|votes)
+                                              / ask {title, body, lesson, position (seconds into the lesson video)}
   GET/DELETE /lms/qa/<id>/                    a question with its answers / remove it (author or course staff)
+  POST/DELETE /lms/qa/<id>/vote/              "I have this question too" (an upvote; not on your own question)
+  POST /lms/qa/<id>/pin/                      {pinned: true|false} course staff pin a question to the top
   POST /lms/qa/<id>/replies/  DELETE /lms/qa/replies/<id>/
   POST/DELETE /lms/qa/replies/<id>/like/      mark an answer useful
   POST /lms/qa/replies/<id>/mark/             {answer: true|false} the instructor marks the answer
+  POST /lms/qa/replies/<id>/accept/           {accepted: true|false} the student who asked accepts the answer that solved it
+Pinned questions always come first.
 """
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
@@ -27,7 +32,7 @@ from portal.models import TrainingEnrollment
 
 from . import access, emails
 from .briefs import course_brief, public_name
-from .models import Announcement, Lesson, Reply, ReplyLike, Thread, Wishlist
+from .models import Announcement, Lesson, Reply, ReplyLike, Thread, ThreadVote, Wishlist
 from .notify import notify, notify_admins
 from .stats import stats_for
 
@@ -132,13 +137,19 @@ class AnnouncementDetailView(APIView):
 # ---------------------------------------------------------------- Q&A
 
 def thread_row(thread, user):
+    def value(name, compute):
+        return getattr(thread, name) if hasattr(thread, name) else compute()
     return {
         'id': thread.id, 'title': thread.title, 'body': thread.body,
         'author': public_name(thread.author), 'mine': thread.author_id == user.id,
         'course': {'slug': thread.course.slug, 'title': thread.course.title},
         'lesson': {'id': thread.lesson_id, 'title': thread.lesson.title} if thread.lesson_id else None,
-        'reply_count': getattr(thread, 'reply_count', None) if hasattr(thread, 'reply_count') else thread.replies.count(),
-        'answered': getattr(thread, 'answered', None) if hasattr(thread, 'answered') else thread.replies.filter(Q(is_staff=True) | Q(is_instructor_answer=True)).exists(),
+        'position_seconds': thread.position_seconds, 'is_pinned': thread.is_pinned,
+        'reply_count': value('reply_count', thread.replies.count),
+        'answered': value('answered', lambda: thread.replies.filter(Q(is_staff=True) | Q(is_instructor_answer=True) | Q(is_accepted=True)).exists()),
+        'accepted': value('accepted', lambda: thread.replies.filter(is_accepted=True).exists()),
+        'votes': value('vote_count', thread.votes.count),
+        'voted': value('voted', lambda: thread.votes.filter(user=user).exists()),
         'created_at': thread.created_at, 'updated_at': thread.updated_at,
     }
 
@@ -146,14 +157,17 @@ def thread_row(thread, user):
 def reply_row(reply, user, course):
     liked = ReplyLike.objects.filter(reply=reply, user=user).exists()
     return {'id': reply.id, 'author': _staff_name(course, reply.author) if reply.is_staff else public_name(reply.author),
-            'is_staff': reply.is_staff, 'is_instructor_answer': reply.is_instructor_answer,
+            'is_staff': reply.is_staff, 'is_instructor_answer': reply.is_instructor_answer, 'is_accepted': reply.is_accepted,
             'likes': reply.likes.count(), 'liked': liked,
             'mine': reply.author_id == user.id, 'body': reply.body, 'created_at': reply.created_at}
 
 
-def annotated_threads():
-    staff_reply = Reply.objects.filter(thread=OuterRef('pk')).filter(Q(is_staff=True) | Q(is_instructor_answer=True))
-    return Thread.objects.select_related('author', 'lesson', 'course').annotate(reply_count=Count('replies'), answered=Exists(staff_reply))
+def annotated_threads(user):
+    staff_reply = Reply.objects.filter(thread=OuterRef('pk')).filter(Q(is_staff=True) | Q(is_instructor_answer=True) | Q(is_accepted=True))
+    return Thread.objects.select_related('author', 'lesson', 'course').annotate(
+        reply_count=Count('replies', distinct=True), vote_count=Count('votes', distinct=True), answered=Exists(staff_reply),
+        accepted=Exists(Reply.objects.filter(thread=OuterRef('pk'), is_accepted=True)),
+        voted=Exists(ThreadVote.objects.filter(thread=OuterRef('pk'), user=user)))
 
 
 class QuestionsView(APIView):
@@ -164,7 +178,7 @@ class QuestionsView(APIView):
         refused = _member(request, course)
         if refused:
             return refused
-        threads = annotated_threads().filter(course=course)
+        threads = annotated_threads(request.user).filter(course=course)
         unanswered = threads.filter(answered=False).count()
         lesson = request.query_params.get('lesson')
         if lesson and lesson.isdigit():
@@ -177,6 +191,11 @@ class QuestionsView(APIView):
             threads = threads.filter(author=request.user)
         elif wanted == 'unanswered':
             threads = threads.filter(answered=False)
+        elif wanted == 'moments':  # questions asked at a moment of a lesson video, in video order
+            threads = threads.filter(position_seconds__isnull=False).order_by('position_seconds', 'id')
+        if wanted != 'moments':
+            threads = threads.order_by('-is_pinned', '-vote_count', '-updated_at', '-id') if request.query_params.get('sort') == 'votes' \
+                else threads.order_by('-is_pinned', '-updated_at', '-id')
         return Response({'unanswered': unanswered, 'threads': [thread_row(t, request.user) for t in threads[:100]]})
 
     def post(self, request, slug):
@@ -192,7 +211,14 @@ class QuestionsView(APIView):
             lesson = Lesson.objects.filter(pk=request.data['lesson'], section__course=course).first()
             if not lesson:
                 return Response({'lesson': 'That lesson is not in this course.'}, status=status.HTTP_400_BAD_REQUEST)
-        thread = Thread.objects.create(course=course, lesson=lesson, author=request.user, title=title[:200], body=str(request.data.get('body', '')).strip()[:2000])
+        position = None
+        if lesson and request.data.get('position') not in (None, ''):
+            try:
+                position = max(0, int(float(request.data['position'])))
+            except (TypeError, ValueError):
+                return Response({'position': 'The moment must be a number of seconds.'}, status=status.HTTP_400_BAD_REQUEST)
+        thread = Thread.objects.create(course=course, lesson=lesson, author=request.user, title=title[:200],
+                                       body=str(request.data.get('body', '')).strip()[:2000], position_seconds=position)
         if not access.can_manage(request.user, course):
             link = f'/instructor/courses/{course.slug}/qa' if course.instructor_id else f'/admin/courses/{course.slug}/content?tab=qa'
             if course.instructor:
@@ -227,6 +253,41 @@ class ThreadView(APIView):
             return Response({'detail': 'You can only delete your own questions.'}, status=status.HTTP_403_FORBIDDEN)
         thread.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ThreadVoteView(APIView):
+    """"I have this question too": an upvote, so common questions rise."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        thread, refused = _thread_for(request, pk)
+        if refused:
+            return refused
+        if thread.author_id == request.user.id:
+            return Response({'detail': 'You can’t vote for your own question.'}, status=status.HTTP_400_BAD_REQUEST)
+        ThreadVote.objects.get_or_create(thread=thread, user=request.user)
+        return Response(thread_row(thread, request.user))
+
+    def delete(self, request, pk):
+        thread, refused = _thread_for(request, pk)
+        if refused:
+            return refused
+        ThreadVote.objects.filter(thread=thread, user=request.user).delete()
+        return Response(thread_row(thread, request.user))
+
+
+class ThreadPinView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        thread, refused = _thread_for(request, pk)
+        if refused:
+            return refused
+        if not access.can_manage(request.user, thread.course):
+            return Response({'detail': 'Only the instructor can pin questions.'}, status=status.HTTP_403_FORBIDDEN)
+        thread.is_pinned = bool(request.data.get('pinned', True))
+        Thread.objects.filter(pk=thread.pk).update(is_pinned=thread.is_pinned)  # pinning doesn't bump the question
+        return Response(thread_row(thread, request.user))
 
 
 class RepliesView(APIView):
@@ -296,3 +357,26 @@ class ReplyMarkView(APIView):
         reply.is_instructor_answer = bool(request.data.get('answer', True))
         reply.save(update_fields=['is_instructor_answer'])
         return Response(reply_row(reply, request.user, reply.thread.course))
+
+
+class ReplyAcceptView(APIView):
+    """The student who asked marks the answer that solved it (one per question). Course staff can too."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        reply, refused = _reply_for(request, pk)
+        if refused:
+            return refused
+        thread = reply.thread
+        if thread.author_id != request.user.id and not access.can_manage(request.user, thread.course):
+            return Response({'detail': 'Only the person who asked can accept an answer.'}, status=status.HTTP_403_FORBIDDEN)
+        accepted = bool(request.data.get('accepted', True))
+        with transaction.atomic():
+            if accepted:
+                thread.replies.exclude(pk=reply.pk).filter(is_accepted=True).update(is_accepted=False)
+            reply.is_accepted = accepted
+            reply.save(update_fields=['is_accepted'])
+        if accepted and reply.author_id != request.user.id:
+            link = f'/learn/{thread.course.slug}/lesson/{thread.lesson_id}?qa={thread.id}' if thread.lesson_id else f'/courses/{thread.course.slug}'
+            notify(reply.author, 'answer', 'Your answer was accepted', thread.title, link)
+        return Response(reply_row(reply, request.user, thread.course))

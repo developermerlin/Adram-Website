@@ -81,4 +81,4 @@ export const hoursLabel = (hours) => {
 };
 
 /** Whether a quiz answer counts as given. */
-export const answered = (value) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && String(value).trim() !== '');
+export const answered = (value) => (Array.isArray(value) ? value.some((v) => answered(v)) : value !== undefined && value !== null && String(value).trim() !== '');

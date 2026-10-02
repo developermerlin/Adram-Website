@@ -652,3 +652,191 @@ body .cc-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px)
 }
 
 .cd-buybar .btn--primary { border-color: #5022c3; background: #5022c3; }
+
+/* ------------------------------------------------------------------
+   Udemy's hover preview beside a course card (desktop mouse only)
+   ------------------------------------------------------------------ */
+.uc-anchor { display: flex; flex-direction: column; height: 100%; }
+.uc-anchor > .uc { flex: 1; }
+.cf-row__item > .uc-anchor { flex: 1; }
+
+.uc-pop {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid #d1d7dc;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--uc-ink);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.16);
+  animation: uc-pop-in 0.14s ease-out;
+}
+
+.uc-pop::before {
+  content: '';
+  position: absolute;
+  top: 44px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 1px solid #d1d7dc;
+  transform: rotate(45deg);
+}
+
+.uc-pop--right::before { left: -9px; border-top: 0; border-right: 0; }
+.uc-pop--left::before { right: -9px; border-bottom: 0; border-left: 0; }
+
+@keyframes uc-pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.uc-pop__title { margin: 0; color: var(--uc-ink); font-size: 1.2rem; font-weight: 700; line-height: 1.25; }
+.uc-pop__updated { margin: 0; color: #1e6055; font-size: 0.85rem; }
+.uc-pop__updated b { font-weight: 700; }
+.uc-pop__facts { margin: 0; color: var(--uc-grey); font-size: 0.85rem; }
+.uc-pop__sub { margin: 0; color: var(--uc-ink); font-size: 0.95rem; line-height: 1.45; }
+.uc-pop__learn { display: grid; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+.uc-pop__learn li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; color: var(--uc-ink); font-size: 0.92rem; line-height: 1.4; }
+.uc-pop__learn i { margin-top: 3px; font-size: 0.85rem; }
+.uc-pop__buy { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.uc-pop__buy .uc__btn { flex: 1; background: var(--uc-accent); color: #fff; }
+.uc-pop__buy .uc__btn:hover { background: #3b198f; color: #fff; }
+.uc-pop__buy .uc__heart { position: static; flex: 0 0 48px; width: 48px; height: 48px; }
+
+/* Udemy's newer card: light grey card, borderless picture, chips grouped just above the price */
+.uc { border-color: #e8e9eb; border-radius: 18px; background: #f7f8fa; }
+.uc__media { border: 0; border-radius: 12px; }
+.uc__title { color: #1d1e27; }
+.uc__bottom { display: grid; margin-top: auto; padding-top: 22px; }
+.uc__bottom .uc__chips { margin-top: 0; }
+.uc__bottom .uc__foot { margin-top: 0; padding-top: 22px; }
+.uc__bottom .uc__progress { margin-top: 0; }
+.uc__premium { gap: 6px; padding: 4px 10px; }
+.uc__premium-mark { flex: none; }
+
+/* ------------------------------------------------------------------
+   Course page, second pass: Udemy's Premium bar, "Show more", related
+   topics, "This course includes", the feature box, course content bar
+   ------------------------------------------------------------------ */
+.cd .cd-band { display: none; }
+.cd .cd-head { border-image: linear-gradient(#1c1d1f, #1c1d1f) fill 0 / / 0 100vw; }
+
+.cd-captions button.cd-captions__more { padding: 0; border: 0; background: none; color: #c0c4fc; font: inherit; text-decoration: underline; cursor: pointer; }
+
+.cd-pbar {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  margin-top: 24px;
+  border: 1px solid #d1d7dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #2d2f31;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cd-pbar__badge { display: flex; align-items: center; gap: 16px; padding: 12px 18px 12px 12px; }
+.cd-pbar__badge p { margin: 0; color: #2d2f31; font-size: 0.9rem; line-height: 1.45; }
+.cd-pbar__tile { display: grid; flex: none; place-items: center; align-content: center; gap: 4px; width: 76px; height: 76px; border-radius: 6px; background: #5022c3; color: #fff; }
+.cd-pbar__tile b { font-size: 0.82rem; }
+.cd-pbar__stat { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 130px; padding: 10px 18px; border-left: 1px solid #d1d7dc; color: #2d2f31; text-decoration: none; }
+.cd-pbar__stat:hover { color: #2d2f31; }
+.cd-pbar__stat strong { color: #2d2f31; font-size: 1.15rem; }
+.cd-pbar__stat small { color: #6a6f73; font-size: 0.82rem; }
+a.cd-pbar__stat small { color: #5022c3; text-decoration: underline; }
+.cd-pbar__stat > i { color: #2d2f31; }
+.cd-pbar .stars, .cd-pbar svg:not(.cd-pbar__mark) { color: #b4690e; }
+
+@media (min-width: 981px) {
+  .cd--premium .cd-head { padding-bottom: 0; }
+  .cd--premium .cd-pbar { margin-bottom: -46px; }
+  .cd--premium .cd-body { padding-top: 78px; }
+}
+
+@media (max-width: 640px) {
+  .cd-pbar { grid-template-columns: 1fr 1fr; }
+  .cd-pbar__badge { grid-column: 1 / -1; border-bottom: 1px solid #d1d7dc; }
+  .cd-pbar__badge + .cd-pbar__stat { border-left: 0; }
+}
+
+.cd-more__inner { position: relative; overflow: hidden; }
+.cd-more.is-clipped .cd-more__inner::after { content: ''; position: absolute; inset: auto 0 0; height: 90px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); pointer-events: none; }
+.cd-more__toggle { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 0; border: 0; background: none; color: #5022c3; font: inherit; font-weight: 700; cursor: pointer; }
+.cd-more__toggle i { font-size: 0.75rem; }
+
+.cd-topics { display: flex; flex-wrap: wrap; gap: 8px; }
+.cd-topic { padding: 8px 14px; border: 1px solid #2d2f31; border-radius: 4px; color: #2d2f31; font-size: 0.92rem; font-weight: 700; text-decoration: none; }
+.cd-topic:hover { background: #f7f9fa; color: #2d2f31; }
+
+.cd-incl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; margin: 0; padding: 0; list-style: none; }
+.cd-incl li { display: flex; align-items: baseline; gap: 14px; color: #2d2f31; font-size: 0.95rem; }
+.cd-incl i { flex: none; width: 16px; color: #2d2f31; text-align: center; }
+
+.cd-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; gap: 28px; margin-bottom: 36px; padding: 32px; border-radius: 4px; background: #f7f9fa; }
+.cd-feature--text { grid-template-columns: 1fr; }
+.cd .cd-feature h2 { margin: 0 0 10px; color: #2d2f31; font-size: 1.5rem; }
+.cd-feature p { margin: 0 0 14px; color: #2d2f31; font-size: 0.95rem; line-height: 1.5; }
+.cd-feature a { color: #5022c3; font-weight: 700; text-decoration: underline; }
+.cd-feature img { display: block; width: 100%; border-radius: 4px; }
+
+.cd-content-bar { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.cd-expand { padding: 0; border: 0; background: none; color: #5022c3; font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer; }
+
+@media (max-width: 700px) {
+  .cd-incl, .cd-feature { grid-template-columns: 1fr; }
+  .cd-feature { padding: 22px; }
+}
+
+.editor__subhead { margin: 24px 0 4px; }
+
+/* Course content, as on Udemy: chevron first, counts on the right, "Preview" and length at the end of each row */
+.cd .cd-curriculum .lms-curriculum { border-color: #d1d7dc; border-radius: 0; }
+.cd .cd-curriculum .lms-curriculum > li { border-bottom-color: #d1d7dc; }
+.cd .cd-curriculum .lms-curriculum > li:last-child { border-bottom: 0; }
+.cd .cd-curriculum summary { justify-content: flex-start; gap: 14px; padding: 16px 22px; background: #f7f9fa; }
+.cd .cd-curriculum summary > i { order: -1; color: #2d2f31; }
+.cd .cd-curriculum .lms-curriculum__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 14px; }
+.cd .cd-curriculum .lms-curriculum__head strong { color: #2d2f31; }
+.cd .cd-curriculum .lms-curriculum__head small { flex: none; color: #2d2f31; font-size: 0.88rem; }
+.cd .cd-curriculum details[open] > ul { padding: 8px 0; }
+.cd .cd-curriculum .lms-lesson { align-items: center; gap: 16px; padding: 8px 22px; color: #2d2f31; }
+.cd .cd-curriculum .lms-lesson__mark { width: 18px; height: auto; margin: 0; background: none; color: #2d2f31; font-size: 0.85rem; }
+.cd .cd-curriculum .lms-lesson__mark.is-done { background: none; color: #16a34a; }
+.cd .cd-curriculum .lms-lesson__text { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 14px; }
+.cd .cd-curriculum .lc-meta { flex: none; gap: 18px; color: #6a6f73; }
+.cd .cd-curriculum .lc-meta > span:first-child { display: none; }
+.cd .cd-curriculum .lc-badge--preview { order: -1; padding: 0; background: none; color: #5022c3; font-weight: 400; text-decoration: underline; }
+.cd .cd-reviews__all { margin-top: 18px; border-color: #2d2f31; border-radius: 4px; color: #2d2f31; font-weight: 700; }
+.cd .cd-reviews__all:hover { background: #f7f9fa; color: #2d2f31; }
+
+/* The buy box plays a video straight away (trailer, or a lesson this person may watch) */
+.cd-card__media video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
+.cd-card:has(.cd-card__caption) .cd-card__media { margin-bottom: 34px; }
+.cd-card__caption { position: absolute; inset: 100% 0 auto; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; overflow: hidden; background: #1c1d1f; color: #fff; font-size: 0.82rem; white-space: nowrap; text-overflow: ellipsis; }
+.cd-card__caption i { color: #c0c4fc; }
+.ac-enrol { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.ac-enrol h2 { margin: 0 0 4px; }
+.ac-enrol p { margin: 0; }
+.cd-declined { display: grid; gap: 4px; margin-bottom: 10px; padding: 12px 14px; border: 1px solid #fcd9b6; border-radius: 8px; background: #fff7ed; color: #7c2d12; font-size: 0.9rem; }
+.cd-declined p { margin: 0; font-style: italic; }
+.cd-declined small { color: #9a3412; }
+.ae-search { width: min(100%, 320px); }
+
+/* The Trending badge on cards (worked out from this week's views and enrolments) */
+.uc__hl--trending { background: #fde7f3; color: #9d174d; }
+.uc__hl--trending i { margin-right: 3px; font-size: 0.8em; }
+
+/* How long a sale price lasts (course page) */
+.sale-left { display: flex; align-items: center; gap: 6px; margin: -6px 0 12px; color: #b4690e; font-size: 0.9rem; }
+.sale-left.is-urgent { color: #b91c1c; font-weight: 600; }
+
+/* Card details: students, language, captions; and the preview's trailer, instructor and rating */
+.uc__meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; color: var(--uc-grey); font-size: 0.82rem; }
+.uc__meta i { margin-right: 3px; font-size: 0.78rem; }
+.uc-pop__trailer { position: relative; margin: -6px -6px 4px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: #000; }
+.uc-pop__trailer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.uc-pop__by { margin: 0; color: var(--uc-grey); font-size: 0.85rem; }
+.uc-pop__rating { margin: 0; color: var(--uc-ink); font-size: 0.85rem; }
+.uc-pop__rating b { color: #b4690e; }
+.uc-pop__rating i { color: #e59819; font-size: 0.75rem; }

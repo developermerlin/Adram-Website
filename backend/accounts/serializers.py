@@ -23,12 +23,20 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'email', 'first_name', 'last_name', 'full_name',
             'phone_number', 'country', 'profile_picture', 'role',
             'role_display', 'is_verified', 'is_active', 'approval_status',
-            'approval_status_display', 'created_at', 'last_login', 'is_superuser'
+            'approval_status_display', 'created_at', 'last_login', 'is_superuser',
+            'in_training', 'in_scholarships', 'tracks', 'two_step',
         ]
-        read_only_fields = ['id', 'created_at', 'is_verified', 'is_active', 'approval_status', 'last_login', 'is_superuser']
+        read_only_fields = ['id', 'created_at', 'is_verified', 'is_active', 'approval_status', 'last_login', 'is_superuser',
+                            'in_training', 'in_scholarships', 'tracks']
+
+    two_step = serializers.SerializerMethodField()
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+    def get_two_step(self, obj):
+        from .mfa import is_on
+        return is_on(obj)
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -50,12 +58,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         required=True,
         validators=[validate_unique_email]
     )
+    # What they're joining for: each gets its own dashboard. Optional so older clients keep working.
+    track = serializers.ChoiceField(choices=['training', 'scholarships', 'both'], required=False, write_only=True)
+    # A friend's invitation code (from a ?ref= link): the new student gets a welcome discount
+    referral = serializers.CharField(required=False, allow_blank=True, write_only=True, max_length=20)
 
     class Meta:
         model = User
         fields = [
             'email', 'first_name', 'last_name', 'phone_number',
-            'country', 'password', 'password_confirm'
+            'country', 'password', 'password_confirm', 'track', 'referral'
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -90,7 +102,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create and return a new user."""
+        track = validated_data.get('track', '')
         user = User.objects.create_user(
+            in_training=track in ('training', 'both'),
+            in_scholarships=track in ('scholarships', 'both'),
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
@@ -100,6 +115,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             # Self-registration always creates students; staff roles are assigned by an admin.
             role=User.STUDENT,
         )
+        if validated_data.get('referral'):
+            from lms.referrals import attach  # the course marketplace builds on accounts, not the other way round
+            attach(user, validated_data['referral'])
         return user
 
 
@@ -217,7 +235,8 @@ class LoginSerializer(serializers.Serializer):
 
 class OTPVerifySerializer(serializers.Serializer):
     challenge = serializers.CharField()
-    code = serializers.RegexField(r'^\d{6}$', error_messages={'invalid': 'Enter the 6-digit code from your email.'})
+    # 6 digits (email or authenticator app), or a recovery code like ABCDE-FGH23
+    code = serializers.RegexField(r'^(\d{6}|[A-Za-z0-9]{5}-?[A-Za-z0-9]{5})$', error_messages={'invalid': 'Enter the 6-digit code.'})
 
 
 class OTPResendSerializer(serializers.Serializer):

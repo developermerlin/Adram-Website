@@ -47,9 +47,14 @@ def enrollment_for(user, course):
     """The student's place on the programme, if it is confirmed (enrolled or completed)."""
     if not (user and user.is_authenticated):
         return None
-    return TrainingEnrollment.objects.filter(
+    enrollment = TrainingEnrollment.objects.filter(
         student=user, course=course, status__in=[TrainingEnrollment.ACTIVE, TrainingEnrollment.COMPLETED],
     ).first()
+    if enrollment is not None:
+        from .premium import blocked_reason
+        if blocked_reason(enrollment):  # Premium ended, or a payment-plan part is overdue
+            return None
+    return enrollment
 
 
 def published_lessons(course):
@@ -123,7 +128,9 @@ def finish_if_done(enrollment):
     if enrollment.status == TrainingEnrollment.ACTIVE:
         enrollment.status = TrainingEnrollment.COMPLETED
         enrollment.save(update_fields=['status', 'updated_at'])
-    certificate, created = Certificate.objects.get_or_create(enrollment=enrollment)
+    from .models import CertificateTemplate
+    certificate, created = Certificate.objects.get_or_create(
+        enrollment=enrollment, defaults={'template': CertificateTemplate.for_course(enrollment.course)})
     if created:
         from .notify import notify
         course = enrollment.course
@@ -137,6 +144,8 @@ def mark_complete(enrollment, lesson):
     if not progress.completed_at:
         progress.completed_at = timezone.now()
         progress.save(update_fields=['completed_at', 'updated_at'])
+        from .learning_analytics import record_lesson
+        record_lesson(enrollment.student)  # today's lessons, for streaks and charts
     return progress
 
 

@@ -1,0 +1,65 @@
+/* Certificate templates: the accent colour, the three layouts, the QR code, and the template editor */
+.cert { --cert-accent: var(--blue-700); }
+.cert .cert__kicker, .cert .cert__course { color: var(--cert-accent); }
+.cert__note { margin: 18px 0 0; color: var(--muted); font-size: 0.82rem; font-style: italic; }
+.cert__qr { display: grid; place-items: center; width: 92px; height: 92px; }
+.cert__qr svg { width: 100%; height: 100%; }
+.cert__qr--placeholder { border: 2px dashed #cbd5e1; border-radius: 8px; color: #94a3b8; font-size: 2.4rem; }
+
+/* classic: the framed design (accent on the inner rule) */
+.cert--classic::before { border-color: color-mix(in srgb, var(--cert-accent) 30%, white); }
+
+/* modern: a coloured band across the top, no frame */
+.cert--modern { border: 0; border-radius: 14px; padding-top: clamp(64px, 9vw, 96px); overflow: hidden; background: var(--white); }
+.cert--modern::before { display: none; }
+.cert__band {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 22px;
+  background: linear-gradient(90deg, var(--cert-accent), color-mix(in srgb, var(--cert-accent) 55%, #16c8f5));
+}
+.cert--modern .cert__name { border-bottom-color: var(--cert-accent); }
+.cert--modern .cert__seal { background: var(--cert-accent); }
+
+/* minimal: no frame or background, left aligned */
+.cert--minimal { border: 1px solid var(--line, #e2e8f0); border-left: 8px solid var(--cert-accent); background: var(--white); text-align: left; }
+.cert--minimal::before { display: none; }
+.cert--minimal .cert__name { margin-left: 0; border-bottom: 0; padding-bottom: 0; }
+.cert--minimal .cert__seal { background: var(--cert-accent); box-shadow: none; }
+
+@media print {
+  .cert { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ---- certificate page: LinkedIn ---- */
+.cert-linkedin { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.btn--linkedin { border-color: #0a66c2; background: #0a66c2; color: #fff; }
+.btn--linkedin:hover { background: #004182; color: #fff; }
+
+/* ---- the template editor ---- */
+.ct-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.ct-list { display: grid; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; }
+.ct-list button { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; background: var(--white); text-align: left; font: inherit; cursor: pointer; }
+.ct-list button.is-on { border-color: var(--blue-600); background: #eff6ff; }
+.ct-list button > span { display: flex; align-items: center; gap: 8px; }
+.ct-swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.ct-form { display: grid; gap: 12px; }
+.ct-form .field { margin: 0; }
+.ct-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ct-color { display: flex; gap: 8px; align-items: center; }
+.ct-color input[type='color'] { width: 44px; height: 40px; padding: 2px; border: 1px solid var(--line, #e2e8f0); border-radius: 8px; background: var(--white); }
+.ct-checks { display: grid; gap: 6px; }
+.ct-checks label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.ct-checks input, .ct-courses input { width: 16px; height: 16px; accent-color: #2563eb; }
+.ct-courses__label { display: block; margin-bottom: 6px; font-size: 0.9rem; }
+.ct-courses { display: grid; gap: 4px; max-height: 220px; overflow: auto; padding: 8px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; }
+.ct-courses label { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+.ct-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.ct-preview { position: sticky; top: 90px; }
+.ct-preview .cert { max-width: none; font-size: 0.82rem; }
+.ct-preview .cert h1 { font-size: 1.5rem; }
+
+@media (max-width: 1100px) {
+  .ct-layout { grid-template-columns: 1fr; }
+  .ct-preview { position: static; }
+}

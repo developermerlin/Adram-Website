@@ -21,6 +21,7 @@ Administrators:
   GET/PUT  /lms/manage/settings/             commission and certificate signature
   GET      /lms/manage/earnings/             every instructor's earnings;  GET/POST /lms/manage/payouts/
 """
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -37,6 +38,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.permissions import IsAdmin
 from catalog.models import Course
+from portal.models import PaymentSettings
 from portal.serializers import validate_upload
 
 from . import audit, orders, payments
@@ -55,6 +57,25 @@ def _error(exc):
 
 # ---------------------------------------------------------------- output
 
+def same_transaction(order):
+    """Other orders that used this transaction ID (a receipt sent twice, or by two people): shown to admins."""
+    if not order.transaction_id:
+        return []
+    others = (Order.objects.filter(transaction_id__iexact=order.transaction_id).exclude(pk=order.pk)
+              .exclude(status=Order.CANCELLED).select_related('student'))
+    return [{'id': o.id, 'number': o.number, 'status': o.status, 'student': o.student.get_full_name() or o.student.email} for o in others[:5]]
+
+
+def gift_summary(order):
+    """For the buyer: who the gift is for, its code (once paid) and whether it was opened."""
+    gift = getattr(order, 'gift', None) if order.is_gift else None
+    if not gift:
+        return None
+    paid = order.status == Order.SUCCESSFUL
+    return {'recipient_name': gift.recipient_name, 'recipient_email': gift.recipient_email, 'message': gift.message,
+            'code': gift.code if paid else None, 'sent_at': gift.sent_at, 'redeemed_at': gift.redeemed_at, 'revoked': bool(gift.revoked_at)}
+
+
 def order_data(order, admin=False):
     provider = payments.get(order.provider)
     student = order.student
@@ -64,7 +85,8 @@ def order_data(order, admin=False):
         'currency': order.currency, 'subtotal': money(order.subtotal), 'discount': money(order.discount), 'total': money(order.total),
         'coupon': order.coupon.code if order.coupon else None,
         'provider': order.provider, 'provider_label': provider.label, 'needs_receipt': provider.needs_receipt,
-        'method': order.method, 'transaction_id': order.transaction_id, 'receipt_name': order.receipt_name,
+        'method': order.method, 'method_label': dict(payments.ManualMobileMoneyProvider.METHODS).get(order.method, order.method),
+        'transaction_id': order.transaction_id, 'payer': order.payer, 'receipt_name': order.receipt_name,
         'has_receipt': bool(order.receipt), 'decision_note': order.decision_note, 'refund_reason': order.refund_reason,
         'created_at': order.created_at, 'submitted_at': order.submitted_at, 'paid_at': order.paid_at, 'refunded_at': order.refunded_at,
         'items': [{'id': i.id, 'title': i.title, 'course_slug': i.course.slug if i.course else None,
@@ -72,7 +94,12 @@ def order_data(order, admin=False):
                    'amount': money(i.amount)} for i in order.items.select_related('course')],
         'billed_to': {'name': student.get_full_name() or student.email, 'email': student.email, 'country': student.country or ''},
         'can_pay': order.status in (Order.PENDING, Order.FAILED) and provider.needs_receipt,
-        'can_cancel': order.status in (Order.PENDING, Order.FAILED),
+        'can_cancel': order.status in (Order.PENDING, Order.FAILED) and (order.instalment_number or 1) == 1,
+        'bundle': {'slug': order.bundle.slug, 'title': order.bundle.title} if order.bundle_id else None,
+        'gift': gift_summary(order),
+        'plan': {'name': order.plan.name, 'days': order.plan.days} if order.plan_id else None,
+        'instalment': ({'number': order.instalment_number, 'parts': order.instalment_plan.parts, 'due_at': order.due_at,
+                        'course_slug': order.instalment_plan.course.slug} if order.instalment_plan_id else None),
         'how_to_pay': provider.instructions(order) if order.status in (Order.PENDING, Order.FAILED) else None,
     }
     if admin:
@@ -80,6 +107,8 @@ def order_data(order, admin=False):
         data['transactions'] = [{'id': t.id, 'kind': t.kind, 'status': t.status, 'amount': money(t.amount), 'provider': t.provider,
                                  'reference': t.reference, 'created_at': t.created_at} for t in order.transactions.all()]
         data['verified_by'] = order.verified_by.get_full_name() if order.verified_by else None
+        data['same_transaction'] = same_transaction(order)
+        data['affiliate'] = {'code': order.affiliate.code, 'commission': money(order.affiliate_commission)} if order.affiliate_id else None
     return data
 
 
@@ -93,6 +122,10 @@ def cart_payload(user, code=''):
         row['course']['stats'] = stats[course.id]
         row['problem'] = orders.purchase_problem(user, course)
     data['count'] = len(items)
+    # the student's own codes (referral rewards and welcome discounts) that are ready to use
+    now = timezone.now()
+    data['my_codes'] = [{'code': c.code, 'percent': int(c.value), 'description': c.description, 'ends_at': c.ends_at}
+                        for c in user.personal_coupons.filter(is_active=True).exclude(ends_at__lt=now) if c.uses() == 0]
     return data
 
 
@@ -130,7 +163,7 @@ class CartCheckoutView(APIView):
     def post(self, request):
         courses = [i.course for i in CartItem.objects.filter(student=request.user).select_related('course')]
         try:
-            order = orders.place_order(request.user, courses, request.data.get('coupon', ''))
+            order = orders.place_order(request.user, courses, request.data.get('coupon', ''), affiliate=request.data.get('affiliate', ''))
         except orders.OrderError as exc:
             return _error(exc)
         return Response(order_data(order), status=status.HTTP_201_CREATED)
@@ -144,7 +177,7 @@ class BuyNowView(APIView):
         if course.is_free:
             return Response({'detail': 'This course is free: enrol on it directly.', 'code': 'free_course'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            order = orders.place_order(request.user, [course], request.data.get('coupon', ''))
+            order = orders.place_order(request.user, [course], request.data.get('coupon', ''), affiliate=request.data.get('affiliate', ''))
         except orders.OrderError as exc:
             return _error(exc)
         return Response(order_data(order), status=status.HTTP_201_CREATED)
@@ -178,7 +211,13 @@ class OrderView(APIView):
 class PaymentSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=payments.ManualMobileMoneyProvider.METHODS)
     transaction_id = serializers.CharField(max_length=100)
+    payer = serializers.CharField(max_length=100, required=False, allow_blank=True)
     receipt = serializers.FileField(validators=[validate_upload])
+
+    def validate_method(self, value):
+        if value not in [m['id'] for m in PaymentSettings.load().methods()]:
+            raise serializers.ValidationError('ADRAM doesn’t take this way of paying at the moment.')
+        return value
 
 
 class OrderPaymentView(APIView):
@@ -193,7 +232,7 @@ class OrderPaymentView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         with transaction.atomic():
-            orders.submit_receipt(order, data['method'], data['transaction_id'], data['receipt'])
+            orders.submit_receipt(order, data['method'], data['transaction_id'], data['receipt'], data.get('payer', ''))
         return Response(order_data(order))
 
 
@@ -327,7 +366,8 @@ class CouponsView(APIView):
     parser_classes = [JSONParser]
 
     def get(self, request):
-        return Response(CouponSerializer(Coupon.objects.prefetch_related('courses'), many=True).data)
+        # personal codes (referral rewards) are not shared promotions: they're listed under referrals instead
+        return Response(CouponSerializer(Coupon.objects.filter(owner__isnull=True).prefetch_related('courses'), many=True).data)
 
     def post(self, request):
         serializer = CouponSerializer(data=request.data)
@@ -366,7 +406,11 @@ class SettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LmsSettings
-        fields = ['commission_percent', 'certificate_signer_name', 'certificate_signer_title', 'certificate_signature', 'updated_at']
+        fields = ['commission_percent', 'certificate_signer_name', 'certificate_signer_title', 'certificate_signature',
+                  'payout_hold_days', 'min_withdrawal', 'referrals_enabled', 'referral_friend_percent', 'referral_reward_percent',
+                  'referral_valid_days', 'affiliates_enabled', 'affiliate_percent', 'affiliate_cookie_days',
+                  'premium_enabled', 'instalments_enabled', 'instalment_min_price', 'instalment_max_parts', 'instalment_grace_days',
+                  'push_enabled', 'app_min_version', 'offline_days', 'offline_devices', 'updated_at']
         read_only_fields = ['updated_at']
 
 
@@ -388,14 +432,27 @@ class LmsSettingsView(APIView):
 
 
 def earnings_summary(instructor):
+    """
+    gross/commission/refunds/net/paid/pending as before, plus for withdrawals: on_hold (recent sales still inside the
+    refund window), requested (asked for, not paid yet) and available (what can be withdrawn now).
+    """
+    from .models import WithdrawalRequest
     items = OrderItem.objects.filter(instructor=instructor)
     sold = items.filter(order__status=Order.SUCCESSFUL)
     gross = sold.aggregate(t=Sum('amount'))['t'] or Decimal('0')
     net = sold.aggregate(t=Sum('instructor_share'))['t'] or Decimal('0')
     refunds = items.filter(order__status=Order.REFUNDED).aggregate(t=Sum('amount'))['t'] or Decimal('0')
     paid = Payout.objects.filter(instructor=instructor).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    settings_row = LmsSettings.load()
+    hold_from = timezone.now() - timedelta(days=settings_row.payout_hold_days)
+    on_hold = sold.filter(order__paid_at__gte=hold_from).aggregate(t=Sum('instructor_share'))['t'] or Decimal('0')
+    requested = (WithdrawalRequest.objects.filter(instructor=instructor, status=WithdrawalRequest.REQUESTED)
+                 .aggregate(t=Sum('amount'))['t'] or Decimal('0'))
+    available = max(Decimal('0'), net - paid - on_hold - requested)
     return {'gross': money(gross), 'commission': money(gross - net), 'refunds': money(refunds), 'net': money(net),
-            'paid': money(paid), 'pending': money(net - paid), 'sales': sold.count()}
+            'paid': money(paid), 'pending': money(net - paid), 'sales': sold.count(),
+            'on_hold': money(on_hold), 'requested': money(requested), 'available': money(available),
+            'hold_days': settings_row.payout_hold_days, 'min_withdrawal': money(settings_row.min_withdrawal)}
 
 
 class ManageEarningsView(APIView):

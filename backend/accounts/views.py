@@ -6,11 +6,16 @@ from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
+from . import mfa
 from .emails import notify_admins_new_account
-from .models import ActivityLog, EmailOTP
+from .models import ActivityLog, EmailOTP, UserSession
 from .otp import OTPError, issue_otp, make_challenge, mask_email, read_challenge, verify_otp
 from .serializers import (
     ActivityLogSerializer, ChangePasswordSerializer, LoginSerializer, OTPResendSerializer, OTPVerifySerializer,
@@ -49,18 +54,20 @@ def log_activity(user, action, description='', request=None):
         logger.error(f"Error logging activity: {str(e)}")
 
 
-def tokens_for(user):
-    """JWT pair with the same custom claims the frontend has always received."""
+def tokens_for(user, request=None, method=''):
+    """JWT pair with the same custom claims the frontend has always received, tied to a new signed-in device."""
     refresh = RefreshToken.for_user(user)
     for claim in ('email', 'role', 'first_name', 'last_name', 'is_verified'):
         refresh[claim] = getattr(user, claim)
+    refresh['sid'] = mfa.start_session(user, request, method).key
     return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
 def sign_out_everywhere(user):
-    """Blacklist every refresh token the user holds (used when an account is disabled)."""
+    """Blacklist every refresh token the user holds and end every device session (used when an account is disabled)."""
     for token in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=token)
+    mfa.revoke(UserSession.objects.filter(user=user, revoked_at__isnull=True))
 
 
 def otp_error_response(exc):
@@ -92,6 +99,17 @@ def otp_challenge_response(user, purpose, remember=True, message='', http_status
         'email': mask_email(user.email),
         'detail': message or f'We sent a 6-digit code to {mask_email(user.email)}.',
     }, status=http_status)
+
+
+def mfa_challenge(user, remember=True):
+    """Ask for the authenticator app's code (instead of emailing one) for an account with two-step sign-in on."""
+    return {
+        'otp_required': True,
+        'purpose': mfa.PURPOSE,
+        'method': 'authenticator',
+        'challenge': make_challenge(user, mfa.PURPOSE, remember),
+        'detail': 'Enter the 6-digit code from your authenticator app.',
+    }
 
 
 ACCOUNT_BLOCKED = {
@@ -187,6 +205,8 @@ class LoginView(generics.GenericAPIView):
         auto_approve_student(user, request, 'signed in')  # students who registered before auto-approval
         if user.approval_status == User.PENDING:
             return blocked_response('pending_approval')
+        if mfa.is_on(user):
+            return Response(mfa_challenge(user, remember))
         return otp_challenge_response(user, EmailOTP.LOGIN, remember)
 
 
@@ -204,12 +224,18 @@ class OTPVerifyView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            user, purpose, remember = read_challenge(serializer.validated_data['challenge'], [EmailOTP.REGISTER, EmailOTP.LOGIN])
+            user, purpose, remember = read_challenge(serializer.validated_data['challenge'], [EmailOTP.REGISTER, EmailOTP.LOGIN, mfa.PURPOSE])
             if not user:
                 raise OTPError('challenge_expired', 'This verification session has expired. Please start again.')
-            verify_otp(user, purpose, serializer.validated_data['code'])
+            if purpose == mfa.PURPOSE:
+                mfa.check(user, serializer.validated_data['code'])
+            else:
+                verify_otp(user, purpose, serializer.validated_data['code'])
         except OTPError as exc:
             return otp_error_response(exc)
+        except mfa.CodeError as exc:
+            status_code = status.HTTP_429_TOO_MANY_REQUESTS if exc.code == 'too_many_attempts' else status.HTTP_400_BAD_REQUEST
+            return Response({'detail': exc.detail, 'code': exc.code}, status=status_code)
 
         if purpose == EmailOTP.REGISTER and not user.is_verified:
             user.is_verified = True
@@ -224,8 +250,9 @@ class OTPVerifyView(generics.GenericAPIView):
 
         user.last_login = timezone.now()
         user.save(update_fields=['last_login'])
-        log_activity(user, ActivityLog.LOGIN, 'Signed in with an email code', request)
-        return Response({**tokens_for(user), 'user': UserSerializer(user).data, 'remember': remember, 'status': 'signed_in'})
+        how = 'authenticator app' if purpose == mfa.PURPOSE else 'email code'
+        log_activity(user, ActivityLog.LOGIN, f'Signed in with an {how}' if how[0] in 'aeiou' else f'Signed in with a {how}', request)
+        return Response({**tokens_for(user, request, how), 'user': UserSerializer(user).data, 'remember': remember, 'status': 'signed_in'})
 
 
 class OTPResendView(generics.GenericAPIView):
@@ -328,7 +355,10 @@ class UserLogoutView(generics.GenericAPIView):
             refresh_token = request.data.get('refresh')
             if not refresh_token:
                 return Response({'detail': 'Refresh token is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            RefreshToken(refresh_token).blacklist()
+            token = RefreshToken(refresh_token)
+            if token.get('sid'):
+                mfa.revoke(UserSession.objects.filter(key=token['sid'], user=request.user))  # this device's list entry
+            token.blacklist()
             log_activity(request.user, ActivityLog.LOGOUT, 'User logged out', request)
             return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -345,6 +375,23 @@ class UserProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class MyTracksView(APIView):
+    """
+    POST /api/v1/auth/profile/tracks/ {track: training|scholarships}
+    A student adds the other side of the portal (its own dashboard) to their account.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        track = request.data.get('track')
+        if track not in User.TRACKS:
+            return Response({'track': 'Choose training or scholarships.'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role != User.STUDENT:
+            return Response({'detail': 'Only student accounts have training and scholarship dashboards.'}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.join_track(track)
+        return Response(UserSerializer(request.user).data)
 
 
 class UserProfileUpdateView(generics.UpdateAPIView):
@@ -479,3 +526,23 @@ class MyActivityOverviewView(generics.GenericAPIView):
             'devices': [{'key': k, 'count': v} for k, v in devices.items()],
             'addresses': addresses,
         })
+
+
+# ---------------------------------------------------------------- refreshing tokens (signed-out devices can't)
+
+class SessionTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        try:
+            sid = RefreshToken(attrs['refresh']).get('sid')
+        except TokenError:
+            sid = None  # the parent check reports the bad token
+        if not mfa.session_alive(sid):
+            raise InvalidToken({'detail': 'This device was signed out.', 'code': 'session_revoked'})
+        data = super().validate(attrs)
+        if sid:
+            UserSession.objects.filter(key=sid).update(last_seen_at=timezone.now())
+        return data
+
+
+class SessionTokenRefreshView(TokenRefreshView):
+    serializer_class = SessionTokenRefreshSerializer

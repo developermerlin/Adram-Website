@@ -177,7 +177,7 @@ export const StudentServicePanel = ({ application: a, onAcceptTerms, onRequestAg
         <ServiceSteps service={s} />
         <p className="service-panel__title"><i className="fas fa-magnifying-glass-dollar" /> Payment submitted: we’re checking it</p>
         <p>
-          {formatMoney(s.amount)} by {s.payment_method_display} (transaction {s.transaction_id}, reference {s.reference}), sent {formatDateTime(s.payment_submitted_at)}.
+          {formatMoney(s.amount)} by {s.payment_method_display} (transaction {s.transaction_id}{s.payer ? `, paid by ${s.payer}` : ''}, reference {s.reference}), sent {formatDateTime(s.payment_submitted_at)}.
         </p>
         <div className="service-panel__actions">
           <Link to={applyPath} className="btn btn--outline btn--sm"><i className="fas fa-folder-open" /> My payment &amp; documents</Link>
@@ -304,6 +304,7 @@ export const StaffServicePanel = ({ application: a, onDecide }) => {
             <div><dt>Amount</dt><dd>{formatMoney(s.amount)}</dd></div>
             <div><dt>Method</dt><dd>{s.payment_method_display || '—'}</dd></div>
             <div><dt>Transaction ID</dt><dd>{s.transaction_id || '—'}</dd></div>
+            {s.payer && <div><dt>{s.payment_method === 'card' ? 'Name on card' : 'Paid from'}</dt><dd>{s.payer}</dd></div>}
             <div><dt>Submitted</dt><dd>{formatDateTime(s.payment_submitted_at)}</dd></div>
           </dl>
           {s.status === 'payment_rejected' && s.decision_note && <p className="muted small">Your note: {s.decision_note}</p>}

@@ -9,6 +9,7 @@ import { ChartCard } from '../../components/lms/ChartCard';
 import { StatusPill } from '../../components/lms/Price';
 import { money } from '../../components/lms/courseUtils';
 import { formatDate } from '../../utils/format';
+import WithdrawalsPanel from '../../components/instructor/WithdrawalsPanel';
 import '../../styles/marketplace.css';
 import '../../styles/instructor.css';
 
@@ -44,6 +45,8 @@ export const InstructorEarningsPage = () => {
           <StatTile label="Pending" value={v(s?.pending)} icon="fa-hourglass-half" tone="amber"><span className="kpi__note">Earned, not paid out yet</span></StatTile>
         </div>
 
+        <WithdrawalsPanel />
+
         <ChartCard title="Net earnings by month" note="The last 12 months.">
           {!data ? <div className="skeleton skeleton--chart" /> : data.monthly.length === 0 ? <p className="muted">No sales yet. Share your course page to get your first students.</p> : (
             <ColumnChart rows={data.monthly.map((m) => ({ key: m.month, label: monthName.format(new Date(`${m.month}T00:00:00`)), value: Number(m.net), sub: `${m.sales} sales · gross ${money(m.gross)}` }))}
@@ -68,7 +71,7 @@ export const InstructorEarningsPage = () => {
             )}
           </section>
           <section className="card table-card">
-            <div className="table-card__head"><div><h2 className="h3">Payouts</h2><p className="muted small">Money ADRAM paid to you. Set how you want to be paid on your <Link to="/profile">profile</Link>.</p></div></div>
+            <div className="table-card__head"><div><h2 className="h3">Payouts</h2><p className="muted small">Money ADRAM paid to you. Ask for a payout with “Request withdrawal” above.</p></div></div>
             {data && data.payouts.length === 0 ? <p className="muted in-pad">No payouts yet.</p> : (
               <div className="table-scroll">
                 <table className="table">

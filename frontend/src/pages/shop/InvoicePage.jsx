@@ -8,7 +8,7 @@ import { money } from '../../components/lms/courseUtils';
 import { formatDate, formatDateTime } from '../../utils/format';
 import '../../styles/invoice.css';
 
-const METHOD_NAMES = { afrimoney: 'Afrimoney', orange_money: 'Orange Money' };
+const METHOD_NAMES = { afrimoney: 'Afrimoney', orange_money: 'Orange Money', card: 'Card' };
 
 /** A printable invoice (unpaid) or receipt (paid) for one order. */
 export const InvoicePage = () => {

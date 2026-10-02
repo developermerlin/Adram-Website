@@ -3,7 +3,7 @@ import { instructorAPI } from '../../services/api';
 import PortalLayout from '../../components/layout/PortalLayout';
 import { Alert } from '../../components/ui/Form';
 import { StatTile } from '../../components/admin/StatTile';
-import { AreaChart, HBars, MiniBars } from '../../components/admin/charts';
+import { AreaChart, Funnel, HBars, MiniBars } from '../../components/admin/charts';
 import { ChartCard, PeriodSwitch } from '../../components/lms/ChartCard';
 import { money } from '../../components/lms/courseUtils';
 import '../../styles/instructor.css';
@@ -17,7 +17,22 @@ export const InstructorAnalyticsPage = () => {
   const [days, setDays] = useState(30);
   const [course, setCourse] = useState('');
   const [state, setState] = useState({ key: null, data: null, error: false });
+  const [extra, setExtra] = useState({ key: null, funnel: null, followers: null });
   const key = `${days}|${course}`;
+
+  // The sales funnel and followers load alongside (a failure there leaves the rest of the page working)
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      instructorAPI.funnel({ days, ...(course ? { course } : {}) }).then(({ data }) => data).catch(() => null),
+      instructorAPI.followers(days).then(({ data }) => data).catch(() => null),
+    ]).then(([funnel, followers]) => live && setExtra({ key, funnel, followers }));
+    return () => {
+      live = false;
+    };
+  }, [days, course, key]);
+  const funnel = extra.key === key ? extra.funnel : null;
+  const followers = extra.key === key ? extra.followers : null;
 
   useEffect(() => {
     let live = true;
@@ -63,6 +78,10 @@ export const InstructorAnalyticsPage = () => {
           <StatTile label="Revenue" value={t ? money(t.revenue) : null} icon="fa-sack-dollar" tone="green">
             <span className="kpi__note">{t ? `You earned ${money(t.earnings)}` : ''}</span>
           </StatTile>
+          <StatTile label="Followers" value={followers ? fmt.format(followers.total) : null} icon="fa-user-plus" tone="violet"
+            chart={followers && <MiniBars series={followers.series} valueKey="value" label="New followers" />}>
+            <span className="kpi__note">{followers ? `${fmt.format(followers.new)} new in this period` : ''}</span>
+          </StatTile>
           <StatTile label="Rating" value={t ? (t.rating_average ? t.rating_average.toFixed(1) : '—') : null} icon="fa-star" tone="amber">
             <span className="kpi__note">{t ? `${fmt.format(t.review_count)} reviews` : ''}</span>
           </StatTile>
@@ -78,6 +97,50 @@ export const InstructorAnalyticsPage = () => {
             )}
           </ChartCard>
         </div>
+
+        <div className="in-charts">
+          <ChartCard title="Sales funnel" note={`From seeing your course to finishing it, in this period. Each bar is its share of the page views.${funnel?.wishlist ? ` Also saved to wishlists ${fmt.format(funnel.wishlist)} times.` : ''}`}>
+            {!funnel ? <div className="skeleton skeleton--block" /> : funnel.steps[0].value === 0 ? <p className="muted">No course page views in this period yet.</p> : (
+              <Funnel steps={funnel.steps.map((s) => ({ key: s.key, label: s.label, count: s.value }))} />
+            )}
+          </ChartCard>
+          <ChartCard title="New followers" note={followers ? `${fmt.format(followers.total)} ${followers.total === 1 ? 'person follows' : 'people follow'} you. Followers hear about each new course you publish.` : null}>
+            {!followers ? <div className="skeleton skeleton--chart" /> : (
+              <>
+                <AreaChart series={followers.series} valueKey="value" name="New followers" />
+                {followers.latest.length > 0 && (
+                  <ul className="in-followers">
+                    {followers.latest.map((f) => <li key={`${f.name}-${f.since}`}><i className="fas fa-user-plus" aria-hidden="true" /> {f.name}<small className="muted">{new Date(f.since).toLocaleDateString()}</small></li>)}
+                  </ul>
+                )}
+              </>
+            )}
+          </ChartCard>
+        </div>
+
+        <section className="card table-card in-conversion">
+            <div className="table-card__head"><div><h2 className="h3">Conversion by course</h2><p className="muted small">Page views to enrolments, and where people stop.</p></div></div>
+            {funnel && funnel.courses.length === 0 ? <p className="muted in-pad">No courses yet.</p> : (
+              <div className="table-scroll">
+                <table className="table">
+                  <thead><tr><th>Course</th><th className="num">Views</th><th className="num">Wishlist</th><th className="num">Cart</th><th className="num">Enrolled</th><th className="num">Finished</th><th className="num">Conversion</th></tr></thead>
+                  <tbody>
+                    {funnel?.courses.map((c) => (
+                      <tr key={c.slug}>
+                        <td><strong>{c.title}</strong>{c.is_free && <><br /><small className="muted">Free</small></>}</td>
+                        <td className="num">{fmt.format(c.views)}</td>
+                        <td className="num">{fmt.format(c.wishlist)}</td>
+                        <td className="num">{c.is_free ? '—' : fmt.format(c.cart)}</td>
+                        <td className="num">{fmt.format(c.enrolled)}</td>
+                        <td className="num">{fmt.format(c.finished)}</td>
+                        <td className="num">{c.conversion == null ? '—' : `${c.conversion}%`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+        </section>
 
         <div className="in-charts">
           <section className="card table-card">

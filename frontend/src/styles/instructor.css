@@ -142,3 +142,9 @@
   .in-ccard { grid-template-columns: minmax(0, 1fr); }
   .in-earn .btn { margin-left: 0; }
 }
+
+/* Analytics: followers list and the conversion table */
+.in-followers { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.88rem; }
+.in-followers li { display: inline-flex; align-items: center; gap: 6px; }
+.in-followers i { color: #7c3aed; }
+.in-conversion { margin-bottom: 18px; }

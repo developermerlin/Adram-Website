@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 import { telHref } from '../../config/site';
 import { fill } from '../../content/merge';
 import { usePageContent, useSite } from '../../content/useContent';
@@ -8,6 +10,7 @@ import { CtaBand, IconTile, PageHero, SectionHeading } from '../../components/ui
 import { TrainingArt } from '../../components/brand/Illustrations';
 import BrandIcon from '../../components/brand/BrandIcon';
 import CourseCard from '../../components/lms/CourseCard';
+import SearchBox from '../../components/lms/SearchBox';
 import Stars from '../../components/lms/Stars';
 import useWishlist from '../../components/lms/useWishlist';
 import { levelLabel } from '../../components/lms/courseUtils';
@@ -17,6 +20,7 @@ import '../../styles/marketplace.css';
 
 const SORTS = [
   ['popular', 'Most popular'],
+  ['trending', 'Trending'],
   ['newest', 'Newest'],
   ['rating', 'Highest rated'],
   ['price_low', 'Price: low to high'],
@@ -25,9 +29,10 @@ const SORTS = [
 const RATINGS = [['4.5', '4.5 & up'], ['4', '4.0 & up'], ['3.5', '3.5 & up'], ['3', '3.0 & up']];
 const DURATIONS = [['short', 'Under 2 hours'], ['medium', '2 to 6 hours'], ['long', 'Over 6 hours']];
 const PRICES = [['', 'All prices'], ['free', 'Free'], ['paid', 'Paid'], ['discounted', 'On sale']];
-const FILTER_KEYS = ['q', 'category', 'subcategory', 'level', 'language', 'price', 'rating', 'duration', 'instructor', 'sort', 'page'];
+const FILTER_KEYS = ['q', 'category', 'subcategory', 'level', 'language', 'price', 'rating', 'duration', 'instructor', 'sort', 'page', 'exact'];
 const ROWS = [
   ['recommended', 'Recommended for you'],
+  ['trending', 'Trending this week'],
   ['popular', 'Most popular'],
   ['newest', 'Newly added'],
   ['top_rated', 'Highest rated'],
@@ -74,6 +79,7 @@ const FilterGroup = ({ title, children }) => (
 const CourseFinder = ({ allLabel, onTotal }) => {
   const [params, setParams] = useSearchParams();
   const wish = useWishlist();
+  const { isAuthenticated } = useAuth();
   const [facets, setFacets] = useState(null);
   const [rows, setRows] = useState(null);
   const [result, setResult] = useState({ key: null, data: null, error: false });
@@ -121,9 +127,21 @@ const CourseFinder = ({ allLabel, onTotal }) => {
     setDraft('');
     setParams(new URLSearchParams(), { replace: true });
   };
-  const search = (e) => {
-    e.preventDefault();
-    update({ q: draft.trim() });
+  const search = (q) => update({ q, exact: '' });
+  // A topic or instructor from the suggestions adds its filters; a saved search replaces all of them
+  const apply = (changes, replace = false) => {
+    if (replace) setParams(new URLSearchParams(Object.entries(changes).filter(([, v]) => v)), { replace: true });
+    else update({ ...changes, exact: '' });
+  };
+  const saveSearch = async () => {
+    const kept = Object.fromEntries(Object.entries(query).filter(([k]) => k !== 'page' && k !== 'exact'));
+    if (data?.showing_for) kept.q = data.showing_for; // save what was actually shown, not the misspelling
+    try {
+      await lmsAPI.saveSearch(kept.q || category?.name || 'My search', kept);
+      toast.success('Search saved. Find it under the search box.');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'This search could not be saved.');
+    }
   };
 
   const loading = result.key !== key;
@@ -216,12 +234,7 @@ const CourseFinder = ({ allLabel, onTotal }) => {
 
   return (
     <div className="cf">
-      <form className="cf-search" onSubmit={search} role="search">
-        <i className="fas fa-magnifying-glass" aria-hidden="true" />
-        <input type="search" className="input" placeholder="Search for anything: a skill, a tool, an instructor…" aria-label="Search courses"
-          value={draft} onChange={(e) => setDraft(e.target.value)} />
-        <button type="submit" className="btn btn--primary">Search</button>
-      </form>
+      <SearchBox value={draft} onChange={setDraft} onSearch={search} onApply={apply} />
 
       {facets?.categories.some((c) => c.count) && (
         <div className="cf-cats" role="group" aria-label="Categories">
@@ -261,8 +274,11 @@ const CourseFinder = ({ allLabel, onTotal }) => {
               <i className="fas fa-sliders" /> Filters{activeChips.length ? ` (${activeChips.length})` : ''}
             </button>
             <p className="cat-count" aria-live="polite">
-              {data ? `${data.count} ${data.count === 1 ? 'course' : 'courses'}` : 'Loading…'}{query.q && ` for “${query.q}”`}
+              {data ? `${data.count} ${data.count === 1 ? 'course' : 'courses'}` : 'Loading…'}{query.q && ` for “${data?.showing_for || query.q}”`}
             </p>
+            {isAuthenticated && filtering && (
+              <button type="button" className="btn btn--text btn--sm cf-save" onClick={saveSearch}><i className="far fa-bookmark" /> Save this search</button>
+            )}
             <label className="cf-sort">
               <span>Sort by</span>
               <select className="input" value={query.sort || (query.q ? 'relevance' : 'popular')} onChange={(e) => update({ sort: e.target.value })}>
@@ -286,6 +302,14 @@ const CourseFinder = ({ allLabel, onTotal }) => {
             </div>
           )}
 
+          {data?.showing_for && (
+            <p className="cf-corrected">
+              Showing results for <strong>“{data.showing_for}”</strong>. No courses matched <em>“{data.searched_for}”</em>.{' '}
+              <button type="button" onClick={() => { setDraft(data.showing_for); update({ q: data.showing_for, exact: '' }); }}>Search for “{data.showing_for}”</button>
+              {' · '}
+              <button type="button" onClick={() => update({ exact: '1' })}>Search instead for “{data.searched_for}”</button>
+            </p>
+          )}
           {result.error && <p className="muted">Courses couldn’t be loaded right now. Please refresh the page or contact us for details.</p>}
           {loading && !data && (
             <div className="cc-grid" aria-busy="true">

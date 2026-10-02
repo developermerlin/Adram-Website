@@ -23,8 +23,49 @@ export const dashboardPathFor = (role) => {
   }
 };
 
+// A student's sidebar for each side of the portal (see config/tracks.js). `requires` hides a link until the
+// student has something there (My training appears once they enroll).
+const STUDENT_SIDES = {
+  training: [
+    { to: '/student/dashboard/training', label: 'Overview', icon: 'fa-gauge-high', end: true },
+    { to: '/student/learning', label: 'My learning', icon: 'fa-circle-play' },
+    { to: '/student/progress', label: 'My progress', icon: 'fa-chart-line' },
+    { to: '/student/referrals', label: 'Invite friends', icon: 'fa-user-plus' },
+    { to: '/student/affiliate', label: 'Affiliate programme', icon: 'fa-handshake' },
+    { to: '/student/training', label: 'My training', icon: 'fa-laptop-code', requires: 'training' },
+    { to: '/student/certificates', label: 'Certificates', icon: 'fa-certificate' },
+    { to: '/student/purchases', label: 'Purchase history', icon: 'fa-receipt' },
+    { to: '/cart', label: 'Cart', icon: 'fa-cart-shopping' },
+    { to: '/courses', label: 'Browse courses', icon: 'fa-compass', external: true },
+  ],
+  scholarships: [
+    { to: '/student/dashboard/scholarships', label: 'Overview', icon: 'fa-gauge-high', end: true },
+    { to: '/student/applications', label: 'My applications', icon: 'fa-list-check', badge: 'actions' },
+    { to: '/student/saved', label: 'Saved scholarships', icon: 'fa-bookmark' },
+    { to: '/scholarships', label: 'Browse scholarships', icon: 'fa-graduation-cap', external: true },
+  ],
+};
+const STUDENT_SHARED = [
+  { to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' },
+  { to: '/notifications', label: 'Notifications', icon: 'fa-bell' },
+];
+
 // Sidebar sections for the portal. Add a role's pages here as they are built.
-export const portalNavFor = (role) => {
+// Students see the side they're on (`track`: training or scholarships), then what both sides share.
+export const portalNavFor = (role, track = null) => {
+  if (role === 'STUDENT') {
+    const side = STUDENT_SIDES[track];
+    return [
+      side ? { heading: track === 'training' ? 'Training' : 'Scholarships', items: side }
+        : { heading: 'Workspace', items: [{ to: '/student/dashboard', label: 'Get started', icon: 'fa-compass', end: true }] },
+      { heading: 'Inbox', items: STUDENT_SHARED },
+      { heading: 'Account', items: [
+        { to: '/profile', label: 'Profile & security', icon: 'fa-user-gear' },
+        { to: '/activity', label: 'Activity log', icon: 'fa-clock-rotate-left' },
+      ] },
+    ];
+  }
+
   const workspace = {
     ADMIN: [
       { to: '/admin/dashboard', label: 'Overview', icon: 'fa-gauge-high' },
@@ -42,6 +83,7 @@ export const portalNavFor = (role) => {
     INSTRUCTOR: [
       { to: '/instructor', label: 'Dashboard', icon: 'fa-gauge-high', end: true },
       { to: '/instructor/courses', label: 'My courses', icon: 'fa-chalkboard-user' },
+      { to: '/instructor/question-banks', label: 'Question banks', icon: 'fa-box-archive' },
       { to: '/instructor/questions', label: 'Q&A', icon: 'fa-circle-question' },
       { to: '/instructor/reviews', label: 'Reviews', icon: 'fa-star' },
       { to: '/instructor/analytics', label: 'Analytics', icon: 'fa-chart-line' },
@@ -49,31 +91,20 @@ export const portalNavFor = (role) => {
       { to: '/notifications', label: 'Notifications', icon: 'fa-bell' },
       { to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' },
     ],
-    // `requires` hides a link until the student has something there (My training appears once they enroll).
-    STUDENT: [
-      { to: '/student/dashboard', label: 'Overview', icon: 'fa-gauge-high', end: true },
-      { to: '/student/learning', label: 'My learning', icon: 'fa-circle-play' },
-      { to: '/courses', label: 'Browse courses', icon: 'fa-compass', external: true },
-      { to: '/cart', label: 'Cart', icon: 'fa-cart-shopping' },
-      { to: '/student/purchases', label: 'Purchase history', icon: 'fa-receipt' },
-      { to: '/student/certificates', label: 'Certificates', icon: 'fa-certificate' },
-      { to: '/notifications', label: 'Notifications', icon: 'fa-bell' },
-      { to: '/student/applications', label: 'My applications', icon: 'fa-list-check', badge: 'actions' },
-      { to: '/student/saved', label: 'Saved scholarships', icon: 'fa-bookmark' },
-      { to: '/student/training', label: 'My training', icon: 'fa-laptop-code', requires: 'training' },
-      { to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' },
-      { to: '/scholarships', label: 'Browse scholarships', icon: 'fa-graduation-cap', external: true },
-    ],
   }[role];
 
   // The course marketplace (administrators).
   const learning = {
     ADMIN: [
       { to: '/admin/lms', label: 'LMS overview', icon: 'fa-chart-pie' },
-      { to: '/admin/courses', label: 'Courses', icon: 'fa-laptop-code', badge: 'training_requests' },
+      { to: '/admin/insights', label: 'Insights', icon: 'fa-magnifying-glass-chart' },
+      { to: '/admin/courses', label: 'Courses', icon: 'fa-laptop-code' },
+      { to: '/admin/enrollments', label: 'Enrollments', icon: 'fa-user-check', badge: 'training_requests' },
       { to: '/admin/course-reviews', label: 'Course reviews', icon: 'fa-clipboard-check' },
       { to: '/admin/categories', label: 'Categories', icon: 'fa-folder-tree' },
+      { to: '/admin/question-banks', label: 'Question banks', icon: 'fa-box-archive' },
       { to: '/admin/course-sales', label: 'Orders & coupons', icon: 'fa-receipt' },
+      { to: '/admin/campaigns', label: 'Email campaigns', icon: 'fa-envelope-open-text' },
       { to: '/admin/moderation', label: 'Moderation', icon: 'fa-flag' },
       { to: '/admin/certificates', label: 'Certificates', icon: 'fa-certificate' },
       { to: '/admin/audit', label: 'Audit log', icon: 'fa-clipboard-list' },

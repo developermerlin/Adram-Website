@@ -1,5 +1,5 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
+from . import security_views as security
 from .oauth import OAuthCallbackView, OAuthExchangeView, OAuthProvidersView, OAuthStartView
 from .admin_views import ActivityOverviewView, PlatformActivityView, UserActionView, UserBulkActionView, UserDetailView, UserInsightsView, UserListView, UserOverviewView, UserStatsView
 from .views import (
@@ -9,8 +9,10 @@ from .views import (
     OTPVerifyView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
+    SessionTokenRefreshView,
     UserActivityLogView,
     MyActivityOverviewView,
+    MyTracksView,
     UserLogoutView,
     UserProfileUpdateView,
     UserProfileView,
@@ -26,7 +28,7 @@ urlpatterns = [
     path('otp/verify/', OTPVerifyView.as_view(), name='otp_verify'),
     path('otp/resend/', OTPResendView.as_view(), name='otp_resend'),
     path('logout/', UserLogoutView.as_view(), name='logout'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', SessionTokenRefreshView.as_view(), name='token_refresh'),
 
     # Social sign-in (Google, Facebook, GitHub)
     path('oauth/providers/', OAuthProvidersView.as_view(), name='oauth_providers'),
@@ -37,6 +39,16 @@ urlpatterns = [
     # User Profile
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('profile/update/', UserProfileUpdateView.as_view(), name='profile_update'),
+    path('profile/tracks/', MyTracksView.as_view(), name='profile_tracks'),
+    # Two-step sign-in (authenticator app) and signed-in devices
+    path('2fa/', security.TwoStepView.as_view(), name='two_step'),
+    path('2fa/setup/', security.TwoStepSetupView.as_view(), name='two_step_setup'),
+    path('2fa/confirm/', security.TwoStepConfirmView.as_view(), name='two_step_confirm'),
+    path('2fa/disable/', security.TwoStepDisableView.as_view(), name='two_step_disable'),
+    path('2fa/recovery-codes/', security.RecoveryCodesView.as_view(), name='recovery_codes'),
+    path('sessions/', security.SessionsView.as_view(), name='sessions'),
+    path('sessions/revoke-others/', security.SessionsRevokeOthersView.as_view(), name='sessions_revoke_others'),
+    path('sessions/<int:pk>/', security.SessionDetailView.as_view(), name='session'),
     
     # Password Management
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),

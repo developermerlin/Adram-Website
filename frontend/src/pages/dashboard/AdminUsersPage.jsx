@@ -31,6 +31,7 @@ export const AdminUsersPage = () => {
   const status = params.get('status') || '';
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
+  const [track, setTrack] = useState(''); // students on the training or scholarships side
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ results: [], count: 0, next: null, previous: null });
   const [stats, setStats] = useState(null);
@@ -46,14 +47,14 @@ export const AdminUsersPage = () => {
     setLoading(true);
     adminAPI.getStats().then(({ data }) => setStats(data)).catch(() => {});
     return adminAPI
-      .getUsers({ status, role, search, page })
+      .getUsers({ status, role, track, search, page })
       .then(({ data }) => {
         setResult(data);
         setError('');
       })
       .catch(() => setError('Could not load users. Refresh the page to try again.'))
       .finally(() => setLoading(false));
-  }, [status, role, search, page]);
+  }, [status, role, track, search, page]);
 
   useEffect(() => {
     const t = setTimeout(reload, 250); // debounce the search box
@@ -135,6 +136,11 @@ export const AdminUsersPage = () => {
             <select className="input" aria-label="Filter by role" value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>
               <option value="">All roles</option>
               {Object.entries(ROLES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <select className="input" aria-label="Filter students by dashboard" value={track} onChange={(e) => { setTrack(e.target.value); setPage(1); }}>
+              <option value="">Training &amp; scholarships</option>
+              <option value="training">Training students</option>
+              <option value="scholarships">Scholarship applicants</option>
             </select>
           </div>
           <span className="muted small">{result.count} user{result.count === 1 ? '' : 's'}</span>

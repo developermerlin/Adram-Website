@@ -19,11 +19,19 @@ import { HIGHLIGHT_LABELS } from '../../components/lms/courseUtils';
 import { StatusPill } from '../../components/lms/Price';
 import '../../styles/marketplace.css';
 
+// <input type="datetime-local"> shows local time without a zone
+const toLocal = (value) => {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
 const BLANK = {
   title: '', icon: 'laptop', summary: '', topics: [''], duration: '', fee: '', price: '', next_intake: '', slug: '', is_published: false,
   description: '', learn_points: [''], requirements: [''], audience: [''], level: 'all', language: 'English',
   thumbnail: '', promo_video_url: '', instructor_name: '', instructor_title: '', instructor_bio: '', instructor_photo: '', enrollment_mode: 'approval',
-  subtitle: '', discount_price: '', category: '', subcategory: '', faqs: [], instructor: '', is_premium: false, highlight: '', format_label: 'Course',
+  subtitle: '', discount_price: '', sale_starts_at: null, sale_ends_at: null, category: '', subcategory: '', faqs: [], instructor: '', is_premium: false, highlight: '', format_label: 'Course',
+  caption_languages: [''], includes: [''], premium_note: '', feature: {}, allow_downloads: true, allow_video_downloads: false,
 };
 
 export const CourseEditorPage = () => {
@@ -50,6 +58,8 @@ export const CourseEditorPage = () => {
   const cardPreview = { ...form, price: price || null, sale_price: sale, is_free: !sale, stats: form.stats || {}, currency: 'NLe',
     instructor: { name: teacher ? teacher.full_name || teacher.email : form.instructor_name || 'ADRAM Technologies' } };
 
+  const feature = form.feature || {};
+  const setFeature = (key) => (value) => set('feature')({ ...feature, [key]: value });
   const input = (field) => ({ name: field, value: form[field] ?? '', error: errors[field], onChange: (e) => set(field)(e.target.value) });
 
   const submit = async (e) => {
@@ -147,6 +157,19 @@ export const CourseEditorPage = () => {
                   </div>
                   <TextField label="Language" maxLength={40} placeholder="e.g. English" {...input('language')} />
                 </div>
+                <fieldset className="field">
+                  <legend className="field__label">Downloads</legend>
+                  <label className="checkbox">
+                    <input type="checkbox" checked={form.allow_downloads !== false} onChange={(e) => set('allow_downloads')(e.target.checked)} />
+                    <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+                    <span>Students can download the lesson materials<small>Reading notes, documents and resources, one by one or the whole course as a ZIP.</small></span>
+                  </label>
+                  <label className="checkbox">
+                    <input type="checkbox" checked={Boolean(form.allow_video_downloads)} disabled={form.allow_downloads === false} onChange={(e) => set('allow_video_downloads')(e.target.checked)} />
+                    <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+                    <span>Also let them download uploaded videos<small>Large files. YouTube and Vimeo videos can only be watched online.</small></span>
+                  </label>
+                </fieldset>
                 <TextField label="Trailer video (optional)" maxLength={500} placeholder="https://www.youtube.com/watch?v=…" hint="A YouTube or Vimeo link. Students can play it from the course page before enrolling." {...input('promo_video_url')} />
               </div>
             </section>
@@ -159,6 +182,30 @@ export const CourseEditorPage = () => {
             </section>
             <section className="card panel editor__section">
               <ListEditor id="audience" label="Who this course is for" hint="Up to 8 short lines." items={form.audience?.length ? form.audience : ['']} onChange={set('audience')} placeholder="e.g. Complete beginners" max={8} maxLength={200} error={errors.audience} />
+            </section>
+
+            <section className="card panel editor__section">
+              <h2 className="h3">More of the course page</h2>
+              <p className="muted small">The extra parts of a Udemy-style course page. Anything left blank is not shown.</p>
+              <div className="form-grid">
+                <ListEditor id="caption_languages" label="Captions" hint="Subtitle languages, shown under the title, e.g. “French [Auto]”. The first two are shown, then “N more”." items={form.caption_languages?.length ? form.caption_languages : ['']} onChange={set('caption_languages')} placeholder="e.g. French [Auto]" max={40} maxLength={40} error={errors.caption_languages} />
+                <ListEditor id="includes" label="“This course includes” extras" hint="Added to the lines worked out from the lessons (video hours, quizzes…), e.g. “Access on mobile and TV” or “Closed captions”. Leave empty to show “Learn on your phone or computer” and “Certificate of completion”." items={form.includes?.length ? form.includes : ['']} onChange={set('includes')} placeholder="e.g. Access on mobile and TV" max={10} maxLength={120} error={errors.includes} />
+              </div>
+              <h3 className="h4 editor__subhead">Feature box</h3>
+              <p className="muted small">A highlighted box after “This course includes”, like Udemy’s “Coding Exercises”. Give it a title to show it.</p>
+              <div className="form-grid">
+                <TextField label="Title" name="feature_title" maxLength={120} placeholder="e.g. Coding exercises" value={feature.title || ''} onChange={(e) => setFeature('title')(e.target.value)} />
+                <div className="field">
+                  <label htmlFor="feature_text">Text</label>
+                  <textarea id="feature_text" className="input" rows={3} maxLength={600} value={feature.text || ''} onChange={(e) => setFeature('text')(e.target.value)} placeholder="e.g. This course includes coding exercises so you can practise your skills as you learn." />
+                </div>
+                <ImageField field={{ label: 'Picture', hint: 'Shown beside the text, e.g. a screenshot.' }} value={feature.image || ''} onChange={setFeature('image')} id="feature_image" />
+                <div className="form-row">
+                  <TextField label="Link text" name="feature_link_label" maxLength={60} placeholder="e.g. See a demo" value={feature.link_label || ''} onChange={(e) => setFeature('link_label')(e.target.value)} />
+                  <TextField label="Link address" name="feature_link_url" maxLength={500} placeholder="https://… or /courses/…" value={feature.link_url || ''} onChange={(e) => setFeature('link_url')(e.target.value)} />
+                </div>
+                {errors.feature && <p className="field-error">{errors.feature}</p>}
+              </div>
             </section>
 
             <section className="card panel editor__section">
@@ -197,6 +244,10 @@ export const CourseEditorPage = () => {
                 <TextField label="Fee (text)" maxLength={100} placeholder="e.g. NLe 2,500" {...input('fee')} />
                 <TextField label="Price to pay online (NLe)" inputMode="decimal" placeholder="Leave empty for a free course" hint="Students buy through the cart and pay by mobile money; lessons unlock when you confirm the payment under Orders." {...input('price')} />
                 <TextField label="Sale price (NLe, optional)" inputMode="decimal" placeholder="Lower than the price" {...input('discount_price')} />
+                <TextField label="Sale starts (optional)" type="datetime-local" name="sale_starts_at" value={toLocal(form.sale_starts_at)} error={errors.sale_starts_at}
+                  hint="Empty = straight away" onChange={(e) => set('sale_starts_at')(e.target.value || null)} />
+                <TextField label="Sale ends (optional)" type="datetime-local" name="sale_ends_at" value={toLocal(form.sale_ends_at)} error={errors.sale_ends_at}
+                  hint="Empty = no end. After it ends, the full price applies by itself." onChange={(e) => set('sale_ends_at')(e.target.value || null)} />
                 <TextField label="Next intake" type="date" {...input('next_intake')} />
               </div>
             </section>
@@ -210,8 +261,15 @@ export const CourseEditorPage = () => {
               <label className="checkbox">
                 <input type="checkbox" checked={Boolean(form.is_premium)} onChange={(e) => set('is_premium')(e.target.checked)} />
                 <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
-                <span>Premium badge<small>Shows “Premium” on the picture.</small></span>
+                <span>Premium badge<small>Shows “Premium” on the picture and a Premium bar on the course page.</small></span>
               </label>
+              {form.is_premium && (
+                <div className="field">
+                  <label htmlFor="premium_note">Premium bar text</label>
+                  <textarea id="premium_note" className="input" rows={2} maxLength={300} value={form.premium_note || ''} onChange={(e) => set('premium_note')(e.target.value)} placeholder="e.g. Part of ADRAM Premium: our top-rated, expert-led courses." />
+                  {errors.premium_note ? <p className="field-error">{errors.premium_note}</p> : <p className="hint">Shown beside the Premium badge under the course title.</p>}
+                </div>
+              )}
               <div className="field">
                 <label htmlFor="highlight">Label</label>
                 <select id="highlight" className="input" value={form.highlight || ''} onChange={(e) => set('highlight')(e.target.value)}>

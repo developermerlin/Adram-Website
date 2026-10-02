@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { lmsAdminAPI, parseApiErrors } from '../../services/api';
@@ -33,7 +34,8 @@ export const AdminCertificatesPage = () => {
   };
 
   return (
-    <PortalLayout title="Certificates" subtitle="Certificates issued when students complete their courses.">
+    <PortalLayout title="Certificates" subtitle="Certificates issued when students complete their courses."
+      actions={<Link to="/admin/certificate-templates" className="btn btn--outline btn--sm"><i className="fas fa-palette" /> Templates</Link>}>
       <div className="la-page">
         <div className="la-toolbar">
           <div className="la-toolbar__filters">

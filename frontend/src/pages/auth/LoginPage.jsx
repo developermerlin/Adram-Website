@@ -7,6 +7,7 @@ import AuthLayout from '../../components/layout/AuthLayout';
 import { Alert, PasswordField, TextField } from '../../components/ui/Form';
 import OAuthButtons from '../../components/ui/OAuthButtons';
 import OtpVerify from '../../components/ui/OtpVerify';
+import AuthenticatorStep from '../../components/ui/AuthenticatorStep';
 import { isInfoCode, oauthErrorMessage } from '../../utils/oauth';
 
 export const LoginPage = () => {
@@ -60,6 +61,15 @@ export const LoginPage = () => {
       setMessage({ type: isInfoCode(data.status) ? 'info' : 'error', text: data.detail });
     }
   };
+
+  if (challenge?.purpose === 'TOTP') {
+    return (
+      <AuthLayout title="Two-step sign-in" subtitle="Your account is protected with an authenticator app." panel={c}
+        switchTo={{ text: c.switchText, to: '/register', label: c.switchLabel }}>
+        <AuthenticatorStep onSubmit={handleCode} onBack={() => setChallenge(null)} />
+      </AuthLayout>
+    );
+  }
 
   if (challenge) {
     const verifyingEmail = challenge.purpose === 'REGISTER';

@@ -5,8 +5,9 @@ import { Alert } from '../ui/Form';
  * A dialog asking for a decision with a note (reject a course, refund an order, revoke a certificate…).
  * `required` makes the note mandatory; `onConfirm(note, extra)` may throw to show an error.
  * `checkbox` adds one option, e.g. { label: 'Also hide the review' }.
+ * `suggestions` are ready-made notes the person can click to fill in (and then edit).
  */
-export const NoteDialog = ({ title, text, label = 'Note', placeholder, confirm, tone = 'primary', required = false, checkbox, onConfirm, onClose }) => {
+export const NoteDialog = ({ title, text, label = 'Note', placeholder, confirm, tone = 'primary', required = false, checkbox, suggestions, onConfirm, onClose }) => {
   const [note, setNote] = useState('');
   const [checked, setChecked] = useState(Boolean(checkbox?.checked));
   const [busy, setBusy] = useState(false);
@@ -40,6 +41,11 @@ export const NoteDialog = ({ title, text, label = 'Note', placeholder, confirm, 
           <label htmlFor="note-dialog-note">{label}{!required && <span className="optional"> (optional)</span>}</label>
           <textarea id="note-dialog-note" className="input" rows={4} maxLength={3000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={placeholder} autoFocus />
         </div>
+        {suggestions?.length > 0 && (
+          <div className="pay-reasons" aria-label="Common reasons">
+            {suggestions.map((s) => <button key={s} type="button" onClick={() => setNote(s)}>{s}</button>)}
+          </div>
+        )}
         {checkbox && (
           <label className="la-inline-check"><input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} /> {checkbox.label}</label>
         )}

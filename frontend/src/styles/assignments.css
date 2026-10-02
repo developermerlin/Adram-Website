@@ -1,0 +1,56 @@
+/* Assignments: deadline banner, rubric, several files, grading by rubric, the deadlines card and the editor's settings */
+.asg-due { display: flex; gap: 12px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #1e3a8a; }
+.asg-due > i { margin-top: 3px; }
+.asg-due > div { display: grid; gap: 2px; }
+.asg-due small { color: inherit; opacity: 0.85; }
+.asg-due.is-soon { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.asg-due.is-late { border-color: #fdba74; background: #fff7ed; color: #9a3412; }
+.asg-due.is-closed { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+
+.asg-rubric__title { margin: 16px 0 6px; }
+.asg-rubric { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 0.9rem; }
+.asg-rubric th, .asg-rubric td { padding: 8px 10px; border-bottom: 1px solid var(--line, #e5e7eb); text-align: left; vertical-align: top; }
+.asg-rubric thead th { color: var(--muted, #64748b); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.asg-rubric td small { display: block; margin-top: 2px; }
+.asg-rubric .num { width: 1%; text-align: right; white-space: nowrap; }
+.asg-rubric tfoot th, .asg-rubric tfoot td { border-bottom: 0; }
+.asg-rubric--grade .input { display: inline-block; width: 74px; padding: 4px 8px; }
+.asg-penalty { margin: 8px 0; color: #9a3412; font-size: 0.88rem; }
+
+.asg-files { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.asg-files small { color: var(--muted, #64748b); font-weight: 400; }
+.asg-picked { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.asg-picked li { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border-radius: 8px; background: var(--surface, #f8fafc); font-size: 0.9rem; overflow-wrap: anywhere; }
+.asg-picked li .icon-btn { margin-left: auto; }
+
+.dl-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.dl-list li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line, #eef2f7); }
+.dl-list li:last-child { border-bottom: 0; }
+.dl-list li > i { margin-top: 3px; color: var(--blue-600, #2563eb); }
+.dl-list li > span { display: grid; gap: 1px; min-width: 0; }
+.dl-list a { color: inherit; }
+.dl-list__due { color: var(--blue-700, #1d4ed8); font-weight: 600; }
+.dl-list li.is-late > i, .dl-list li.is-late .dl-list__due { color: #c2410c; }
+.dl-list li.is-closed > i, .dl-list li.is-closed .dl-list__due { color: #b91c1c; }
+
+.asg-settings { display: grid; gap: 12px; margin: 0; padding: 14px 16px; border: 1px solid var(--line, #e2e8f0); border-radius: 12px; }
+.asg-settings legend { padding: 0 6px; font-weight: 700; }
+.asg-settings__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.asg-settings__grid .field { margin: 0; }
+.asg-rubric-edit { display: grid; gap: 8px; }
+.asg-rubric-edit__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.asg-rubric-edit__row { display: grid; grid-template-columns: 1fr 1.6fr 90px auto; gap: 8px; align-items: center; }
+.asg-rubric-edit > .btn { justify-self: start; }
+
+@media (max-width: 720px) {
+  .asg-rubric-edit__row { grid-template-columns: 1fr 90px auto; }
+  .asg-rubric-edit__row > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Instructors the student follows (training dashboard) */
+.fw-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.fw-list li { display: flex; align-items: center; gap: 10px; }
+.fw-list img, .fw-list__initial { width: 38px; height: 38px; flex: none; border-radius: 50%; object-fit: cover; }
+.fw-list__initial { display: grid; place-items: center; background: #eef2ff; color: #3730a3; font-weight: 700; }
+.fw-list li > span { display: grid; min-width: 0; }
+.fw-list a { color: inherit; }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { lmsAPI, parseApiErrors } from '../../services/api';
-import { REPORT_REASONS } from '../../utils/learn';
+import { REPORT_REASONS, clock } from '../../utils/learn';
 import { formatDate } from '../../utils/format';
 import '../../styles/learn.css';
 
@@ -32,7 +32,41 @@ const Report = ({ target, id }) => {
   );
 };
 
-const Thread = ({ id, admin, onChanged, onClose }) => {
+/** "I have this question too": the upvote, with its count. */
+const Vote = ({ thread, onVoted }) => {
+  const toggle = async (e) => {
+    e.stopPropagation();
+    try {
+      const { data } = await lmsAPI.voteQuestion(thread.id, !thread.voted);
+      onVoted(data);
+    } catch (err) {
+      toast.error(parseApiErrors(err).detail || 'That did not work. Try again.');
+    }
+  };
+  if (thread.mine) {
+    return <span className="qa-vote is-mine" title="Votes from others with the same question"><i className="fas fa-arrow-up" aria-hidden="true" /> {thread.votes}</span>;
+  }
+  return (
+    <button type="button" className={`qa-vote${thread.voted ? ' is-on' : ''}`} onClick={toggle} aria-pressed={thread.voted}
+      title={thread.voted ? 'Remove your vote' : 'I have this question too'} aria-label={`${thread.voted ? 'Remove your vote' : 'I have this question too'} (${thread.votes} votes)`}>
+      <i className="fas fa-arrow-up" aria-hidden="true" /> {thread.votes}
+    </button>
+  );
+};
+
+/** A question's moment in the video: jumps there when the player allows it. */
+const Moment = ({ seconds, onSeek }) => {
+  if (seconds == null) return null;
+  if (!onSeek) return <span className="qa-moment"><i className="far fa-clock" aria-hidden="true" /> {clock(seconds)}</span>;
+  return (
+    <button type="button" className="qa-moment" title="Jump to this moment in the video"
+      onClick={(e) => { e.stopPropagation(); onSeek(seconds); }}>
+      <i className="fas fa-play" aria-hidden="true" /> {clock(seconds)}
+    </button>
+  );
+};
+
+const Thread = ({ id, admin, onChanged, onClose, onSeek }) => {
   const [thread, setThread] = useState(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,6 +107,21 @@ const Thread = ({ id, admin, onChanged, onClose }) => {
     replace(data);
     onChanged();
   };
+  const accept = async (r) => {
+    try {
+      await lmsAPI.acceptAnswer(r.id, !r.is_accepted);
+      await load(); // accepting one answer un-accepts the others
+      onChanged();
+      if (!r.is_accepted) toast.success('Marked as the answer that solved it.');
+    } catch (err) {
+      toast.error(parseApiErrors(err).detail || 'That did not work.');
+    }
+  };
+  const pin = async () => {
+    const { data } = await lmsAPI.pinQuestion(id, !thread.is_pinned);
+    setThread((t) => ({ ...t, ...data, replies: t.replies }));
+    onChanged();
+  };
   const removeReply = async (replyId) => {
     await lmsAPI.removeReply(replyId);
     await load();
@@ -84,26 +133,31 @@ const Thread = ({ id, admin, onChanged, onClose }) => {
     onChanged();
     onClose();
   };
-  // The instructor's chosen answer first, then the most useful, then oldest first
-  const replies = [...thread.replies].sort((a, b) => (b.is_instructor_answer - a.is_instructor_answer) || 0);
+  // The accepted answer first, then the instructor's, then the most useful, then oldest first
+  const replies = [...thread.replies].sort((a, b) => (b.is_accepted - a.is_accepted) || (b.is_instructor_answer - a.is_instructor_answer) || (b.likes - a.likes));
 
   return (
     <div className="qa-thread">
       <button type="button" className="btn btn--text btn--sm" onClick={onClose}><i className="fas fa-arrow-left" /> All questions</button>
-      <h3>{thread.title}</h3>
-      <p className="muted small">{thread.author} · {formatDate(thread.created_at)}{thread.lesson ? ` · ${thread.lesson.title}` : ''}</p>
+      <div className="qa-thread__title">
+        <Vote thread={thread} onVoted={(data) => setThread((t) => ({ ...t, ...data, replies: t.replies }))} />
+        <h3>{thread.is_pinned && <i className="fas fa-thumbtack qa-pin" title="Pinned by the instructor" />} {thread.title}</h3>
+      </div>
+      <p className="muted small">{thread.author} · {formatDate(thread.created_at)}{thread.lesson ? ` · ${thread.lesson.title}` : ''} <Moment seconds={thread.position_seconds} onSeek={onSeek} /></p>
       {thread.body && <p className="qa-thread__body">{thread.body}</p>}
       <div className="qa-thread__tools">
+        {staff && <button type="button" className="qa-link" onClick={pin}><i className="fas fa-thumbtack" aria-hidden="true" /> {thread.is_pinned ? 'Unpin' : 'Pin to the top'}</button>}
         {(thread.mine || staff) && <button type="button" className="qa-link" onClick={removeThread}>Delete question</button>}
         {!thread.mine && <Report target="thread" id={thread.id} />}
       </div>
       <h4 className="qa-thread__count">{thread.replies.length} {thread.replies.length === 1 ? 'answer' : 'answers'}</h4>
       <ul className="qa-replies">
         {replies.map((r) => (
-          <li key={r.id} className={`${r.is_staff ? 'is-staff' : ''}${r.is_instructor_answer ? ' is-answer' : ''}`}>
+          <li key={r.id} className={`${r.is_staff ? 'is-staff' : ''}${r.is_instructor_answer || r.is_accepted ? ' is-answer' : ''}`}>
             <div className="qa-replies__head">
               <strong>{r.author}</strong>
               {r.is_staff && <span className="qa-badge">Instructor</span>}
+              {r.is_accepted && <span className="qa-badge qa-badge--answer"><i className="fas fa-check-double" aria-hidden="true" /> Solved it</span>}
               {r.is_instructor_answer && <span className="qa-badge qa-badge--answer"><i className="fas fa-circle-check" aria-hidden="true" /> Instructor answer</span>}
               <small className="muted">{formatDate(r.created_at)}</small>
             </div>
@@ -112,6 +166,7 @@ const Thread = ({ id, admin, onChanged, onClose }) => {
               <button type="button" className={`qa-like${r.liked ? ' is-on' : ''}`} onClick={() => like(r)} aria-pressed={r.liked} aria-label={r.liked ? 'Remove your like' : 'Mark as useful'}>
                 <i className={`${r.liked ? 'fas' : 'far'} fa-thumbs-up`} aria-hidden="true" /> {r.likes > 0 ? r.likes : ''} <span>Useful</span>
               </button>
+              {thread.mine && !r.mine && <button type="button" className="qa-link" onClick={() => accept(r)}>{r.is_accepted ? 'Not the answer' : 'This solved it'}</button>}
               {staff && <button type="button" className="qa-link" onClick={() => mark(r)}>{r.is_instructor_answer ? 'Unmark answer' : 'Mark as answer'}</button>}
               {(r.mine || staff) && <button type="button" className="qa-link" onClick={() => removeReply(r.id)}>Delete</button>}
               {!r.mine && <Report target="reply" id={r.id} />}
@@ -129,11 +184,13 @@ const Thread = ({ id, admin, onChanged, onClose }) => {
 };
 
 /** Questions and answers for a course. `lessonId` ties new questions to a lesson; `admin` is the course staff's view. */
-export const QaPanel = ({ slug, lessonId, admin = false }) => {
+export const QaPanel = ({ slug, lessonId, admin = false, getTime, onSeek }) => {
   const [params, setParams] = useSearchParams();
   const linked = Number(params.get('qa') || params.get('thread')) || null;
   const [filter, setFilter] = useState(admin ? 'unanswered' : lessonId ? 'lesson' : 'all');
   const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('recent');
+  const [moment, setMoment] = useState(null); // seconds into the video the new question is about
   const [data, setData] = useState(null);
   const [picked, setPicked] = useState(null);
   const [asking, setAsking] = useState(false);
@@ -143,11 +200,12 @@ export const QaPanel = ({ slug, lessonId, admin = false }) => {
 
   const load = useCallback(() => {
     const p = {};
-    if (filter === 'lesson' && lessonId) p.lesson = lessonId;
-    if (filter === 'mine' || filter === 'unanswered') p.filter = filter;
+    if ((filter === 'lesson' || filter === 'moments') && lessonId) p.lesson = lessonId;
+    if (filter === 'mine' || filter === 'unanswered' || filter === 'moments') p.filter = filter;
+    if (sort === 'votes') p.sort = 'votes';
     if (query.trim()) p.q = query.trim();
     return lmsAPI.questions(slug, p).then(({ data: d }) => setData(d)).catch(() => setError('The questions could not be loaded.'));
-  }, [slug, lessonId, filter, query]);
+  }, [slug, lessonId, filter, query, sort]);
   useEffect(() => {
     load();
   }, [load]);
@@ -161,12 +219,20 @@ export const QaPanel = ({ slug, lessonId, admin = false }) => {
       setParams(next, { replace: true });
     }
   };
-  if (open) return <Thread key={open} id={open} admin={admin} onChanged={load} onClose={close} />;
+  if (open) return <Thread key={open} id={open} admin={admin} onChanged={load} onClose={close} onSeek={onSeek} />;
+  const replaceRow = (row) => setData((d) => ({ ...d, threads: d.threads.map((t) => (t.id === row.id ? { ...t, ...row } : t)) }));
+  const startAsking = () => {
+    if (!asking && getTime) {
+      const t = getTime();
+      setMoment(t > 0 ? t : null);
+    }
+    setAsking((v) => !v);
+  };
 
   const ask = async (e) => {
     e.preventDefault();
     try {
-      await lmsAPI.ask(slug, { ...form, lesson: lessonId || undefined });
+      await lmsAPI.ask(slug, { ...form, lesson: lessonId || undefined, position: lessonId && moment != null ? moment : undefined });
       setForm({ title: '', body: '' });
       setAsking(false);
       toast.success('Question posted. Your instructor will answer soon.');
@@ -185,13 +251,26 @@ export const QaPanel = ({ slug, lessonId, admin = false }) => {
           <option value="all">All questions</option>
           {!admin && <option value="mine">My questions</option>}
           <option value="unanswered">Unanswered{data ? ` (${data.unanswered})` : ''}</option>
+          {lessonId && getTime && <option value="moments">At moments in the video</option>}
         </select>
-        {!admin && <button type="button" className="btn btn--primary btn--sm" onClick={() => setAsking((v) => !v)} aria-expanded={asking}><i className="fas fa-plus" /> Ask a question</button>}
+        {filter !== 'moments' && (
+          <select className="input" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort questions">
+            <option value="recent">Recent activity</option>
+            <option value="votes">Most votes</option>
+          </select>
+        )}
+        {!admin && <button type="button" className="btn btn--primary btn--sm" onClick={startAsking} aria-expanded={asking}><i className="fas fa-plus" /> Ask a question</button>}
       </div>
       {asking && (
         <form onSubmit={ask} className="qa-form qa-form--ask">
           <input className="input" value={form.title} maxLength={200} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Your question in one line" aria-label="Your question" />
           <textarea className="input" rows={3} maxLength={2000} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Add details: what you tried, where you got stuck (optional)" aria-label="Details" />
+          {getTime && (
+            <label className="qa-at">
+              <input type="checkbox" checked={moment != null} onChange={(e) => setMoment(e.target.checked ? getTime() : null)} />
+              {moment != null ? <>About the moment at <strong>{clock(moment)}</strong> in the video</> : 'About a moment in the video (pause it there first)'}
+            </label>
+          )}
           <div className="qa-form__actions">
             <button type="submit" className="btn btn--primary btn--sm" disabled={!form.title.trim()}>Post question</button>
             <button type="button" className="btn btn--text btn--sm" onClick={() => setAsking(false)}>Cancel</button>
@@ -204,15 +283,17 @@ export const QaPanel = ({ slug, lessonId, admin = false }) => {
       ) : (
         <ul className="qa-list">
           {data.threads.map((t) => (
-            <li key={t.id}>
-              <button type="button" onClick={() => setPicked(t.id)}>
-                <strong>{t.title}</strong>
+            <li key={t.id} className={`qa-row${t.is_pinned ? ' is-pinned' : ''}`}>
+              <Vote thread={t} onVoted={replaceRow} />
+              <button type="button" className="qa-row__main" onClick={() => setPicked(t.id)}>
+                <strong>{t.is_pinned && <i className="fas fa-thumbtack qa-pin" title="Pinned by the instructor" />} {t.title}</strong>
                 {t.body && <span className="qa-list__body">{t.body}</span>}
                 <small className="muted">{t.author} · {formatDate(t.created_at)}{t.lesson ? ` · ${t.lesson.title}` : ''}</small>
                 <span className={`qa-count${t.answered ? ' is-answered' : ''}`}>
-                  {t.answered ? <><i className="fas fa-circle-check" /> Answered</> : 'Waiting for an answer'} · {t.reply_count} {t.reply_count === 1 ? 'reply' : 'replies'}
+                  {t.accepted ? <><i className="fas fa-check-double" /> Solved</> : t.answered ? <><i className="fas fa-circle-check" /> Answered</> : 'Waiting for an answer'} · {t.reply_count} {t.reply_count === 1 ? 'reply' : 'replies'}
                 </span>
               </button>
+              {t.position_seconds != null && <Moment seconds={t.position_seconds} onSeek={onSeek} />}
             </li>
           ))}
         </ul>

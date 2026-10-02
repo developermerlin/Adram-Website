@@ -417,15 +417,16 @@ class TrainingEnrollmentTests(TestCase):
 
     def test_enroll_flow(self):
         from django.core import mail
-        me = self.client.get(f'{BASE}/me/').data
-        self.assertEqual(me['training'], [])
-        self.assertEqual(self.client.get(f'{BASE}/me/summary/').data['training'], 0)
+        # Training has its own endpoints (lms), apart from the scholarship portal
+        self.assertNotIn('training', self.client.get(f'{BASE}/me/').data)
+        self.assertEqual(self.client.get('/api/v1/lms/me/enrollments/').data, [])
+        self.assertEqual(self.client.get('/api/v1/lms/me/summary/').data['training'], 0)
 
         with self.captureOnCommitCallbacks(execute=True):
             enrollment = self.client.post(f'{BASE}/me/training/', {'slug': 'web-development'}, format='json').data
         self.assertEqual((enrollment['status'], enrollment['course']['title']), ('requested', 'Web Development'))
         self.assertIn('Training request', mail.outbox[-1].subject)
-        self.assertEqual(self.client.get(f'{BASE}/me/summary/').data['training'], 1)
+        self.assertEqual(self.client.get('/api/v1/lms/me/summary/').data['training'], 1)
         self.assertEqual(self.staff.get(f'{BASE}/staff/summary/').data['training_requests'], 1)
 
         with self.captureOnCommitCallbacks(execute=True):
@@ -452,7 +453,7 @@ class TrainingEnrollmentTests(TestCase):
     def test_cancelled_requests_leave_the_portal(self):
         enrollment = self.client.post(f'{BASE}/me/training/', {'slug': 'programming'}, format='json').data
         self.assertEqual(self.client.delete(f'{BASE}/me/training/{enrollment["id"]}/').status_code, 204)
-        self.assertEqual(self.client.get(f'{BASE}/me/').data['training'], [])
+        self.assertEqual(self.client.get('/api/v1/lms/me/enrollments/').data, [])
         again = self.client.post(f'{BASE}/me/training/', {'slug': 'programming'}, format='json')
         self.assertEqual((again.status_code, again.data['status']), (201, 'requested'))
 
@@ -784,3 +785,54 @@ class DefaultTermsTests(TestCase):
         self.assertIn('Terms and Conditions', terms)
         self.assertIn('Refunds and cancellation', terms)
         self.assertIn('Afrimoney or Orange Money', terms)
+
+
+class StudentTrackTests(TestCase):
+    """Training students and scholarship applicants have separate dashboards; one account can have both."""
+    PASSWORD = 'Str0ng!Pass-99'
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def register(self, email, track=None):
+        data = {'email': email, 'first_name': 'Fatmata', 'last_name': 'Sesay', 'password': self.PASSWORD, 'password_confirm': self.PASSWORD}
+        if track:
+            data['track'] = track
+        self.assertEqual(self.client.post('/api/v1/auth/register/', data, format='json').status_code, 201)
+        return User.objects.get(email=email)
+
+    def test_sign_up_records_what_they_joined_for(self):
+        self.assertEqual(self.register('t@example.com', 'training').tracks, ['training'])
+        self.assertEqual(self.register('s@example.com', 'scholarships').tracks, ['scholarships'])
+        self.assertEqual(self.register('b@example.com', 'both').tracks, ['training', 'scholarships'])
+        self.assertEqual(self.register('n@example.com').tracks, [])  # older clients: they choose on first visit
+
+    def test_using_the_other_side_adds_it(self):
+        from catalog.models import Course
+        student = make_user()
+        self.client.force_authenticate(student)
+        self.client.post(f'{BASE}/me/saved/', {'slug': 'chevening'}, format='json')
+        student.refresh_from_db()
+        self.assertEqual(student.tracks, ['scholarships'])
+        course = Course.objects.filter(is_published=True).first() or Course.objects.create(slug='c1', title='C', is_published=True, enrollment_mode='open')
+        Course.objects.filter(pk=course.pk).update(enrollment_mode='open', is_published=True)
+        self.client.post(f'{BASE}/me/training/', {'slug': course.slug}, format='json')
+        student.refresh_from_db()
+        self.assertEqual(student.tracks, ['training', 'scholarships'])
+        me = self.client.get('/api/v1/auth/profile/').data
+        self.assertEqual((me['in_training'], me['in_scholarships']), (True, True))
+
+    def test_student_adds_a_side_and_admin_can_switch_it(self):
+        student = make_user()
+        self.client.force_authenticate(student)
+        resp = self.client.post('/api/v1/auth/profile/tracks/', {'track': 'training'}, format='json')
+        self.assertEqual(resp.data['tracks'], ['training'])
+        self.assertEqual(self.client.post('/api/v1/auth/profile/tracks/', {'track': 'nope'}, format='json').status_code, 400)
+        admin = make_user(role=User.ADMIN, email='boss@example.com')
+        self.client.force_authenticate(admin)
+        self.assertEqual(self.client.post('/api/v1/auth/profile/tracks/', {'track': 'training'}, format='json').status_code, 400)
+        resp = self.client.patch(f'/api/v1/lms/admin/users/{student.pk}/', {'in_training': False, 'in_scholarships': True}, format='json')
+        self.assertEqual(resp.data['tracks'], ['scholarships'])
+        listed = self.client.get('/api/v1/auth/users/?track=scholarships').data
+        rows = listed['results'] if isinstance(listed, dict) else listed
+        self.assertEqual([u['email'] for u in rows], ['ama@example.com'])

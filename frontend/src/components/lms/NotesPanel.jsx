@@ -5,7 +5,7 @@ import { lmsAPI, parseApiErrors } from '../../services/api';
 import { clock } from '../../utils/learn';
 
 /**
- * Private notes on a lesson. For an uploaded video `getTime()` stamps the note with the current position and
+ * Private notes on a lesson. For a video lesson `getTime()` stamps the note with the current position and
  * `onSeek(seconds)` jumps back there. "All notes" searches every note in the course.
  */
 export const NotesPanel = ({ slug, lessonId, canTrack, getTime, onSeek }) => {

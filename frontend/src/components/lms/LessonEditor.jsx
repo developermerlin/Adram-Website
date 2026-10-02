@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
+import { AssignmentSettings } from './AssignmentSettings';
 import toast from 'react-hot-toast';
 import { lmsAPI, parseApiErrors } from '../../services/api';
 import { assetUrl } from '../../utils/assets';
-import { formatSize, KINDS } from '../../utils/lms';
+import { formatSize, KINDS, toLocalInput } from '../../utils/lms';
 import { Alert } from '../ui/Form';
 import QuizBuilder from './QuizBuilder';
 
@@ -37,6 +38,13 @@ const initial = (lesson) => ({
   is_required: lesson.is_required !== false,
   max_points: lesson.max_points ?? 100,
   allow_resubmit: lesson.allow_resubmit !== false,
+  due_mode: lesson.due_at ? 'date' : lesson.due_days ? 'days' : 'none',
+  due_at: toLocalInput(lesson.due_at),
+  due_days: lesson.due_days || 7,
+  late_policy: lesson.late_policy || 'accept',
+  late_penalty_percent: lesson.late_penalty_percent ?? 10,
+  max_files: lesson.max_files || 1,
+  rubric: (lesson.rubric || []).map((c) => ({ ...c })),
   section_id: lesson.section_id,
 });
 
@@ -85,6 +93,12 @@ export const LessonEditor = ({ lesson, sections, limits, onSaved, onReload, onMo
     if (isAssignment) {
       fields.max_points = Number(form.max_points) || 100;
       fields.allow_resubmit = form.allow_resubmit;
+      fields.due_at = form.due_mode === 'date' && form.due_at ? new Date(form.due_at).toISOString() : null;
+      fields.due_days = form.due_mode === 'days' ? Number(form.due_days) || 1 : 0;
+      fields.late_policy = form.late_policy;
+      fields.late_penalty_percent = Number(form.late_penalty_percent) || 0;
+      fields.max_files = Number(form.max_files) || 1;
+      fields.rubric = form.rubric.map((c) => ({ ...c, points: Number(c.points) || 0 }));
     }
     if (isVideo) {
       fields.video_source = form.video_source;
@@ -180,7 +194,7 @@ export const LessonEditor = ({ lesson, sections, limits, onSaved, onReload, onMo
 
   return (
     <form className="lb-editor" onSubmit={save} noValidate>
-      <Alert>{errors.form || errors.detail || problem}</Alert>
+      <Alert>{errors.form || errors.detail || errors.rubric || errors.due_at || errors.max_files || errors.late_penalty_percent || problem}</Alert>
 
       <div className="form-row">
         <div className="field">
@@ -295,19 +309,7 @@ export const LessonEditor = ({ lesson, sections, limits, onSaved, onReload, onMo
         </fieldset>
       )}
 
-      {isAssignment && (
-        <div className="form-row">
-          <div className="field">
-            <label htmlFor={`lpts-${lesson.id}`}>Graded out of (points)</label>
-            <input id={`lpts-${lesson.id}`} type="number" min="1" max="1000" className="input" value={form.max_points} onChange={(e) => set('max_points')(e.target.value)} />
-          </div>
-          <label className="checkbox lb-inline-check">
-            <input type="checkbox" checked={form.allow_resubmit} onChange={(e) => set('allow_resubmit')(e.target.checked)} />
-            <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
-            <span>Allow resubmission<small>Students can hand in again until you approve their work.</small></span>
-          </label>
-        </div>
-      )}
+      {isAssignment && <AssignmentSettings id={lesson.id} form={form} set={set} />}
 
       {form.kind !== 'quiz' && (
         <div className="field">

@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { lmsAPI, parseApiErrors, portalAPI, shopAPI } from '../../services/api';
+import { lmsAPI, parseApiErrors, shopAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useSite } from '../../content/useContent';
 import { Alert } from '../../components/ui/Form';
 import { Spinner } from '../../components/ui/Section';
 import Curriculum from '../../components/lms/Curriculum';
+import { Captions, CourseIncludes, CourseVideo, FeatureBox, PremiumBar, RelatedTopics, ShowMore } from '../../components/lms/CoursePageParts';
 import CourseCard from '../../components/lms/CourseCard';
-import Price from '../../components/lms/Price';
-import { HIGHLIGHT_LABELS, instructorName, isPaid, levelLabel, useCourseImage } from '../../components/lms/courseUtils';
+import Price, { SaleCountdown } from '../../components/lms/Price';
+import { HIGHLIGHT_LABELS, instructorName, isPaid, levelLabel, money, salePrice, useCourseImage } from '../../components/lms/courseUtils';
 import Stars, { StarInput } from '../../components/lms/Stars';
 import useWishlist from '../../components/lms/useWishlist';
+import GiftDialog from '../../components/lms/GiftDialog';
+import BundleOffer from '../../components/lms/BundleOffer';
+import PremiumOptions, { BlockedNotice } from '../../components/lms/PremiumOptions';
 import { cartChanged } from '../../components/lms/cartStore';
 import { assetUrl } from '../../utils/assets';
 import { formatDate } from '../../utils/format';
@@ -20,7 +24,11 @@ import { NotFoundPage } from './StatusPages';
 import '../../styles/lms.css';
 import '../../styles/marketplace.css';
 
+const monthYear = (date) => new Date(date).toLocaleDateString('en-US', { month: 'numeric', year: 'numeric' });
+
 const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+
+const REVIEWS_SHOWN = 6;
 
 const REPORT_REASONS = [
   ['inappropriate', 'Inappropriate content'],
@@ -88,8 +96,10 @@ const Reviews = ({ slug, data, onChange }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState(0);
+  const [all, setAll] = useState(false);
   const { summary } = data;
-  const shown = filter ? data.reviews.filter((r) => r.rating === filter) : data.reviews;
+  const matching = filter ? data.reviews.filter((r) => r.rating === filter) : data.reviews;
+  const shown = all ? matching : matching.slice(0, REVIEWS_SHOWN);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -184,6 +194,9 @@ const Reviews = ({ slug, data, onChange }) => {
           ))}
         </ul>
       )}
+      {matching.length > shown.length && (
+        <button type="button" className="btn btn--outline cd-reviews__all" onClick={() => setAll(true)}>Show all {matching.length} reviews</button>
+      )}
     </section>
   );
 };
@@ -228,7 +241,7 @@ const Detail = ({ slug }) => {
   const [related, setRelated] = useState([]);
   const [inCart, setInCart] = useState(false);
   const [busy, setBusy] = useState('');
-  const [playing, setPlaying] = useState(false);
+  const [expandAll, setExpandAll] = useState(false);
   const wish = useWishlist();
   const isStudent = user?.role === 'STUDENT';
 
@@ -254,6 +267,7 @@ const Detail = ({ slug }) => {
   }, [isStudent, slug]);
 
   const { outline, error } = state;
+  const [gifting, setGifting] = useState(false);
   if (error) return <NotFoundPage />;
   if (!outline) return <Spinner label="Loading course…" />;
 
@@ -263,6 +277,9 @@ const Detail = ({ slug }) => {
   const learn = course.learn_points.length ? course.learn_points : course.topics.map((t) => `Learn ${t}`);
   const enrolled = outline.enrolled;
   const requested = outline.enrollment_status === 'requested';
+  const declined = outline.enrollment_status === 'declined';
+  const asked = outline.enrollment_request; // {requested_at, decided_at, note, start_date} while waiting or after a decline
+  const byApproval = course.enrollment_mode === 'approval';
   const progress = outline.progress;
   const teacher = course.instructor || {};
   const teacherName = instructorName(course) || site.name;
@@ -278,7 +295,7 @@ const Detail = ({ slug }) => {
   const enroll = async () => {
     setBusy('enroll');
     try {
-      const { data } = await portalAPI.enroll(slug);
+      const { data } = await lmsAPI.enroll(slug);
       if (data.status === 'active') {
         toast.success('You’re enrolled! Enjoy the course.');
         const fresh = await lmsAPI.outline(slug);
@@ -352,7 +369,7 @@ const Detail = ({ slug }) => {
           </div>
         )}
         {outline.has_content && (
-          <Link to={`/learn/${slug}/lesson/${progress.resume_id}`} className="btn btn--primary btn--block btn--lg"><i className="fas fa-circle-play" /> {progress.completed ? 'Continue learning' : 'Start learning'}</Link>
+          <Link to={`/learn/${slug}/lesson/${progress.resume_id}`} className="btn btn--primary btn--block btn--lg"><i className="fas fa-circle-play" /> {progress.completed || progress.last_lesson_id ? 'Continue learning' : 'Start learning'}</Link>
         )}
         {outline.certificate_code && <Link to={`/certificate/${outline.certificate_code}`} className="btn btn--outline btn--block"><i className="fas fa-certificate" /> View my certificate</Link>}
         {!outline.has_content && <p className="muted small">You’re enrolled. The lessons are being prepared.</p>}
@@ -366,6 +383,8 @@ const Detail = ({ slug }) => {
         {!course.is_published && <p className="cd-card__note">This course isn’t published yet. Only you and the ADRAM team can see this page.</p>}
       </>
     );
+  } else if (outline.blocked) {
+    action = <BlockedNotice blocked={outline.blocked} />;
   } else if (order) {
     action = (
       <>
@@ -376,8 +395,11 @@ const Detail = ({ slug }) => {
   } else if (requested) {
     action = (
       <>
-        <button type="button" className="btn btn--outline btn--block btn--lg" disabled><i className="fas fa-hourglass-half" /> Enrollment requested</button>
-        <p className="cd-card__note">ADRAM has your request and will confirm your place. The lessons unlock as soon as it’s approved.</p>
+        <button type="button" className="btn btn--outline btn--block btn--lg" disabled><i className="fas fa-hourglass-half" /> Waiting for confirmation</button>
+        <p className="cd-card__note">
+          You asked to join{asked?.requested_at ? ` on ${formatDate(asked.requested_at)}` : ''}. ADRAM will confirm your place and tell you in your
+          portal and by email. The lessons unlock as soon as it’s confirmed.
+        </p>
       </>
     );
   } else if (paid) {
@@ -401,19 +423,30 @@ const Detail = ({ slug }) => {
     );
   } else {
     action = (
+      <>
+      {declined && (
+        <div className="cd-declined" role="status">
+          <strong><i className="fas fa-circle-info" /> Your last request wasn’t accepted</strong>
+          {asked?.note && <p>“{asked.note}”</p>}
+          <small>You can ask again below.</small>
+        </div>
+      )}
       <div className="cd-buyrow">
         {isAuthenticated ? (
-          <button type="button" className="btn btn--primary btn--block btn--lg" onClick={enroll} disabled={!!busy || !isStudent}>{busy === 'enroll' && <span className="btn-spinner" />} Enroll now</button>
+          <button type="button" className="btn btn--primary btn--block btn--lg" onClick={enroll} disabled={!!busy || !isStudent}>
+            {busy === 'enroll' && <span className="btn-spinner" />} {declined ? 'Ask again' : byApproval ? 'Request to enroll' : 'Enroll now'}
+          </button>
         ) : (
-          <Link to={`/join?next=${encodeURIComponent(`/courses/${slug}`)}`} className="btn btn--primary btn--block btn--lg">Enroll now</Link>
+          <Link to={`/join?next=${encodeURIComponent(`/courses/${slug}`)}`} className="btn btn--primary btn--block btn--lg">{byApproval ? 'Request to enroll' : 'Enroll now'}</Link>
         )}
         {heart}
       </div>
+      </>
     );
   }
 
   return (
-    <div className="cd">
+    <div className={`cd${course.is_premium ? ' cd--premium' : ''}`}>
       <div className="cd-band" aria-hidden="true" />
       <div className="container cd-grid">
         <header className="cd-head">
@@ -427,64 +460,56 @@ const Detail = ({ slug }) => {
           </nav>
           <h1>{course.title}</h1>
           <p className="cd-head__summary">{course.subtitle || course.summary}</p>
-          <div className="cd-head__meta">
-            {course.highlight && <span className={`uc__hl uc__hl--${course.highlight}`}>{HIGHLIGHT_LABELS[course.highlight]}</span>}
-            {course.is_premium && <span className="cd-premium"><i className="far fa-circle-check" aria-hidden="true" /> Premium</span>}
-            {stats.rating_count > 0 ? (
-              <a href="#reviews" className="cd-head__rating"><b>{stats.rating_average.toFixed(1)}</b> <Stars value={stats.rating_average} size={13} /> <span>({stats.rating_count} {stats.rating_count === 1 ? 'rating' : 'ratings'})</span></a>
-            ) : (
-              <span className="cc__new">New</span>
-            )}
-            {stats.student_count > 0 && <span><i className="fas fa-user-group" aria-hidden="true" /> {stats.student_count} {stats.student_count === 1 ? 'student' : 'students'}</span>}
-          </div>
+          {(course.highlight || !course.is_premium) && (
+            <div className="cd-head__meta">
+              {course.highlight && <span className={`uc__hl uc__hl--${course.highlight}`}>{HIGHLIGHT_LABELS[course.highlight]}</span>}
+              {!course.is_premium && (stats.rating_count > 0 ? (
+                <a href="#reviews" className="cd-head__rating"><b>{stats.rating_average.toFixed(1)}</b> <Stars value={stats.rating_average} size={13} /> <span>({stats.rating_count.toLocaleString()} {stats.rating_count === 1 ? 'rating' : 'ratings'})</span></a>
+              ) : (
+                <span className="cc__new">New</span>
+              ))}
+              {!course.is_premium && stats.student_count > 0 && <span>{stats.student_count.toLocaleString()} {stats.student_count === 1 ? 'student' : 'students'}</span>}
+            </div>
+          )}
           <p className="cd-head__by">
             Created by {teacher.id ? <Link to={`/instructors/${teacher.id}`} className="cd-head__teacher">{teacherName}</Link> : <strong>{teacherName}</strong>}
           </p>
           <ul className="cd-head__facts">
-            {course.updated_at && <li><i className="fas fa-circle-exclamation" aria-hidden="true" /> Last updated {formatDate(course.updated_at)}</li>}
+            {course.updated_at && <li><i className="fas fa-circle-exclamation" aria-hidden="true" /> Last updated {monthYear(course.updated_at)}</li>}
             <li><i className="fas fa-signal" aria-hidden="true" /> {levelLabel(course.level)}</li>
             {course.language && <li><i className="fas fa-globe" aria-hidden="true" /> {course.language}</li>}
-            {totals.seconds > 0 ? <li><i className="far fa-clock" aria-hidden="true" /> {formatDuration(totals.seconds)} total</li> : course.duration && <li><i className="far fa-clock" aria-hidden="true" /> {course.duration}</li>}
+            <Captions languages={course.caption_languages} />
+            {!totals.seconds && course.duration && <li><i className="far fa-clock" aria-hidden="true" /> {course.duration}</li>}
             {course.next_intake && <li><i className="fas fa-calendar-days" aria-hidden="true" /> Next intake {formatDate(`${course.next_intake}T00:00`)}</li>}
           </ul>
+          {course.is_premium && <PremiumBar note={course.premium_note} stats={stats} />}
         </header>
 
         <aside className="cd-aside">
           <div className="cd-card">
             <div className="cd-card__media">
-              {playing && course.promo_embed_url ? (
-                <iframe src={`${course.promo_embed_url}${course.promo_embed_url.includes('?') ? '&' : '?'}autoplay=1`} title={`${course.title} trailer`} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
-              ) : (
-                <>
-                  {image ? <img src={assetUrl(image)} alt="" /> : <span className="cd-card__media-fallback"><i className="fas fa-graduation-cap" aria-hidden="true" /></span>}
-                  {course.promo_embed_url && (
-                    <button type="button" className="cd-card__play" onClick={() => setPlaying(true)} aria-label="Play the course trailer">
-                      <i className="fas fa-play" aria-hidden="true" /><span>Preview this course</span>
-                    </button>
-                  )}
-                </>
-              )}
+              <CourseVideo course={course} lessons={lessonsOf} resumeId={enrolled ? progress?.resume_id : null} poster={image ? assetUrl(image) : undefined}>
+                {image ? <img src={assetUrl(image)} alt="" /> : <span className="cd-card__media-fallback"><i className="fas fa-graduation-cap" aria-hidden="true" /></span>}
+              </CourseVideo>
             </div>
             <div className="cd-card__body">
-              {!enrolled && <p className="cd-card__price"><Price course={course} /></p>}
+              {!enrolled && !outline.blocked && <p className="cd-card__price"><Price course={course} /></p>}
+              {!enrolled && !outline.blocked && <SaleCountdown course={course} />}
               {action}
+              {paid && isAuthenticated && isStudent && (
+                <button type="button" className="btn btn--text btn--block" onClick={() => setGifting(true)}><i className="fas fa-gift" /> Buy as a gift</button>
+              )}
+              {!enrolled && !manager && !order && !outline.blocked && (
+                <PremiumOptions slug={slug} outline={outline} signedIn={isAuthenticated} student={isStudent} onEnrolled={load} />
+              )}
+              {paid && <BundleOffer slug={slug} />}
               {!enrolled && firstPreview && <Link to={`/learn/${slug}/lesson/${firstPreview.id}`} className="btn btn--text btn--block"><i className="fas fa-eye" /> Watch a free preview</Link>}
-              {!enrolled && !manager && (
+              {!enrolled && !manager && !outline.blocked && (
                 <p className="cd-card__note">
                   {paid ? 'Pay by mobile money and upload your receipt. Lessons unlock as soon as ADRAM confirms it.'
-                    : course.enrollment_mode === 'open' ? 'Get instant access to every lesson as soon as you enrol.' : 'ADRAM confirms each place and will contact you with next steps.'}
+                    : course.enrollment_mode === 'open' ? 'Get instant access to every lesson as soon as you enrol.' : requested ? '' : 'ADRAM confirms each place. You’ll be told in your portal and by email.'}
                 </p>
               )}
-              <h3>This course includes</h3>
-              <ul className="cd-includes">
-                {totals.seconds > 0 && <li><i className="far fa-circle-play" aria-hidden="true" /> {formatDuration(totals.seconds)} of video</li>}
-                {totals.lessons > 0 && <li><i className="fas fa-list-check" aria-hidden="true" /> {totals.lessons} {totals.lessons === 1 ? 'lesson' : 'lessons'}</li>}
-                {totals.quizzes > 0 && <li><i className="fas fa-circle-question" aria-hidden="true" /> {totals.quizzes} {totals.quizzes === 1 ? 'quiz' : 'quizzes'}</li>}
-                {totals.assignments > 0 && <li><i className="fas fa-file-pen" aria-hidden="true" /> {totals.assignments} {totals.assignments === 1 ? 'assignment' : 'assignments'}</li>}
-                {totals.documents + totals.resources > 0 && <li><i className="fas fa-file-arrow-down" aria-hidden="true" /> {totals.documents + totals.resources} downloadable {totals.documents + totals.resources === 1 ? 'resource' : 'resources'}</li>}
-                <li><i className="fas fa-mobile-screen" aria-hidden="true" /> Learn on your phone or computer</li>
-                <li><i className="fas fa-certificate" aria-hidden="true" /> Certificate of completion</li>
-              </ul>
               <div className="cd-card__tools">
                 <button type="button" className="btn btn--text btn--sm" onClick={share}><i className="fas fa-share-nodes" /> Share</button>
                 {!manager && <ReportButton target="course" id={course.id} label="Report" />}
@@ -494,12 +519,20 @@ const Detail = ({ slug }) => {
         </aside>
 
         <div className="cd-body">
-          <section className="cd-box">
-            <h2>What you’ll learn</h2>
-            <ul className="cd-learn">
-              {learn.map((point) => <li key={point}><i className="fas fa-check" aria-hidden="true" /> {point}</li>)}
-            </ul>
-          </section>
+          {learn.length > 0 && (
+            <section className="cd-box">
+              <h2>What you’ll learn</h2>
+              <ShowMore height={250}>
+                <ul className="cd-learn">
+                  {learn.map((point) => <li key={point}><i className="fas fa-check" aria-hidden="true" /> {point}</li>)}
+                </ul>
+              </ShowMore>
+            </section>
+          )}
+
+          <RelatedTopics course={course} />
+          <CourseIncludes course={course} totals={totals} lessons={lessonsOf} />
+          <FeatureBox feature={course.feature} />
 
           {(enrolled || manager) && <Announcements slug={slug} />}
 
@@ -507,12 +540,19 @@ const Detail = ({ slug }) => {
             <h2>Course content</h2>
             {outline.has_content ? (
               <>
-                <p className="muted cd-section__sub">
-                  {outline.sections.length} {outline.sections.length === 1 ? 'section' : 'sections'} · {totals.lessons} {totals.lessons === 1 ? 'lesson' : 'lessons'}
-                  {formatDuration(totals.seconds) && ` · ${formatDuration(totals.seconds)} total length`}
-                </p>
+                <div className="cd-content-bar">
+                  <p className="muted cd-section__sub">
+                    {outline.sections.length} {outline.sections.length === 1 ? 'section' : 'sections'} • {totals.lessons} {totals.lessons === 1 ? 'lesson' : 'lessons'}
+                    {formatDuration(totals.seconds) && ` • ${formatDuration(totals.seconds)} total length`}
+                  </p>
+                  {outline.sections.length > 1 && (
+                    <button type="button" className="cd-expand" onClick={() => setExpandAll((v) => !v)} aria-pressed={expandAll}>
+                      {expandAll ? 'Collapse all sections' : 'Expand all sections'}
+                    </button>
+                  )}
+                </div>
                 <div className="cd-curriculum">
-                  <Curriculum slug={slug} sections={outline.sections} doneIds={progress?.done_ids} open={(l) => enrolled || manager || l.is_preview} />
+                  <Curriculum key={expandAll ? 'all' : 'first'} slug={slug} sections={outline.sections} doneIds={progress?.done_ids} expandAll={expandAll} open={(l) => enrolled || manager || l.is_preview} />
                 </div>
               </>
             ) : (
@@ -530,7 +570,9 @@ const Detail = ({ slug }) => {
           {(course.description || course.topics.length > 0) && (
             <section className="cd-section">
               <h2>Description</h2>
-              <div className="cd-text">{paragraphs(course.description).map((p) => <p key={p.slice(0, 40)}>{p}</p>)}</div>
+              <ShowMore height={320}>
+                <div className="cd-text">{paragraphs(course.description).map((p) => <p key={p.slice(0, 40)}>{p}</p>)}</div>
+              </ShowMore>
               {!course.description && <p className="muted">{course.summary}</p>}
               {course.topics.length > 0 && <div className="program-card__topics">{course.topics.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
             </section>
@@ -597,6 +639,7 @@ const Detail = ({ slug }) => {
           )}
         </div>
       )}
+      {gifting && <GiftDialog target={{ course: slug }} title={course.title} price={money(salePrice(course), course.currency)} onClose={() => setGifting(false)} />}
     </div>
   );
 };

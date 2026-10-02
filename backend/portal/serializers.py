@@ -92,10 +92,21 @@ class DocumentUploadSerializer(serializers.Serializer):
 
 
 class PaymentSettingsSerializer(serializers.ModelSerializer):
+    methods = serializers.SerializerMethodField()
+
     class Meta:
         model = PaymentSettings
-        fields = ['afrimoney_number', 'afrimoney_name', 'orange_money_number', 'orange_money_name', 'instructions', 'terms', 'updated_at']
+        fields = ['afrimoney_number', 'afrimoney_name', 'afrimoney_steps', 'orange_money_number', 'orange_money_name',
+                  'orange_money_steps', 'card_link', 'card_label', 'card_steps', 'instructions', 'terms', 'methods', 'updated_at']
         read_only_fields = ['updated_at']
+
+    def get_methods(self, obj):
+        return obj.methods()
+
+    def validate_card_link(self, value):
+        if value and not value.lower().startswith('https://'):
+            raise serializers.ValidationError('Use a secure link that starts with https://')
+        return value
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -117,7 +128,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = ServiceRequest
         fields = [
             'id', 'status', 'status_display', 'reference', 'amount', 'guidelines', 'decision_note', 'requested_at',
-            'approved_at', 'terms_accepted_at', 'payment_method', 'payment_method_display', 'transaction_id',
+            'approved_at', 'terms_accepted_at', 'payment_method', 'payment_method_display', 'transaction_id', 'payer',
             'has_receipt', 'receipt_name', 'payment_submitted_at', 'verified_at', 'unlocked', 'payment',
         ]
 
@@ -142,7 +153,13 @@ class ServiceSerializer(serializers.ModelSerializer):
 class PaymentSubmitSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=ServiceRequest.METHOD_CHOICES)
     transaction_id = serializers.CharField(max_length=100)
+    payer = serializers.CharField(max_length=100, required=False, allow_blank=True)
     receipt = serializers.FileField(validators=[validate_upload])
+
+    def validate_payment_method(self, value):
+        if value not in [m['id'] for m in PaymentSettings.load().methods()]:
+            raise serializers.ValidationError('ADRAM doesn’t take this way of paying at the moment.')
+        return value
 
 
 class ServiceDecisionSerializer(serializers.Serializer):
@@ -292,8 +309,8 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TrainingEnrollment
-        fields = ['id', 'status', 'status_display', 'start_date', 'note', 'course', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ['id', 'status', 'status_display', 'start_date', 'note', 'course', 'decided_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'decided_at', 'created_at', 'updated_at']
 
     def get_course(self, obj):
         c = obj.course

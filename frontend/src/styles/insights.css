@@ -1,0 +1,34 @@
+/* Admin insights */
+.ins-page { display: grid; gap: 18px; }
+.ins-page > * { min-width: 0; }
+.ins-page .ov-kpis { margin-bottom: 0; }
+.ins-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 18px; }
+.ins-charts > * { min-width: 0; }
+.ins-note { margin: 10px 0 0; }
+.ins-weeks { display: grid; grid-template-columns: repeat(16, 1fr); align-items: end; gap: 4px; height: 200px; padding-top: 8px; }
+.ins-weeks__col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 4px; }
+.ins-weeks__bar { align-self: end; width: 100%; border-radius: 4px 4px 0 0; background: var(--viz-accent, #2563eb); }
+.ins-weeks__col.is-forecast .ins-weeks__bar { background: repeating-linear-gradient(135deg, #93c5fd 0 4px, #dbeafe 4px 8px); outline: 1px dashed #3b82f6; }
+.ins-weeks small { overflow: hidden; color: var(--muted); font-size: 0.6rem; text-align: center; white-space: nowrap; }
+.ins-cohorts__cell { min-width: 56px; font-weight: 600; }
+.ins-quality, .ins-flags { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ins-quality li { display: flex; gap: 12px; align-items: flex-start; padding-bottom: 10px; border-bottom: 1px solid var(--line, #eef2f7); }
+.ins-quality li:last-child { border-bottom: 0; }
+.ins-quality li > span:last-child { display: grid; gap: 3px; min-width: 0; }
+.ins-quality a { color: inherit; }
+.ins-score { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; }
+.ins-score.is-good { background: #dcfce7; color: #15803d; }
+.ins-score.is-ok { background: #fef9c3; color: #a16207; }
+.ins-score.is-bad { background: #fee2e2; color: #b91c1c; }
+.ins-issues { display: flex; flex-wrap: wrap; gap: 4px; }
+.ins-issues em { padding: 1px 8px; border-radius: 999px; background: var(--surface, #f1f5f9); color: var(--muted); font-size: 0.75rem; font-style: normal; }
+.ins-flags li { display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #fffbeb; }
+.ins-flags li.is-high { background: #fef2f2; }
+.ins-flags li > i { margin-top: 3px; color: #d97706; }
+.ins-flags li.is-high > i { color: #dc2626; }
+.ins-flags li > span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.ins-flags small { color: var(--muted); }
+.ins-clear { display: flex; align-items: center; gap: 8px; margin: 0; color: #15803d; font-weight: 600; }
+@media (max-width: 720px) {
+  .ins-weeks small { display: none; }
+}

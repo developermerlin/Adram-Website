@@ -101,7 +101,7 @@ export const TrainingOverview = ({ refreshKey = '' }) => {
               <span className="kpi__note">{d ? `${plural(d.learners, 'learner')} · ${fmt.format(d.multi_programme)} in more than one programme` : ''}</span>
             </StatTile>
 
-            <StatTile label="To confirm" value={d && fmt.format(s.requested)} icon="fa-bell" tone="amber" to="/admin/courses#enrollments" action="Go to enrollments">
+            <StatTile label="To confirm" value={d && fmt.format(s.requested)} icon="fa-bell" tone="amber" to="/admin/enrollments" action="Go to enrollments">
               <span className="kpi__note">{d ? (s.requested ? 'Open a student to confirm their place' : 'Nothing waiting for you') : ''}</span>
             </StatTile>
 

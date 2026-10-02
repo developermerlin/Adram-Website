@@ -36,7 +36,8 @@ from rest_framework.views import APIView
 from .emails import notify_admins_new_account
 from .models import ActivityLog, SocialAccount
 from .serializers import UserSerializer
-from .views import auto_approve_student, tokens_for
+from . import mfa
+from .views import auto_approve_student, mfa_challenge, tokens_for
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -372,7 +373,10 @@ class OAuthExchangeView(APIView):
 
         user.last_login = timezone.now()
         user.save(update_fields=['last_login'])
-        return Response({**tokens_for(user), 'user': UserSerializer(user).data})
+        if mfa.is_on(user):
+            # Social sign-in proves the email, not the second step: ask for the authenticator code
+            return Response(mfa_challenge(user))
+        return Response({**tokens_for(user, request, 'social sign-in'), 'user': UserSerializer(user).data})
 
 
 class OAuthProvidersView(APIView):

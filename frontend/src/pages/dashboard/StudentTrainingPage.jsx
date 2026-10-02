@@ -1,24 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
 import '../../styles/lms.css';
-import usePortal from '../../data/usePortal';
 import { formatDate } from '../../utils/format';
 import PortalLayout from '../../components/layout/PortalLayout';
 import BrandIcon from '../../components/brand/BrandIcon';
 import { Alert } from '../../components/ui/Form';
 
-const STATUS_BADGE = { requested: 'badge--amber', active: 'badge--green', completed: 'badge--blue' };
+const STATUS_BADGE = { requested: 'badge--amber', active: 'badge--green', completed: 'badge--blue', declined: 'badge--red' };
 const STATUS_TEXT = {
   requested: 'ADRAM has your request and will contact you with dates and fees to confirm your place.',
   active: 'You’re enrolled. Class details and any updates from ADRAM appear here.',
   completed: 'Well done on completing this programme!',
+  declined: 'ADRAM couldn’t accept this request. You can ask again from the course page.',
 };
 
 /** Training programmes the student enrolled in. Only reachable from the sidebar once they have one. */
 export const StudentTrainingPage = () => {
-  const portal = usePortal();
-  const { data } = portal;
+  // The training side's own data (lms), not the scholarship portal's
+  const [enrollments, setEnrollments] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const load = useCallback(() => lmsAPI.enrollments().then(({ data: list }) => { setEnrollments(list); setFailed(false); }).catch(() => setFailed(true)), []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const cancel = async (id) => {
+    try {
+      await lmsAPI.cancelEnrollment(id);
+      toast.success('Enrollment request cancelled');
+      load();
+    } catch {
+      toast.error('The request could not be cancelled. Please try again.');
+    }
+  };
+  const data = enrollments ? { training: enrollments } : null;
   // Programmes that have a course portal: progress and where to continue
   const [learning, setLearning] = useState({});
   useEffect(() => {
@@ -31,7 +47,7 @@ export const StudentTrainingPage = () => {
       subtitle="The ADRAM training programmes you’ve enrolled in."
       actions={<Link to="/courses" className="btn btn--outline btn--sm"><i className="fas fa-laptop-code" /> All programmes</Link>}
     >
-      {portal.error && <Alert>Your training couldn’t be loaded. Refresh the page to try again.</Alert>}
+      {failed && <Alert>Your training couldn’t be loaded. Refresh the page to try again.</Alert>}
       {!data && <div className="skeleton skeleton--block" />}
       {data?.training.length === 0 && (
         <section className="card panel empty-state">
@@ -72,10 +88,14 @@ export const StudentTrainingPage = () => {
                 )}
               </div>
             )}
-            <p className="training-card__status">{STATUS_TEXT[t.status]}</p>
+            <p className="training-card__status">
+              {STATUS_TEXT[t.status]}
+              {t.decided_at && t.status !== 'requested' && <small className="muted"> ({t.status === 'declined' ? 'Decided' : 'Confirmed'} on {formatDate(t.decided_at)})</small>}
+            </p>
             {t.note && <p className="training-card__note"><strong>From ADRAM:</strong> {t.note}</p>}
+            {t.status === 'declined' && <Link to={`/courses/${t.course.slug}`} className="btn btn--outline btn--sm">Ask again</Link>}
             {t.status === 'requested' && (
-              <button type="button" className="btn btn--text btn--sm text-danger training-card__cancel" onClick={() => portal.cancelEnrollment(t.id)}>
+              <button type="button" className="btn btn--text btn--sm text-danger training-card__cancel" onClick={() => cancel(t.id)}>
                 Cancel my request
               </button>
             )}

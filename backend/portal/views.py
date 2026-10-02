@@ -21,6 +21,8 @@ from accounts.models import ActivityLog
 from accounts.permissions import IsAdmin
 from catalog.models import LEVELS, Scholarship
 from catalog.serializers import ScholarshipSerializer
+from lms import audit
+
 from . import emails
 from .models import (
     DEFAULT_MILESTONES, Application, ApplicationDocument, Message, Milestone, PaymentSettings, PortalEvent, SavedScholarship,
@@ -64,13 +66,8 @@ def portal_data(user, request, staff=False):
         'saved': [{**ScholarshipSerializer(s.scholarship, context=context).data, 'saved_at': s.created_at} for s in saved],
         'applications': ApplicationSerializer(applications_of(user), many=True, context={**context, 'staff': staff}).data,
         'recommended': ScholarshipSerializer(recommended_for(user), many=True, context=context).data,
-        # Only programmes the student signed up for (cancelled ones drop out of their portal).
-        'training': EnrollmentSerializer(enrollments_of(user), many=True).data,
+        # Training is the other side of the portal: it has its own endpoints (lms/enrolment.py), not part of this.
     }
-
-
-def enrollments_of(user):
-    return user.training_enrollments.exclude(status=TrainingEnrollment.CANCELLED).select_related('course')
 
 
 def student_actions(user):
@@ -100,7 +97,7 @@ def student_actions(user):
 
 
 class MySummaryView(APIView):
-    """GET /portal/me/summary/ -> counts for the student's sidebar (and whether to show My training)."""
+    """GET /portal/me/summary/ -> counts for the scholarships side's sidebar (training has /lms/me/summary/)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -108,7 +105,6 @@ class MySummaryView(APIView):
         return Response({
             'applications': user.applications.count(),
             'saved': user.saved_scholarships.count(),
-            'training': enrollments_of(user).count(),
             'actions': len(student_actions(user)),
             'messages_unread': Message.objects.filter(conversation__user=user, from_staff=True, read_at__isnull=True).count(),
         })
@@ -120,47 +116,6 @@ class MyActionsView(APIView):
 
     def get(self, request):
         return Response(student_actions(request.user))
-
-
-class MyTrainingView(APIView):
-    """POST /portal/me/training/ {slug} -> ask to enroll;  DELETE /portal/me/training/<id>/ -> cancel a request."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        from catalog.models import Course
-        course = get_object_or_404(Course, slug=request.data.get('slug', ''), is_published=True)
-        if not course.is_free:
-            # A paid course is bought through the cart and checkout, which take the payment before opening the lessons
-            return Response({'detail': 'This course has a price. Add it to your cart to buy it.', 'code': 'payment_required',
-                             'checkout': '/cart'}, status=status.HTTP_402_PAYMENT_REQUIRED)
-        # Open courses give instant access; the others wait for ADRAM to confirm the place
-        instant = course.enrollment_mode == course.OPEN
-        wanted = TrainingEnrollment.ACTIVE if instant else TrainingEnrollment.REQUESTED
-        enrollment, created = TrainingEnrollment.objects.get_or_create(student=request.user, course=course, defaults={'status': wanted})
-        if not created and enrollment.status == TrainingEnrollment.CANCELLED:
-            enrollment.status, created = wanted, True
-            enrollment.save(update_fields=['status', 'updated_at'])
-        elif not created and instant and enrollment.status == TrainingEnrollment.REQUESTED:
-            enrollment.status = TrainingEnrollment.ACTIVE  # the course was opened after they asked
-            enrollment.save(update_fields=['status', 'updated_at'])
-        if created:
-            track(request.user, PortalEvent.TRAINING, label=course.title, detail='Enrolled' if instant else 'Asked to enroll')
-            if instant:
-                from lms.notify import notify
-                notify(request.user, 'enrollment', f'You’re enrolled on {course.title}', 'Every lesson is now open.', f'/courses/{course.slug}')
-            if not instant:
-                after_commit(emails.notify_team_training, enrollment)
-        return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-
-    def delete(self, request, pk):
-        enrollment = get_object_or_404(TrainingEnrollment, pk=pk, student=request.user)
-        if enrollment.status != TrainingEnrollment.REQUESTED:
-            return Response({'detail': 'Please contact ADRAM to leave a programme you’re already enrolled in.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        enrollment.status = TrainingEnrollment.CANCELLED
-        enrollment.save(update_fields=['status', 'updated_at'])
-        track(request.user, PortalEvent.TRAINING, label=enrollment.course.title, detail='Cancelled the enrollment request')
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def discard(field):
@@ -327,6 +282,7 @@ class MyServicePaymentView(APIView):
         data = serializer.validated_data
         discard(service.receipt)  # replacing a receipt that wasn't confirmed
         service.payment_method, service.transaction_id = data['payment_method'], data['transaction_id'].strip()
+        service.payer = (data.get('payer') or '').strip()[:100]
         service.receipt, service.receipt_name = data['receipt'], data['receipt'].name[:200]
         service.status, service.payment_submitted_at, service.decision_note = ServiceRequest.PAYMENT_SUBMITTED, timezone.now(), ''
         service.save()
@@ -1190,7 +1146,8 @@ class StaffTrainingView(APIView):
         serializer = EnrollmentSerializer(enrollment, data={'status': request.data.get('status', TrainingEnrollment.ACTIVE)}, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        track(student, PortalEvent.TRAINING, label=course.title, detail=f'Enrolled by {request.user.get_full_name()}')
+        # Training changes go to the admin audit log, not the student's scholarship activity (PortalEvent)
+        audit.record(request, 'training_enrolled', enrollment, label=f'{student.get_full_name()}: {course.title}', status=enrollment.status)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -1219,9 +1176,14 @@ class StaffTrainingDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         enrollment = serializer.save()
         if enrollment.status != was:
-            track(enrollment.student, PortalEvent.TRAINING, label=enrollment.course.title,
-                  detail=f'{enrollment.get_status_display()} (by {request.user.get_full_name()})')
-            if enrollment.status == TrainingEnrollment.ACTIVE:
+            audit.record(request, 'training_status', enrollment, label=f'{enrollment.student.get_full_name()}: {enrollment.course.title}',
+                         status=enrollment.get_status_display())
+            if enrollment.status in (TrainingEnrollment.ACTIVE, TrainingEnrollment.DECLINED) and was == TrainingEnrollment.REQUESTED:
+                from lms.enrolment import announce_decision
+                enrollment.decided_at, enrollment.decided_by = timezone.now(), request.user
+                enrollment.save(update_fields=['decided_at', 'decided_by', 'updated_at'])
+                announce_decision(enrollment)  # the same in-portal message and email as the Enrollments page
+            elif enrollment.status == TrainingEnrollment.ACTIVE:
                 after_commit(emails.send_training_confirmed, enrollment)
         return Response(serializer.data)
 

@@ -29,3 +29,11 @@ export const formatSize = (bytes) => {
 
 /** Text with blank lines between paragraphs -> an array of paragraphs */
 export const paragraphs = (text) => (text || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+
+/** "2026-10-12T17:00" for a datetime-local input, in the browser's time zone. */
+export const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};

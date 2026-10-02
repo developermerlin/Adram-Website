@@ -87,6 +87,14 @@ class Lesson(models.Model):
     # assignment settings
     max_points = models.PositiveSmallIntegerField(default=100, help_text='Assignment: the grade is out of this.')
     allow_resubmit = models.BooleanField(default=True, help_text='Assignment: students may hand in again until it is approved.')
+    ACCEPT, PENALTY, CLOSED = 'accept', 'penalty', 'closed'
+    LATE_POLICIES = [(ACCEPT, 'Accept late work (marked late)'), (PENALTY, 'Accept late work with a penalty'), (CLOSED, 'Close at the deadline')]
+    due_at = models.DateTimeField(null=True, blank=True, help_text='Assignment: the deadline for everyone.')
+    due_days = models.PositiveSmallIntegerField(default=0, help_text='Assignment: or, due this many days after the student enrols (0 = not used).')
+    late_policy = models.CharField(max_length=8, choices=LATE_POLICIES, default=ACCEPT)
+    late_penalty_percent = models.PositiveSmallIntegerField(default=10, help_text='Penalty: the share of the grade taken off late work.')
+    max_files = models.PositiveSmallIntegerField(default=1, help_text='Assignment: how many files may be handed in at once.')
+    rubric = models.JSONField(default=list, blank=True, help_text='Assignment: grading criteria [{title, description, points}].')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -114,21 +122,84 @@ class Resource(models.Model):
         ordering = ['sort_order', 'id']
 
 
-class Question(models.Model):
-    """A quiz question: one right answer, several right answers, true/false, or a short typed answer."""
-    SINGLE, MULTIPLE, TRUE_FALSE, SHORT = 'single', 'multiple', 'true_false', 'short'
-    KINDS = [(SINGLE, 'Multiple choice'), (MULTIPLE, 'Multiple answers'), (TRUE_FALSE, 'True / false'), (SHORT, 'Short answer')]
+class QuestionBank(models.Model):
+    """A reusable set of questions an instructor keeps. Quizzes copy questions from it or draw random ones (QuizRule)."""
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='question_banks')
+    course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='question_banks')
+    title = models.CharField(max_length=200)
+    description = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='questions')
+    class Meta:
+        ordering = ['title', 'id']
+
+    def __str__(self):
+        return self.title
+
+
+class QuestionCategory(models.Model):
+    bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='categories')
+    name = models.CharField(max_length=120)
+
+    class Meta:
+        ordering = ['name', 'id']
+        constraints = [models.UniqueConstraint(fields=['bank', 'name'], name='unique_bank_category')]
+
+    def __str__(self):
+        return self.name
+
+
+class Question(models.Model):
+    """
+    A quiz question: one right answer, several right answers, true/false, a short typed answer, fill in the blanks
+    (the text holds the answers in square brackets: "The capital is [Freetown]") or matching pairs.
+    It belongs to a quiz lesson, or to a question bank.
+    """
+    SINGLE, MULTIPLE, TRUE_FALSE, SHORT, FILL_BLANK, MATCHING = 'single', 'multiple', 'true_false', 'short', 'fill_blank', 'matching'
+    KINDS = [(SINGLE, 'Multiple choice'), (MULTIPLE, 'Multiple answers'), (TRUE_FALSE, 'True / false'), (SHORT, 'Short answer'),
+             (FILL_BLANK, 'Fill in the blanks'), (MATCHING, 'Matching')]
+    EASY, MEDIUM, HARD = 'easy', 'medium', 'hard'
+    DIFFICULTIES = [(EASY, 'Easy'), (MEDIUM, 'Medium'), (HARD, 'Hard')]
+
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
+    bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
+    category = models.ForeignKey(QuestionCategory, on_delete=models.SET_NULL, related_name='questions', null=True, blank=True)
     kind = models.CharField(max_length=12, choices=KINDS, default=SINGLE)
-    text = models.CharField(max_length=500)
+    difficulty = models.CharField(max_length=6, choices=DIFFICULTIES, default=MEDIUM)
+    text = models.CharField(max_length=1000)
     accepted_answers = models.JSONField(default=list, blank=True, help_text='Short answer: the answers marked right (case and spacing ignored).')
+    data = models.JSONField(default=dict, blank=True, help_text='Fill in the blanks: {blanks: [[answers]]}. Matching: {pairs: [{left, right}]}.')
     points = models.PositiveSmallIntegerField(default=1)
     explanation = models.CharField(max_length=500, blank=True, help_text='Shown after the student answers.')
+    sort_order = models.PositiveIntegerField(default=0)
+    times_answered = models.PositiveIntegerField(default=0)
+    times_correct = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+
+class QuizRule(models.Model):
+    """A quiz draws `count` random questions from a bank, optionally only one category and/or difficulty."""
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='quiz_rules')
+    bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='rules')
+    category = models.ForeignKey(QuestionCategory, on_delete=models.SET_NULL, null=True, blank=True)
+    difficulty = models.CharField(max_length=6, choices=Question.DIFFICULTIES, blank=True)
+    count = models.PositiveSmallIntegerField(default=5)
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['sort_order', 'id']
+
+    def pool(self):
+        questions = self.bank.questions.all()
+        if self.category_id:
+            questions = questions.filter(category_id=self.category_id)
+        if self.difficulty:
+            questions = questions.filter(difficulty=self.difficulty)
+        return questions
 
 
 class Choice(models.Model):
@@ -231,11 +302,22 @@ class Thread(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='course_threads')
     title = models.CharField(max_length=200)
     body = models.TextField(max_length=2000, blank=True)
+    position_seconds = models.PositiveIntegerField(null=True, blank=True, help_text='The moment in the lesson video it is about.')
+    is_pinned = models.BooleanField(default=False, help_text='Pinned by the instructor: shown first.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-updated_at', '-id']
+
+
+class ThreadVote(models.Model):
+    """A student who has the same question (an upvote)."""
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name='votes')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['thread', 'user'], name='one_vote_per_thread')]
 
 
 class Reply(models.Model):
@@ -244,6 +326,7 @@ class Reply(models.Model):
     body = models.TextField(max_length=2000)
     is_staff = models.BooleanField(default=False, help_text='Written by the instructor or an administrator.')
     is_instructor_answer = models.BooleanField(default=False, help_text='Marked by the instructor as the answer.')
+    is_accepted = models.BooleanField(default=False, help_text='Accepted by the student who asked: it solved their question.')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -274,6 +357,8 @@ class Coupon(models.Model):
     starts_at = models.DateTimeField(null=True, blank=True)
     ends_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name='personal_coupons',
+                              help_text='A personal code (e.g. a referral reward): only this person can use it.')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -300,6 +385,8 @@ class Coupon(models.Model):
         """Why this code can't be used by this student on these courses right now, or None."""
         if not self.is_active:
             return 'This code is no longer active.'
+        if self.owner_id and self.owner_id != getattr(student, 'id', None):
+            return 'This code belongs to someone else.'
         if self.starts_at and now < self.starts_at:
             return 'This code is not active yet.'
         if self.ends_at and now > self.ends_at:
@@ -325,6 +412,39 @@ def new_certificate_code():
     return f'ADR-{raw[:4]}-{raw[4:8]}-{raw[8:]}'
 
 
+class CertificateTemplate(models.Model):
+    """How certificates look: the layout, colours and wording. One template is the default; courses can pick another."""
+    CLASSIC, MODERN, MINIMAL = 'classic', 'modern', 'minimal'
+    LAYOUTS = [(CLASSIC, 'Classic (framed)'), (MODERN, 'Modern (coloured band)'), (MINIMAL, 'Minimal')]
+
+    name = models.CharField(max_length=120)
+    layout = models.CharField(max_length=10, choices=LAYOUTS, default=CLASSIC)
+    accent_color = models.CharField(max_length=7, default='#1d4ed8', help_text='A colour like #1d4ed8.')
+    title = models.CharField(max_length=80, default='Certificate of completion')
+    heading = models.CharField(max_length=80, default='Congratulations', blank=True)
+    lead = models.CharField(max_length=160, default='has successfully completed the course')
+    footer_note = models.CharField(max_length=200, blank=True, help_text='A line under the signatures, e.g. an accreditation.')
+    show_hours = models.BooleanField(default=True)
+    show_instructor = models.BooleanField(default=True)
+    show_qr = models.BooleanField(default=True, help_text='A QR code that opens the verification page.')
+    signer_name = models.CharField(max_length=120, blank=True, help_text='Leave empty to use the LMS settings.')
+    signer_title = models.CharField(max_length=120, blank=True)
+    is_default = models.BooleanField(default=False)
+    courses = models.ManyToManyField(Course, blank=True, related_name='certificate_templates')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_default', 'name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def for_course(cls, course):
+        return cls.objects.filter(courses=course).first() or cls.objects.filter(is_default=True).first()
+
+
 class Certificate(models.Model):
     """Issued once, when the student finishes every lesson. Anyone can check its code on the website."""
     enrollment = models.OneToOneField(TrainingEnrollment, on_delete=models.CASCADE, related_name='certificate')
@@ -332,6 +452,8 @@ class Certificate(models.Model):
     issued_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
     revoke_reason = models.CharField(max_length=300, blank=True)
+    template = models.ForeignKey(CertificateTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name='certificates',
+                                 help_text='The look it was issued with (none: the built-in design).')
 
     def __str__(self):
         return self.code
@@ -367,10 +489,26 @@ class Submission(models.Model):
     feedback = models.TextField(blank=True, max_length=5000)
     graded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     graded_at = models.DateTimeField(null=True, blank=True)
+    is_late = models.BooleanField(default=False)
+    penalty_percent = models.PositiveSmallIntegerField(default=0, help_text='Taken off the grade because the work was late.')
+    raw_grade = models.PositiveSmallIntegerField(null=True, blank=True, help_text='The grade before any late penalty.')
+    rubric_scores = models.JSONField(default=list, blank=True, help_text='Points given for each rubric criterion, in order.')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at', '-id']
+
+
+class SubmissionFile(models.Model):
+    """One of the files handed in with a submission."""
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to=submission_upload_to, storage=lms_storage)
+    filename = models.CharField(max_length=200)
+    size = models.PositiveBigIntegerField(default=0)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
 
 
 # ================================================================ shopping
@@ -383,6 +521,129 @@ class CartItem(models.Model):
     class Meta:
         ordering = ['created_at']
         constraints = [models.UniqueConstraint(fields=['student', 'course'], name='one_cart_entry')]
+
+
+def new_affiliate_code():
+    return 'P' + secrets.token_hex(3).upper()
+
+
+class Affiliate(models.Model):
+    """A partner who promotes courses with their own link (?aff=CODE) and earns a commission on the orders it brings."""
+    PENDING, APPROVED, REJECTED, SUSPENDED = 'pending', 'approved', 'rejected', 'suspended'
+    STATUSES = [(PENDING, 'Waiting for approval'), (APPROVED, 'Approved'), (REJECTED, 'Not accepted'), (SUSPENDED, 'Suspended')]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='affiliate')
+    code = models.CharField(max_length=12, unique=True, default=new_affiliate_code)
+    status = models.CharField(max_length=10, choices=STATUSES, default=PENDING)
+    commission_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10'))
+    website = models.URLField(max_length=300, blank=True)
+    audience = models.TextField(blank=True, max_length=1000, help_text='Where and to whom they will promote the courses.')
+    payout_details = models.TextField(blank=True, max_length=500, help_text='Private: how they want to be paid.')
+    note = models.CharField(max_length=300, blank=True, help_text='From ADRAM: why it was not accepted or suspended.')
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class AffiliateClickDay(models.Model):
+    affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='click_days')
+    date = models.DateField()
+    clicks = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['affiliate', 'date'], name='one_click_row_per_day')]
+
+
+class AffiliatePayout(models.Model):
+    affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='payouts')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reference = models.CharField(max_length=120, blank=True)
+    paid_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Plan(models.Model):
+    """A Premium subscription: while it is active, every Premium course is open (single purchases still exist)."""
+    MONTH, YEAR = 'month', 'year'
+    INTERVALS = [(MONTH, 'Monthly'), (YEAR, 'Yearly')]
+
+    name = models.CharField(max_length=80)
+    interval = models.CharField(max_length=5, choices=INTERVALS, default=MONTH)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'price']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def days(self):
+        return 365 if self.interval == self.YEAR else 30
+
+
+class Subscription(models.Model):
+    """One paid period of a plan. A student's Premium lasts until the latest ends_at."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='subscriptions')
+    order = models.OneToOneField('Order', null=True, blank=True, on_delete=models.SET_NULL, related_name='subscription')
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-ends_at']
+
+
+class PremiumEnrollment(models.Model):
+    """Marks a place taken through Premium: it is open only while the student's Premium is active."""
+    enrollment = models.OneToOneField(TrainingEnrollment, on_delete=models.CASCADE, related_name='premium')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class InstalmentPlan(models.Model):
+    """A course paid in parts: the first part opens it; each later part is an order with a due date."""
+    ACTIVE, COMPLETED, CANCELLED = 'active', 'completed', 'cancelled'
+    STATUSES = [(ACTIVE, 'Paying'), (COMPLETED, 'Paid in full'), (CANCELLED, 'Cancelled')]
+
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='instalment_plans')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='instalment_plans')
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    parts = models.PositiveSmallIntegerField()
+    paid_parts = models.PositiveSmallIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=STATUSES, default=ACTIVE)
+    next_due_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Bundle(models.Model):
+    """Several courses sold together for one (lower) price. Courses the student already owns come off the price."""
+    slug = models.SlugField(max_length=120, unique=True)
+    title = models.CharField(max_length=200)
+    summary = models.CharField(max_length=300, blank=True)
+    description = models.TextField(blank=True, max_length=5000)
+    courses = models.ManyToManyField(Course, related_name='bundles')
+    price = models.DecimalField(max_digits=10, decimal_places=2, help_text='The price of the whole bundle (NLe).')
+    is_published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
 
 
 class Order(models.Model):
@@ -404,9 +665,18 @@ class Order(models.Model):
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    bundle = models.ForeignKey(Bundle, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    is_gift = models.BooleanField(default=False, help_text='Bought for someone else: the courses go to whoever redeems the gift.')
+    affiliate = models.ForeignKey('Affiliate', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    plan = models.ForeignKey(Plan, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders', help_text='A Premium subscription order.')
+    instalment_plan = models.ForeignKey(InstalmentPlan, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    instalment_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    due_at = models.DateTimeField(null=True, blank=True, help_text='Instalments: pay by this date.')
+    affiliate_commission = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Earned by the affiliate once paid (fixed when ordered).')
     provider = models.CharField(max_length=30, default='manual', help_text='The payment provider handling this order.')
     method = models.CharField(max_length=30, blank=True)
     transaction_id = models.CharField(max_length=100, blank=True)
+    payer = models.CharField(max_length=100, blank=True, help_text='The number paid from, or the name on the card.')
     receipt = models.FileField(upload_to=receipt_upload_to, storage=lms_storage, blank=True)
     receipt_name = models.CharField(max_length=200, blank=True)
     decision_note = models.TextField(blank=True)
@@ -432,6 +702,23 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{self.number} ({self.get_status_display()})'
+
+
+def new_gift_code():
+    return 'GIFT-' + secrets.token_hex(5).upper()
+
+
+class Gift(models.Model):
+    """A course (or bundle) bought for someone. Once the order is paid, the recipient redeems the code to enrol."""
+    order = models.OneToOneField('Order', on_delete=models.CASCADE, related_name='gift')
+    code = models.CharField(max_length=20, unique=True, default=new_gift_code)
+    recipient_name = models.CharField(max_length=120)
+    recipient_email = models.EmailField()
+    message = models.TextField(blank=True, max_length=1000)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    redeemed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='gifts_received')
+    redeemed_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
 
 
 class OrderItem(models.Model):
@@ -474,6 +761,29 @@ class LmsSettings(models.Model):
     certificate_signer_name = models.CharField(max_length=120, blank=True)
     certificate_signer_title = models.CharField(max_length=120, blank=True, default='Director of Training')
     certificate_signature = models.CharField(max_length=300, blank=True, help_text='An uploaded image of the signature.')
+    # Instructor withdrawals
+    payout_hold_days = models.PositiveSmallIntegerField(default=14, help_text='Days a sale is held before its earnings can be withdrawn (refund window).')
+    min_withdrawal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('100'), help_text='The smallest withdrawal an instructor can ask for.')
+    # Referrals: a friend who joins through a student's link gets a welcome discount; the student is rewarded after the friend's first purchase
+    referrals_enabled = models.BooleanField(default=True)
+    referral_friend_percent = models.PositiveSmallIntegerField(default=10, help_text='Welcome discount for the friend who joins (%).')
+    referral_reward_percent = models.PositiveSmallIntegerField(default=15, help_text='Reward for the student who invited them (%).')
+    referral_valid_days = models.PositiveSmallIntegerField(default=90, help_text='How long the referral codes can be used.')
+    # Affiliates: approved partners earn a share of the orders their links bring in (paid by the platform, not instructors)
+    affiliates_enabled = models.BooleanField(default=True)
+    affiliate_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10'), help_text='Default commission for new affiliates (%).')
+    affiliate_cookie_days = models.PositiveSmallIntegerField(default=30, help_text='A purchase this many days after clicking a link still counts.')
+    # Premium plan (alongside single purchases) and paying in instalments
+    premium_enabled = models.BooleanField(default=True, help_text='Students can subscribe to a plan that opens every Premium course.')
+    instalments_enabled = models.BooleanField(default=True)
+    instalment_min_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('300'), help_text='Courses from this price can be paid in parts.')
+    instalment_max_parts = models.PositiveSmallIntegerField(default=3, help_text='2 or 3.')
+    instalment_grace_days = models.PositiveSmallIntegerField(default=7, help_text='Lessons lock when a part is this many days overdue.')
+    # Mobile apps
+    push_enabled = models.BooleanField(default=True, help_text='Send notifications to the mobile apps too.')
+    app_min_version = models.CharField(max_length=20, blank=True, help_text='Older app versions are asked to update (e.g. 1.2.0).')
+    offline_days = models.PositiveSmallIntegerField(default=30, help_text='Saved lessons play offline this long before the app must check in.')
+    offline_devices = models.PositiveSmallIntegerField(default=3, help_text='Devices a student can keep saved lessons on.')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -515,7 +825,13 @@ class Profile(models.Model):
     youtube = models.URLField(max_length=300, blank=True)
     github = models.URLField(max_length=300, blank=True)
     facebook = models.URLField(max_length=300, blank=True)
+    intro_video_url = models.URLField(max_length=500, blank=True, help_text='Instructors: a YouTube or Vimeo video introducing themselves.')
+    marketing_emails = models.BooleanField(default=True, help_text='News and offers by email (campaigns). Account emails are always sent.')
     payout_details = models.TextField(blank=True, max_length=1000, help_text='Private: how the instructor wants to be paid.')
+    # Private tax information (instructors), for ADRAM's records and statements
+    legal_name = models.CharField(max_length=150, blank=True)
+    tax_id = models.CharField('tax ID (TIN / NIN)', max_length=60, blank=True)
+    tax_address = models.CharField(max_length=300, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod
@@ -527,8 +843,8 @@ class Notification(models.Model):
     """Something to tell a user in their notification centre (the bell)."""
     KINDS = [(k, k.replace('_', ' ').capitalize()) for k in (
         'enrollment', 'purchase', 'payment', 'course_approved', 'course_rejected', 'course_review', 'new_lecture',
-        'announcement', 'quiz_result', 'assignment_submitted', 'assignment_graded', 'certificate', 'coupon', 'question',
-        'answer', 'review', 'report', 'refund', 'system')]
+        'announcement', 'quiz_result', 'assignment_submitted', 'assignment_graded', 'assignment_due', 'certificate', 'coupon', 'question',
+        'answer', 'review', 'report', 'refund', 'new_course', 'system')]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='lms_notifications')
     kind = models.CharField(max_length=30, choices=KINDS, default='system')
     title = models.CharField(max_length=200)
@@ -583,13 +899,52 @@ class Report(models.Model):
 # ================================================================ analytics
 
 class CourseViewDay(models.Model):
-    """How many times a course page was opened on a day."""
+    """A course's day: page views, and the steps towards buying it (for the sales funnel)."""
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='view_days')
     date = models.DateField()
     views = models.PositiveIntegerField(default=0)
+    wishlist_adds = models.PositiveIntegerField(default=0)
+    cart_adds = models.PositiveIntegerField(default=0)
+    checkouts = models.PositiveIntegerField(default=0, help_text='Orders placed that include the course (paid or not yet).')
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['course', 'date'], name='one_view_row_per_day')]
+
+
+def new_referral_code():
+    return secrets.token_hex(4).upper()
+
+
+class ReferralCode(models.Model):
+    """A student's personal invitation code (adram.../?ref=CODE)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referral_code')
+    code = models.CharField(max_length=12, unique=True, default=new_referral_code)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Referral(models.Model):
+    """Someone who joined through a friend's invitation, and the coupons it earned."""
+    referrer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_made')
+    referred = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referred_by')
+    welcome_coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    reward_coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    rewarded_order = models.ForeignKey('Order', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    rewarded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class InstructorFollow(models.Model):
+    """A student following an instructor: told when the instructor publishes a new course."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='following')
+    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['user', 'instructor'], name='follow_once')]
 
 
 class RecentlyViewed(models.Model):
@@ -601,3 +956,199 @@ class RecentlyViewed(models.Model):
     class Meta:
         ordering = ['-viewed_at']
         constraints = [models.UniqueConstraint(fields=['user', 'course'], name='one_recent_view')]
+
+
+class SearchQuery(models.Model):
+    """A search someone ran in the catalogue: their recent searches, and popular searches for everyone."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name='course_searches')
+    text = models.CharField(max_length=120)
+    normalized = models.CharField(max_length=120, db_index=True)
+    results = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', '-created_at'])]
+
+
+class SavedSearch(models.Model):
+    """A search with its filters that a student kept, to run again with one click."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_searches')
+    name = models.CharField(max_length=80)
+    params = models.JSONField(default=dict, help_text='The catalogue filters: q, category, level, price…')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+
+class WithdrawalRequest(models.Model):
+    """An instructor asks to be paid (part of) their available earnings; an administrator pays it or says why not."""
+    REQUESTED, PAID, REJECTED, CANCELLED = 'requested', 'paid', 'rejected', 'cancelled'
+    STATUSES = [(REQUESTED, 'Requested'), (PAID, 'Paid'), (REJECTED, 'Rejected'), (CANCELLED, 'Cancelled')]
+    METHODS = [('orange_money', 'Orange Money'), ('afrimoney', 'Afrimoney'), ('bank', 'Bank transfer'), ('other', 'Other')]
+
+    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='withdrawals')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    method = models.CharField(max_length=20, choices=METHODS)
+    account = models.CharField(max_length=120, help_text='Phone number or bank account number.')
+    account_name = models.CharField(max_length=120)
+    bank_name = models.CharField(max_length=120, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=12, choices=STATUSES, default=REQUESTED, db_index=True)
+    admin_note = models.CharField(max_length=300, blank=True, help_text='Why it was rejected, or a note with the payment.')
+    payout = models.OneToOneField(Payout, null=True, blank=True, on_delete=models.SET_NULL, related_name='request')
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class LearningDay(models.Model):
+    """How much a student learned on one day: minutes in lessons and lessons finished (streaks, goals, charts)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_days')
+    date = models.DateField()
+    seconds = models.PositiveIntegerField(default=0)
+    lessons_completed = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-date']
+        constraints = [models.UniqueConstraint(fields=['user', 'date'], name='one_learning_day')]
+
+
+class LearningGoal(models.Model):
+    """A student's daily target, in minutes of learning."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_goal')
+    daily_minutes = models.PositiveSmallIntegerField(default=15)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+# ================================================================ email campaigns
+
+class Segment(models.Model):
+    """A saved audience: rules that pick users (see lms/campaigns.py for what the rules mean)."""
+    name = models.CharField(max_length=120)
+    rules = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+
+class Campaign(models.Model):
+    """An email (and in-app notification) to an audience."""
+    DRAFT, SENDING, SENT = 'draft', 'sending', 'sent'
+    STATUSES = [(DRAFT, 'Draft'), (SENDING, 'Sending'), (SENT, 'Sent')]
+
+    name = models.CharField(max_length=120, help_text='For your own reference.')
+    subject = models.CharField(max_length=150)
+    title = models.CharField(max_length=150, blank=True, help_text='The heading inside the email (defaults to the subject).')
+    body = models.TextField(max_length=5000, help_text='A blank line starts a new paragraph.')
+    button_label = models.CharField(max_length=60, blank=True)
+    button_link = models.CharField(max_length=300, blank=True, help_text='A page of this website (e.g. /courses/web) or a full https:// link.')
+    rules = models.JSONField(default=dict, blank=True, help_text='The audience.')
+    notify_in_app = models.BooleanField(default=True)
+    status = models.CharField(max_length=8, choices=STATUSES, default=DRAFT)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class CampaignRecipient(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='recipients')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+    sent_at = models.DateTimeField(null=True, blank=True)
+    failed = models.BooleanField(default=False)
+    clicked_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign', 'user'], name='one_send_per_user')]
+
+
+class ActiveDay(models.Model):
+    """A user used the site (any signed-in request) on this day: the basis of daily/monthly active users."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='active_days')
+    date = models.DateField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'date'], name='one_active_row_per_day')]
+        indexes = [models.Index(fields=['date'])]
+
+
+# ================================================================ mobile apps
+
+class PushDevice(models.Model):
+    """A phone that receives push notifications (an Expo or Firebase token from the mobile app)."""
+    EXPO, FCM = 'expo', 'fcm'
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_devices')
+    token = models.CharField(max_length=300, unique=True)
+    kind = models.CharField(max_length=6, choices=[(EXPO, 'Expo'), (FCM, 'Firebase')], default=EXPO)
+    platform = models.CharField(max_length=10, blank=True, help_text='android or ios')
+    app_version = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+
+class OfflineLicence(models.Model):
+    """Permission to keep a lesson on a device for offline learning, until expires_at (renewed when the app checks in)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='offline_licences')
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='offline_licences')
+    device_id = models.CharField(max_length=100)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'lesson', 'device_id'], name='one_licence_per_device_lesson')]
+
+
+# ================================================================ study groups
+
+def new_group_code():
+    return secrets.token_hex(3).upper()
+
+
+class StudyGroup(models.Model):
+    """Students on the same course learning together: a board for posts and everyone's progress side by side."""
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='study_groups')
+    name = models.CharField(max_length=80)
+    description = models.CharField(max_length=300, blank=True)
+    is_private = models.BooleanField(default=False, help_text='Private groups are joined with the invite code only.')
+    invite_code = models.CharField(max_length=12, unique=True, default=new_group_code)
+    max_members = models.PositiveSmallIntegerField(default=30)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class GroupMember(models.Model):
+    OWNER, MEMBER = 'owner', 'member'
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='study_groups')
+    role = models.CharField(max_length=6, choices=[(OWNER, 'Owner'), (MEMBER, 'Member')], default=MEMBER)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['joined_at']
+        constraints = [models.UniqueConstraint(fields=['group', 'user'], name='join_group_once')]
+
+
+class GroupPost(models.Model):
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='posts')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+    body = models.TextField(max_length=2000)
+    is_pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+

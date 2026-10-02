@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
 import { Spinner } from '../../components/ui/Section';
 import CourseCard from '../../components/lms/CourseCard';
+import FollowButton from '../../components/lms/FollowButton';
 import Stars from '../../components/lms/Stars';
 import useWishlist from '../../components/lms/useWishlist';
 import { assetUrl } from '../../utils/assets';
@@ -54,10 +55,16 @@ export const InstructorProfilePage = () => {
             <div><small>Students</small><strong>{fmt.format(p.totals.students)}</strong></div>
             <div><small>Courses</small><strong>{p.totals.courses}</strong></div>
             <div><small>Reviews</small><strong>{fmt.format(p.totals.reviews)}</strong></div>
+            <div><small>Followers</small><strong>{fmt.format(p.followers || 0)}</strong></div>
             {p.totals.reviews > 0 && <div><small>Rating</small><strong>{p.totals.rating.toFixed(1)} <Stars value={p.totals.rating} size={13} /></strong></div>}
           </div>
           {p.expertise.length > 0 && (
             <div className="program-card__topics" aria-label="Expertise">{p.expertise.map((e) => <span key={e} className="tag">{e}</span>)}</div>
+          )}
+          {p.intro_video && (
+            <div className="ip-video lms-video">
+              <iframe src={p.intro_video} title={`${p.name} introduces themselves`} allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" loading="lazy" />
+            </div>
           )}
           {p.bio && (
             <section className="ip-bio">
@@ -68,6 +75,7 @@ export const InstructorProfilePage = () => {
         </div>
         <aside className="ip-head__side">
           {p.photo ? <img src={assetUrl(p.photo)} alt="" className="ip-photo" /> : <span className="ip-photo ip-photo--initials" aria-hidden="true">{initials(p.name)}</span>}
+          <FollowButton profile={p} onChange={(next) => setState((s) => ({ ...s, data: { ...s.data, followers: next.followers, following: next.following } }))} />
           {links.length > 0 && (
             <div className="ip-links">
               {links.map(([k, icon, label]) => (

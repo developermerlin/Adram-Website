@@ -4,14 +4,16 @@ import { useAuth } from '../../context/AuthContext';
 import { dashboardPathFor } from '../../config/roles';
 import { parseApiErrors } from '../../services/api';
 import Brand from '../../components/ui/Brand';
+import AuthenticatorStep from '../../components/ui/AuthenticatorStep';
 import '../../styles/portal.css';
 
 // Landing page after Google / Facebook / GitHub: swaps the one-time code for a session.
 export const OAuthCallbackPage = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { loginWithOAuthCode } = useAuth();
+  const { loginWithOAuthCode, verifyOtp } = useAuth();
   const [error, setError] = useState('');
+  const [mfa, setMfa] = useState(null); // two-step sign-in is on: ask for the authenticator code
   const started = useRef(false); // StrictMode runs effects twice in development; the code only works once
 
   useEffect(() => {
@@ -23,9 +25,13 @@ export const OAuthCallbackPage = () => {
       return;
     }
     loginWithOAuthCode(code, params.get('new') === '1')
-      .then((user) => {
+      .then((result) => {
+        if (result?.mfa) {
+          setMfa(result.mfa);
+          return;
+        }
         const next = params.get('next');
-        navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : dashboardPathFor(user.role), { replace: true });
+        navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : dashboardPathFor(result.role), { replace: true });
       })
       .catch((err) => setError(parseApiErrors(err, 'We couldn’t complete your sign-in.').form));
   }, [params, navigate, loginWithOAuthCode]);
@@ -33,7 +39,16 @@ export const OAuthCallbackPage = () => {
   return (
     <div className="oauth-callback">
       <Brand />
-      {error ? (
+      {mfa && !error ? (
+        <div className="oauth-callback__box">
+          <h1>Two-step sign-in</h1>
+          <AuthenticatorStep onSubmit={async (value) => {
+            const data = await verifyOtp(mfa.challenge, value);
+            const next = params.get('next');
+            if (data.access) navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : dashboardPathFor(data.user.role), { replace: true });
+          }} />
+        </div>
+      ) : error ? (
         <div className="oauth-callback__box">
           <span className="oauth-callback__icon oauth-callback__icon--error"><i className="fas fa-triangle-exclamation" /></span>
           <h1>Sign-in didn’t complete</h1>

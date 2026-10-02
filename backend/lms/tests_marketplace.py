@@ -11,7 +11,8 @@ from catalog.models import Category, Course
 from portal.models import PaymentSettings, TrainingEnrollment
 
 from .models import (
-    AuditLog, CartItem, Certificate, Coupon, LmsSettings, Notification, Order, OrderItem, Report, Review, Section, Wishlist,
+    AuditLog, CartItem, Certificate, Coupon, LmsSettings, Notification, Order, OrderItem, Payout, Profile, Report, Review, Section,
+    Wishlist,
 )
 from .models import Lesson
 from .tests import API, LmsCase
@@ -553,6 +554,37 @@ class CourseCardTests(MarketCase):
         self.course.refresh_from_db()
         self.assertTrue(self.course.is_premium)
 
+    def test_course_page_player_does_not_move_progress(self):
+        from .models import Progress
+        self.as_(self.student)
+        self.enroll()
+        resp = self.client.get(f'{API}/lessons/{self.intro.id}/?peek=1')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Progress.objects.filter(lesson=self.intro).exists())
+        self.client.get(f'{API}/lessons/{self.intro.id}/')
+        self.assertTrue(Progress.objects.filter(lesson=self.intro, last_viewed_at__isnull=False).exists())
+
+    def test_course_page_extras(self):
+        self.as_(self.admin)
+        url = f'/api/v1/catalog/manage/courses/{self.course.id}/'
+        page = {'caption_languages': ['French [Auto]', ''], 'includes': ['Access on mobile and TV'], 'premium_note': 'Part of ADRAM Premium.',
+                'feature': {'title': 'Coding exercises', 'text': 'Practise as you go.', 'link_url': '/courses'}}
+        self.assertEqual(self.client.patch(url, page, format='json').status_code, 200)
+        course = self.client.get(f'{API}/courses/web/').data['course']
+        self.assertEqual((course['caption_languages'], course['includes'], course['premium_note']), (['French [Auto]'], ['Access on mobile and TV'], 'Part of ADRAM Premium.'))
+        self.assertEqual((course['feature']['title'], course['feature']['link_label']), ('Coding exercises', 'Learn more'))
+        # unsafe links and pictures are refused; a box without a title is removed
+        self.assertEqual(self.client.patch(url, {'feature': {'title': 'x', 'link_url': 'javascript:alert(1)'}}, format='json').status_code, 400)
+        self.assertEqual(self.client.patch(url, {'feature': {'title': 'x', 'image': 'javascript:x'}}, format='json').status_code, 400)
+        self.client.patch(url, {'feature': {'title': ''}}, format='json')
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.feature, {})
+        # instructors may fill in the page but not the Premium text
+        self.as_(self.teacher)
+        self.client.patch(f'{API}/instructor/courses/web/', {'premium_note': 'mine', 'includes': ['Closed captions']}, format='json')
+        self.course.refresh_from_db()
+        self.assertEqual((self.course.premium_note, self.course.includes), ('Part of ADRAM Premium.', ['Closed captions']))
+
 
 class GapFillTests(MarketCase):
     def test_admin_edits_users_and_sends_notices(self):
@@ -579,3 +611,195 @@ class GapFillTests(MarketCase):
         self.assertEqual([r['title'] for r in data['resources']], ['B', 'A'])
         self.as_(self.rival)
         self.assertEqual(self.client.post(f'{API}/manage/lessons/{self.reading.id}/resources/order/', {'ids': [a.id, b.id]}, format='json').status_code, 404)
+
+
+class CardAndMobileMoneyTests(MarketCase):
+    """Paying without a gateway: Orange Money, Afrimoney or card (a card-payment link), proof checked by ADRAM."""
+
+    def setUp(self):
+        super().setUp()
+        PaymentSettings.objects.update(orange_money_number='076 000 111', orange_money_name='ADRAM',
+                                       orange_money_steps='Dial the Orange Money menu\nChoose Send money',
+                                       card_link='https://pay.example.com/adram', card_label='Visa / Mastercard',
+                                       card_steps='Open the card payment page\nEnter the amount and your order number')
+
+    def order(self):
+        self.as_(self.student)
+        self.client.post(f'{API}/cart/', {'slug': 'python'}, format='json')
+        return self.client.post(f'{API}/cart/checkout/', {}, format='json').data
+
+    def test_every_method_is_offered_with_its_steps(self):
+        methods = self.order()['how_to_pay']['methods']
+        self.assertEqual([m['id'] for m in methods], ['orange_money', 'afrimoney', 'card'])
+        card = methods[2]
+        self.assertEqual((card['kind'], card['link'], card['cards'], len(card['steps'])), ('card', 'https://pay.example.com/adram', 'Visa / Mastercard', 2))
+        self.assertEqual(methods[0]['steps'], ['Dial the Orange Money menu', 'Choose Send money'])
+
+    def test_card_payment_with_proof_and_a_duplicate_warning(self):
+        first = self.order()
+        sent = self.client.post(f'{API}/orders/{first["id"]}/payment/', {'method': 'card', 'transaction_id': 'AUTH-77', 'payer': 'Amina Kamara',
+                                                                          'receipt': self.receipt()}, format='multipart')
+        self.assertEqual((sent.data['status'], sent.data['method_label'], sent.data['payer']), ('processing', 'Card', 'Amina Kamara'))
+        # someone sends the same transaction ID for another order: the admin is warned
+        self.as_(self.other)
+        self.client.post(f'{API}/cart/', {'slug': 'python'}, format='json')
+        second = self.client.post(f'{API}/cart/checkout/', {}, format='json').data
+        self.client.post(f'{API}/orders/{second["id"]}/payment/', {'method': 'orange_money', 'transaction_id': 'auth-77', 'receipt': self.receipt()}, format='multipart')
+        self.as_(self.admin)
+        seen = self.client.get(f'{API}/orders/{second["id"]}/').data
+        self.assertEqual([o['number'] for o in seen['same_transaction']], [first['number']])
+
+    def test_methods_adram_does_not_offer_are_refused(self):
+        PaymentSettings.objects.update(card_link='', card_steps='')
+        order = self.order()
+        bad = self.client.post(f'{API}/orders/{order["id"]}/payment/', {'method': 'card', 'transaction_id': 'X', 'receipt': self.receipt()}, format='multipart')
+        self.assertEqual(bad.status_code, 400)
+        self.as_(self.admin)
+        self.assertEqual(self.client.put('/api/v1/portal/staff/payment-settings/', {'card_link': 'http://not-secure.example'}, format='json').status_code, 400)
+
+
+class FlashSaleTests(MarketCase):
+    """Timed sale prices and flash sales: students pay the best deal running now, and orders keep their price."""
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+        self.now = timezone.now()
+
+    def card(self, slug):
+        return next(c for c in self.client.get(f'{API}/catalog/?page_size=60').data['results'] if c['slug'] == slug)
+
+    def test_a_timed_sale_price_only_applies_inside_its_window(self):
+        Course.objects.filter(pk=self.course.pk).update(discount_price=Decimal('400'), sale_ends_at=self.now - timedelta(hours=1))
+        self.assertEqual((self.card('web')['sale_price'], self.card('web')['discount_price']), ('500.00', None))  # ended
+        Course.objects.filter(pk=self.course.pk).update(sale_starts_at=self.now + timedelta(days=1), sale_ends_at=None)
+        self.assertEqual(self.card('web')['sale_price'], '500.00')  # not started yet
+        Course.objects.filter(pk=self.course.pk).update(sale_starts_at=self.now - timedelta(hours=1), sale_ends_at=self.now + timedelta(days=2))
+        web = self.card('web')
+        self.assertEqual((web['sale_price'], web['discount_price'], web['sale_label']), ('400.00', '400.00', 'Sale'))
+        self.assertIsNotNone(web['sale_ends_at'])
+        page = self.client.get(f'{API}/courses/web/').data['course']
+        self.assertEqual((page['sale_price'], page['sale_label']), ('400.00', 'Sale'))
+
+    def test_a_flash_sale_gives_the_best_deal_and_orders_keep_their_price(self):
+        from catalog.models import FlashSale
+        Course.objects.filter(pk=self.course.pk).update(discount_price=Decimal('450'))
+        sale = FlashSale.objects.create(name='Easter sale', percent_off=20, starts_at=self.now - timedelta(minutes=5), ends_at=self.now + timedelta(days=1))
+        web, python = self.card('web'), self.card('python')
+        self.assertEqual((web['sale_price'], web['sale_label']), ('400.00', 'Easter sale'))  # 20% off beats the 450 sale price
+        self.assertEqual(python['sale_price'], '240.00')  # no courses chosen: every paid course
+        self.assertIn('python', [c['slug'] for c in self.client.get(f'{API}/catalog/?price=discounted').data['results']])
+
+        self.as_(self.student)
+        self.client.post(f'{API}/cart/', {'slug': 'web'}, format='json')
+        order = self.client.post(f'{API}/cart/checkout/', {}, format='json').data
+        self.assertEqual(order['total'], '400.00')
+        sale.ends_at = self.now - timedelta(minutes=1)
+        sale.save()
+        self.assertEqual(self.card('web')['sale_price'], '450.00')  # back to the course's own sale price
+        self.assertEqual(self.client.get(f'{API}/orders/{order["id"]}/').data['total'], '400.00')  # the order keeps its price
+
+    def test_a_flash_sale_on_chosen_courses(self):
+        from catalog.models import FlashSale
+        sale = FlashSale.objects.create(name='Python week', percent_off=50, starts_at=self.now - timedelta(minutes=5), ends_at=self.now + timedelta(days=1))
+        sale.courses.set([self.second])
+        from catalog.pricing import forget_flash_sales
+        forget_flash_sales()
+        self.assertEqual((self.card('python')['sale_price'], self.card('web')['sale_price']), ('150.00', '500.00'))
+
+    def test_admins_manage_flash_sales(self):
+        from .models import Notification
+        payload = {'name': 'Weekend sale', 'percent_off': 25, 'starts_at': (self.now - timedelta(minutes=1)).isoformat(),
+                   'ends_at': (self.now + timedelta(days=2)).isoformat(), 'course_ids': [self.second.id], 'notify_students': True}
+        self.as_(self.student)
+        self.assertEqual(self.client.post(f'{API}/manage/flash-sales/', payload, format='json').status_code, 403)
+        self.as_(self.admin)
+        made = self.client.post(f'{API}/manage/flash-sales/', payload, format='json')
+        self.assertEqual((made.status_code, made.data['state'], made.data['course_titles']), (201, 'live', ['Python Basics']))
+        self.assertEqual(self.card('python')['sale_price'], '225.00')
+        self.assertTrue(Notification.objects.filter(user=self.student, title='Weekend sale: 25% off').exists())
+        bad = self.client.post(f'{API}/manage/flash-sales/', {**payload, 'percent_off': 95}, format='json')
+        self.assertEqual(bad.status_code, 400)
+        backwards = self.client.post(f'{API}/manage/flash-sales/', {**payload, 'ends_at': (self.now - timedelta(days=1)).isoformat()}, format='json')
+        self.assertEqual(backwards.status_code, 400)
+        off = self.client.patch(f'{API}/manage/flash-sales/{made.data["id"]}/', {'is_enabled': False}, format='json')
+        self.assertEqual(off.data['state'], 'off')
+        self.assertEqual(self.card('python')['sale_price'], '300.00')
+        self.assertEqual(self.client.delete(f'{API}/manage/flash-sales/{made.data["id"]}/').status_code, 204)
+
+
+class WithdrawalTests(MarketCase):
+    """Instructors ask to be paid what's available; administrators pay or reject; tax details and a sales report."""
+
+    def sale(self, days_ago, share='350.00'):
+        order = Order.objects.create(student=self.student, status=Order.SUCCESSFUL, subtotal=Decimal('500'), total=Decimal('500'),
+                                     paid_at=timezone.now() - timedelta(days=days_ago))
+        OrderItem.objects.create(order=order, course=self.course, title='Web Development', instructor=self.teacher, price=Decimal('500'),
+                                 amount=Decimal('500'), commission_percent=Decimal('30'), instructor_share=Decimal(share))
+        return order
+
+    def ask(self, **extra):
+        data = {'amount': '200', 'method': 'orange_money', 'account': '076 111 222', 'account_name': 'Tia Teacher', **extra}
+        return self.client.post(f'{API}/instructor/withdrawals/', data, format='json')
+
+    def test_balance_holds_recent_sales(self):
+        self.sale(20)
+        self.sale(2)  # inside the 14-day refund window
+        self.as_(self.teacher)
+        balance = self.client.get(f'{API}/instructor/withdrawals/').data['balance']
+        self.assertEqual((balance['net'], balance['on_hold'], balance['available'], balance['hold_days']), ('700.00', '350.00', '350.00', 14))
+
+    def test_request_then_admin_pays(self):
+        self.sale(20)
+        self.as_(self.teacher)
+        self.assertIn('tax details', self.ask().data['form'])  # legal name first
+        self.client.put(f'{API}/instructor/tax-info/', {'legal_name': 'Tia Teacher', 'tax_id': 'TIN-123'}, format='json')
+        self.assertIn('up to', self.ask(amount='500').data['amount'])
+        self.assertIn('smallest', self.ask(amount='50').data['amount'])
+        made = self.ask()
+        self.assertEqual((made.status_code, made.data['status']), (201, 'requested'))
+        self.assertIn('already', self.ask(amount='100').data['form'])  # one at a time
+        balance = self.client.get(f'{API}/instructor/withdrawals/').data['balance']
+        self.assertEqual((balance['requested'], balance['available']), ('200.00', '150.00'))
+        self.assertTrue(Notification.objects.filter(user=self.admin, title='Withdrawal request').exists())
+
+        self.as_(self.admin)
+        queue = self.client.get(f'{API}/manage/withdrawals/').data
+        self.assertEqual((queue['waiting'], queue['results'][0]['instructor']['legal_name']), (1, 'Tia Teacher'))
+        self.assertEqual(self.client.post(f'{API}/manage/withdrawals/{made.data["id"]}/pay/', {}, format='json').status_code, 400)  # reference needed
+        paid = self.client.post(f'{API}/manage/withdrawals/{made.data["id"]}/pay/', {'reference': 'OM-55'}, format='json')
+        self.assertEqual((paid.data['status'], paid.data['reference']), ('paid', 'OM-55'))
+        self.assertTrue(Payout.objects.filter(instructor=self.teacher, amount=Decimal('200'), reference='OM-55').exists())
+        self.assertTrue(Notification.objects.filter(user=self.teacher, title='Your withdrawal was paid').exists())
+
+        self.as_(self.teacher)
+        balance = self.client.get(f'{API}/instructor/withdrawals/').data['balance']
+        self.assertEqual((balance['paid'], balance['requested'], balance['available']), ('200.00', '0.00', '150.00'))
+
+    def test_reject_and_cancel(self):
+        self.sale(20)
+        Profile.objects.update_or_create(user=self.teacher, defaults={'legal_name': 'Tia Teacher'})
+        self.as_(self.teacher)
+        first = self.ask().data
+        self.as_(self.rival)
+        self.assertEqual(self.client.delete(f'{API}/instructor/withdrawals/{first["id"]}/').status_code, 404)  # not theirs
+        self.as_(self.admin)
+        self.assertEqual(self.client.post(f'{API}/manage/withdrawals/{first["id"]}/reject/', {}, format='json').status_code, 400)
+        rejected = self.client.post(f'{API}/manage/withdrawals/{first["id"]}/reject/', {'reason': 'Account name does not match.'}, format='json')
+        self.assertEqual(rejected.data['status'], 'rejected')
+        self.as_(self.teacher)
+        second = self.ask().data
+        self.assertEqual(self.client.delete(f'{API}/instructor/withdrawals/{second["id"]}/').status_code, 204)
+        self.assertEqual(self.client.get(f'{API}/instructor/withdrawals/').data['balance']['available'], '350.00')
+
+    def test_sales_report_and_permissions(self):
+        self.sale(20)
+        self.as_(self.teacher)
+        report = self.client.get(f'{API}/instructor/earnings/report/?year={timezone.now().year}')
+        text = report.content.decode('utf-8-sig')
+        self.assertIn('Web Development', text)
+        self.assertIn('350.00', text)
+        self.as_(self.student)
+        self.assertEqual(self.client.get(f'{API}/instructor/withdrawals/').status_code, 403)
+        self.assertEqual(self.client.get(f'{API}/manage/withdrawals/').status_code, 403)

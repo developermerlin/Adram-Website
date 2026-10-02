@@ -107,3 +107,25 @@ def send_announcement(announcement, student):
         )
     except Exception:
         logger.exception('Could not send announcement %s to student %s', announcement.pk, student.pk)
+
+
+def send_gift(gift):
+    """To the person a course was bought for: who sent it, their message, and the link to start."""
+    from types import SimpleNamespace
+    order = gift.order
+    sender = order.student.get_full_name() or 'Someone'
+    recipient = SimpleNamespace(email=gift.recipient_email, first_name=gift.recipient_name.split(' ')[0])
+    message = gift.message.strip()
+    try:
+        _notify(
+            recipient, subject=f'{sender} sent you a course on ADRAM', label='A gift for you', tone='success',
+            title=f'{sender} gave you {_titles(order)}',
+            paragraphs=[f'{escape(sender)} bought you {"these courses" if order.items.count() > 1 else "a course"} on ADRAM: {escape(_titles(order))}.',
+                        'Open the link to start learning. If you don’t have an ADRAM account yet, you can create one for free.',
+                        f'Your gift code is {gift.code}.'],
+            extra_html=notice(escape(message), 'info', f'Message from {escape(sender)}') if message else '',
+            extra_text=f'Message from {sender}: {message}' if message else '',
+            cta=('Open your gift', _frontend(f'/gift/{gift.code}')),
+        )
+    except Exception:
+        logger.exception('Could not send gift %s', gift.pk)

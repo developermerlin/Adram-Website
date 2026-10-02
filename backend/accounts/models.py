@@ -120,6 +120,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     rejection_reason = models.TextField(blank=True, default='')
 
+    # What a student uses ADRAM for. Each side has its own dashboard and pages; one account can have both,
+    # and doing something on the other side (enrolling on a course, applying for a scholarship) adds it.
+    TRAINING, SCHOLARSHIPS = 'training', 'scholarships'
+    TRACKS = [TRAINING, SCHOLARSHIPS]
+    in_training = models.BooleanField(default=False, help_text='Uses the training side: courses, learning, certificates.')
+    in_scholarships = models.BooleanField(default=False, help_text='Uses the scholarships side: applications, documents, services.')
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -174,6 +181,20 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.role == self.INSTRUCTOR
 
     @property
+    def tracks(self):
+        """['training', 'scholarships'], or whichever of them this account uses."""
+        return [t for t, on in ((self.TRAINING, self.in_training), (self.SCHOLARSHIPS, self.in_scholarships)) if on]
+
+    def join_track(self, track):
+        """Add a side of the portal to a student's account (no-op for staff, or if they already have it)."""
+        field = {self.TRAINING: 'in_training', self.SCHOLARSHIPS: 'in_scholarships'}[track]
+        if self.role != self.STUDENT or getattr(self, field):
+            return False
+        setattr(self, field, True)
+        type(self).objects.filter(pk=self.pk).update(**{field: True})
+        return True
+
+    @property
     def is_approved(self):
         return self.approval_status == self.APPROVED
 
@@ -197,6 +218,10 @@ class ActivityLog(models.Model):
     FAILED_LOGIN = 'FAILED_LOGIN'
     ACCOUNT_APPROVED = 'ACCOUNT_APPROVED'
     ACCOUNT_REJECTED = 'ACCOUNT_REJECTED'
+    TWO_STEP_ON = 'TWO_STEP_ON'
+    TWO_STEP_OFF = 'TWO_STEP_OFF'
+    RECOVERY_CODES = 'RECOVERY_CODES'
+    DEVICE_SIGNED_OUT = 'DEVICE_SIGNED_OUT'
 
     ACTION_CHOICES = [
         (LOGIN, 'Login'),
@@ -212,6 +237,10 @@ class ActivityLog(models.Model):
         (FAILED_LOGIN, 'Failed Login Attempt'),
         (ACCOUNT_APPROVED, 'Account Approved'),
         (ACCOUNT_REJECTED, 'Account Rejected'),
+        (TWO_STEP_ON, 'Two-step sign-in turned on'),
+        (TWO_STEP_OFF, 'Two-step sign-in turned off'),
+        (RECOVERY_CODES, 'New recovery codes'),
+        (DEVICE_SIGNED_OUT, 'Device signed out'),
     ]
 
     user = models.ForeignKey(
@@ -289,3 +318,42 @@ class EmailOTP(models.Model):
 
     def __str__(self):
         return f'{self.user.email} - {self.purpose} - {self.created_at:%Y-%m-%d %H:%M}'
+
+
+class AuthenticatorDevice(models.Model):
+    """An authenticator app (Google Authenticator, Microsoft Authenticator…) for two-step sign-in. One per user."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='authenticator')
+    secret = models.CharField(max_length=64, help_text='Base32 secret shared with the app.')
+    confirmed_at = models.DateTimeField(null=True, blank=True, help_text='Set once the user has entered a first code.')
+    last_step = models.BigIntegerField(default=0, help_text='The last 30-second step used, so a code works only once.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.user.email} ({"on" if self.confirmed_at else "being set up"})'
+
+
+class RecoveryCode(models.Model):
+    """A one-time backup code for when the phone with the authenticator app is lost. Only a hash is stored."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recovery_codes')
+    code_hash = models.CharField(max_length=64)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class UserSession(models.Model):
+    """
+    One signed-in browser or device. Its id travels inside the sign-in tokens (claim `sid`), so signing it out here
+    stops both tokens straight away, not when they expire.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    key = models.CharField(max_length=32, unique=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    method = models.CharField(max_length=30, blank=True, help_text='How they signed in: email code, authenticator, Google…')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-last_seen_at']
+        indexes = [models.Index(fields=['user', 'revoked_at'])]

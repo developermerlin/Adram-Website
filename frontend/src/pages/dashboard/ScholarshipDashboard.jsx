@@ -6,14 +6,13 @@ import usePortal from '../../data/usePortal';
 import { formatDate, formatDateTime, greeting } from '../../utils/format';
 import { daysUntil, isClosed, progressOf } from '../../utils/applicationStages';
 import PortalLayout from '../../components/layout/PortalLayout';
-import BrandIcon from '../../components/brand/BrandIcon';
 import DashboardArt from '../../components/brand/DashboardArt';
 import Flag from '../../components/ui/Flag';
 import { Alert } from '../../components/ui/Form';
 import { StageBadge } from '../../components/portal/ApplicationCard';
 import { ScholarshipRow } from '../../components/portal/PortalPieces';
 import { MessagesPanel, SecurityPanel } from '../../components/portal/OverviewPanels';
-import LearningSnapshot from '../../components/lms/LearningSnapshot';
+import Kpi from '../../components/portal/Kpi';
 
 const todayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -41,19 +40,8 @@ const ACTION_VIEW = {
   awarded: (x) => ({ tone: 'green', icon: 'fa-trophy', text: `Contact ADRAM about your ${x.scholarship} award`, to: `/contact?subject=${encodeURIComponent(`Scholarship awarded: ${x.scholarship}`)}`, cta: 'Contact us' }),
 };
 
-const Kpi = ({ icon, label, value, note, to, tone = 'blue' }) => {
-  const body = (
-    <>
-      <span className={`ov-kpi__icon ov-kpi__icon--${tone}`} aria-hidden="true"><i className={`fas ${icon}`} /></span>
-      <span className="ov-kpi__label">{label}</span>
-      <strong className="ov-kpi__value">{value ?? <span className="skeleton skeleton--num" />}</strong>
-      {note && <small className="ov-kpi__note">{note}</small>}
-    </>
-  );
-  return to ? <Link to={to} className="ov-kpi">{body}</Link> : <div className="ov-kpi">{body}</div>;
-};
-
-export const StudentDashboard = () => {
+/** The scholarships side of a student's portal: applications, saved scholarships, documents and deadlines. */
+export const ScholarshipDashboard = () => {
   const { user } = useAuth();
   const portal = usePortal();
   const { data } = portal;
@@ -89,12 +77,12 @@ export const StudentDashboard = () => {
     ...(profilePct < 100 ? [{ key: 'profile', tone: 'gray', icon: 'fa-user-pen', text: 'Complete your profile: phone number, country and photo', to: '/profile', cta: 'Complete' }] : []),
   ];
 
-  let heroText = 'Welcome to your ADRAM portal. Find a scholarship to get started.';
+  let heroText = 'Welcome to your scholarships dashboard. Find a scholarship to get started.';
   if (actions?.length) heroText = `You have ${plural(actions.length, 'thing')} to do on your applications.`;
   else if (active.length) heroText = 'Your applications are on track. Here’s where everything stands.';
 
   return (
-    <PortalLayout title="Overview" subtitle={todayFmt.format(new Date())}>
+    <PortalLayout title="Scholarships overview" subtitle={todayFmt.format(new Date())}>
       <section className="ov-hero">
         <div className="ov-hero__copy">
           <p className="ov-hero__eyebrow">{greeting()},</p>
@@ -103,7 +91,7 @@ export const StudentDashboard = () => {
           <div className="ov-hero__actions">
             <Link to="/scholarships" className="btn btn--light btn--sm"><i className="fas fa-magnifying-glass" /> Find scholarships</Link>
             <Link to="/student/applications" className="btn btn--ghost-light btn--sm"><i className="fas fa-list-check" /> My applications</Link>
-            <Link to="/student/learning" className="btn btn--ghost-light btn--sm"><i className="fas fa-circle-play" /> My learning</Link>
+            <Link to="/student/saved" className="btn btn--ghost-light btn--sm"><i className="fas fa-bookmark" /> Saved</Link>
           </div>
         </div>
         <DashboardArt className="ov-hero__art" />
@@ -126,8 +114,6 @@ export const StudentDashboard = () => {
           tone={deadlines[0] && daysUntil(deadlines[0].date) <= 14 ? 'red' : 'cyan'}
         />
       </div>
-
-      <LearningSnapshot />
 
       <div className="ov-grid">
         <div className="stack-lg">
@@ -184,28 +170,6 @@ export const StudentDashboard = () => {
             </ul>
           </section>
 
-          {data?.training.length > 0 && (
-            <section className="card panel">
-              <div className="panel__head">
-                <h2 className="h3">My training</h2>
-                <Link to="/student/training" className="panel__link">View all</Link>
-              </div>
-              <ul className="ov-apps">
-                {data.training.map((t) => (
-                  <li key={t.id}>
-                    <Link to="/student/training" className="ov-app">
-                      <span className="ov-app__icon"><BrandIcon name={t.course.icon} size={20} /></span>
-                      <span className="ov-app__main">
-                        <strong>{t.course.title}</strong>
-                        <span className="ov-app__meta">{t.start_date ? `Starts ${formatDate(`${t.start_date}T00:00`)}` : t.course.duration || 'Start date to be confirmed'}</span>
-                      </span>
-                      <span className={`badge ${t.status === 'active' ? 'badge--green' : t.status === 'completed' ? 'badge--blue' : 'badge--amber'}`}>{t.status_display}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
 
         <aside className="stack-lg">
@@ -264,4 +228,4 @@ export const StudentDashboard = () => {
   );
 };
 
-export default StudentDashboard;
+export default ScholarshipDashboard;

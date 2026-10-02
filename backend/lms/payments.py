@@ -3,8 +3,8 @@ Payment providers. An order is handed to a provider, which tells the student how
 
 Built in:
   free    - nothing to pay (free courses, or a coupon that takes the whole price off): paid at once.
-  manual  - mobile money (Afrimoney / Orange Money): the student sends the money, uploads the receipt, and an
-            administrator confirms or rejects it.
+  manual  - Orange Money, Afrimoney or card (a card-payment link from the bank or a payment service): the student
+            pays, uploads the receipt, and an administrator confirms or rejects it.
 
 To connect a card or mobile-money gateway later, subclass PaymentProvider (start() returns a redirect or checkout
 data; a webhook view calls orders.mark_paid / orders.mark_failed), add it to PROVIDERS, and list its key in the
@@ -37,18 +37,13 @@ class FreeProvider(PaymentProvider):
 
 
 class ManualMobileMoneyProvider(PaymentProvider):
-    key, label = 'manual', 'Mobile money'
+    key, label = 'manual', 'Mobile money or card'
     needs_receipt = True
-    METHODS = [('afrimoney', 'Afrimoney'), ('orange_money', 'Orange Money')]
+    METHODS = [('orange_money', 'Orange Money'), ('afrimoney', 'Afrimoney'), ('card', 'Card')]
 
     def instructions(self, order):
         row = PaymentSettings.load()
-        methods = []
-        if row.afrimoney_number:
-            methods.append({'id': 'afrimoney', 'label': 'Afrimoney', 'number': row.afrimoney_number, 'name': row.afrimoney_name})
-        if row.orange_money_number:
-            methods.append({'id': 'orange_money', 'label': 'Orange Money', 'number': row.orange_money_number, 'name': row.orange_money_name})
-        return {'methods': methods, 'instructions': row.instructions, 'reference': order.number}
+        return {'methods': row.methods(), 'instructions': row.instructions, 'reference': order.number}
 
 
 PROVIDERS = {p.key: p for p in (FreeProvider(), ManualMobileMoneyProvider())}

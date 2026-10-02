@@ -238,3 +238,64 @@ button.notes-stamp { cursor: pointer; }
 .ls-next__text small { color: var(--muted); }
 .ls-next > i { color: #2563eb; font-size: 1.2rem; }
 @media (max-width: 520px) { .ls-next__thumb { flex-basis: 84px; } }
+
+/* ------------------------------------------------------------------
+   Course materials: every downloadable file, and the whole course as a ZIP
+   ------------------------------------------------------------------ */
+.ldm { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: center; padding: 16px; }
+.ldm__backdrop { position: absolute; inset: 0; border: 0; background: rgba(15, 23, 42, 0.55); cursor: default; }
+.ldm__card { position: relative; width: min(680px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 24px; border-radius: 16px; background: #fff; color: #1d1e27; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3); }
+.ldm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.ldm__head h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.ldm__head p { margin: 0; }
+.ldm__close { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #f1f5f9; color: #334155; cursor: pointer; }
+.ldm__error { padding: 12px 14px; border-radius: 10px; background: #fef2f2; color: #b91c1c; }
+.ldm__all { position: sticky; top: -22px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 8px; padding: 12px 24px; border-block: 1px solid #e5e7eb; background: #f8fafc; font-size: 0.92rem; }
+.ldm__section h3 { margin: 18px 0 8px; color: #475569; font-size: 0.82rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.ldm__lesson { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+.ldm__lesson > strong { display: block; margin-bottom: 6px; font-size: 0.95rem; }
+.ldm__lesson ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ldm__lesson li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 0.9rem; }
+.ldm__lesson li i { color: #64748b; text-align: center; }
+.ldm__lesson li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ldm__lesson li small { color: #64748b; }
+
+.lms-lesson-head .ld-dl { flex: none; }
+@media (max-width: 560px) { .lms-lesson-head .ld-dl span { display: none; } }
+.lms-top__dl { display: inline-flex; }
+/* the lesson's title takes the room; its buttons (complete, download) sit together on the right */
+.lms-lesson-head { gap: 8px; }
+.lms-lesson-head > div:first-child { flex: 1; min-width: 0; margin-right: 8px; }
+@media (max-width: 640px) {
+  .lms-lesson-head { flex-wrap: wrap; }
+  .lms-lesson-head > div:first-child { flex-basis: 100%; margin-right: 0; }
+}
+/* Previous keeps its size; Next takes what's left and shortens the lesson title (no sideways scroll on phones) */
+.lms-lesson-nav > :first-child { flex: none; }
+.lms-lesson-nav .ld-next { flex: 0 1 auto; min-width: 0; max-width: none; }
+.ld-next span { min-width: 0; }
+
+/* Q&A: votes, pins, moments in the video, asking about a moment */
+.qa-list li.qa-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.qa-list li.qa-row.is-pinned > .qa-row__main { border-color: #fcd34d; background: #fffbeb; }
+.qa-list .qa-vote, .qa-vote {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 46px; min-height: 46px; padding: 4px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--white); color: var(--muted); font: inherit; font-size: 0.85rem; font-weight: 700; text-align: center; cursor: pointer;
+}
+.qa-vote.is-on { border-color: #2563eb; background: #eef3ff; color: #1d4ed8; }
+.qa-vote.is-mine { cursor: default; opacity: 0.75; }
+.qa-list .qa-moment, .qa-moment {
+  display: inline-flex; align-items: center; gap: 5px; width: auto; padding: 3px 9px; border: 1px solid #c7d2fe; border-radius: 999px;
+  background: #eef2ff; color: #3730a3; font: inherit; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+span.qa-moment { cursor: default; }
+.qa-list li.qa-row > .qa-moment { margin-top: 12px; }
+.qa-pin { color: #d97706; font-size: 0.85em; }
+.qa-thread__title { display: flex; gap: 12px; align-items: flex-start; }
+.qa-at { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--muted); }
+.qa-at input { width: 16px; height: 16px; accent-color: #2563eb; }
+@media (max-width: 560px) {
+  .qa-list li.qa-row { grid-template-columns: auto minmax(0, 1fr); }
+  .qa-list li.qa-row > .qa-moment { grid-column: 2; margin-top: 0; justify-self: start; }
+}

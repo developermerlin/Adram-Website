@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { lmsAPI } from '../../services/api';
@@ -8,6 +8,7 @@ import QaPanel from '../../components/lms/QaPanel';
 import QuizRunner from '../../components/lms/QuizRunner';
 import AssignmentPane from '../../components/lms/AssignmentPane';
 import NotesPanel from '../../components/lms/NotesPanel';
+import MaterialsDialog from '../../components/lms/MaterialsDialog';
 import { Alert } from '../../components/ui/Form';
 import { Spinner } from '../../components/ui/Section';
 import { assetUrl } from '../../utils/assets';
@@ -19,14 +20,106 @@ import '../../styles/lms.css';
 import '../../styles/learn.css';
 
 const HEARTBEAT_MS = 30000;
+const DOWNLOAD_ICONS = { notes: 'fa-file-lines', document: 'fa-file-pdf', video: 'fa-file-video', resource: 'fa-file-arrow-down' };
+const DOWNLOAD_LABELS = { notes: 'Lesson notes', document: 'Document', video: 'Video' };
 
 // ------------------------------------------------------------------ lessons
+
+// YouTube and Vimeo players start where the student stopped and tell the page where they are (their postMessage APIs)
+const resumable = (url, seconds) => {
+  try {
+    const u = new URL(url);
+    const at = seconds > 5 ? Math.floor(seconds) : 0;
+    if (u.hostname.includes('youtube')) {
+      u.searchParams.set('enablejsapi', '1');
+      u.searchParams.set('origin', window.location.origin);
+      if (at) u.searchParams.set('start', String(at));
+      return u.toString();
+    }
+    if (u.hostname.includes('vimeo')) {
+      u.searchParams.set('api', '1');
+      return at ? `${u.toString()}#t=${at}s` : u.toString();
+    }
+  } catch {
+    /* not a web address we know: use it as it is */
+  }
+  return url;
+};
+
+const EmbedPlayer = ({ lesson, positionRef, seekRef, onEnded }) => {
+  const frame = useRef(null);
+  const ended = useRef(onEnded);
+  useEffect(() => {
+    ended.current = onEnded;
+  });
+  const src = useMemo(() => resumable(lesson.video.url, lesson.position_seconds), [lesson.video.url, lesson.position_seconds]);
+  const tell = (message) => frame.current?.contentWindow?.postMessage(JSON.stringify(message), '*');
+  // Jumping to a moment (a note or a question's timestamp): each player ignores the other's commands
+  useEffect(() => {
+    const post = (message) => frame.current?.contentWindow?.postMessage(JSON.stringify(message), '*');
+    seekRef.current = (seconds) => {
+      post({ event: 'command', func: 'seekTo', args: [seconds, true], id: lesson.id, channel: 'widget' });
+      post({ event: 'command', func: 'playVideo', args: [], id: lesson.id, channel: 'widget' });
+      post({ method: 'setCurrentTime', value: seconds });
+      post({ method: 'play' });
+      positionRef.current = seconds;
+      frame.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    return () => { seekRef.current = null; };
+  }, [seekRef, positionRef, lesson.id]);
+
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (!frame.current || e.source !== frame.current.contentWindow) return;
+      let msg = e.data;
+      if (typeof msg === 'string') {
+        try {
+          msg = JSON.parse(msg);
+        } catch {
+          return;
+        }
+      }
+      if (!msg || typeof msg !== 'object') return;
+      // YouTube
+      if ((msg.event === 'infoDelivery' || msg.event === 'initialDelivery') && msg.info) {
+        if (typeof msg.info.currentTime === 'number') positionRef.current = msg.info.currentTime;
+        if (msg.info.playerState === 0) ended.current();
+      }
+      if (msg.event === 'onStateChange' && msg.info === 0) ended.current();
+      // Vimeo
+      if (msg.event === 'ready') ['timeupdate', 'ended'].forEach((value) => tell({ method: 'addEventListener', value }));
+      if (msg.event === 'timeupdate' && msg.data) positionRef.current = msg.data.seconds;
+      if (msg.event === 'ended') ended.current();
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [positionRef]);
+
+  // YouTube only starts reporting once asked
+  const onLoad = () => {
+    tell({ event: 'listening', id: lesson.id, channel: 'widget' });
+    tell({ event: 'command', func: 'addEventListener', args: ['onStateChange'], id: lesson.id, channel: 'widget' });
+  };
+  return (
+    <div className="lv-wrap">
+      <div className="lms-video">
+        <iframe ref={frame} src={src} onLoad={onLoad} title={lesson.title} allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+      </div>
+      {(lesson.position_seconds > 5 || lesson.watch_percent > 0) && (
+        <div className="lv-controls">
+          {lesson.position_seconds > 5 && <span className="muted small">Resumed where you stopped</span>}
+          {lesson.watch_percent > 0 && <span className="muted small">{lesson.watch_percent}% watched</span>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * The video. Uploaded videos keep the browser's own controls (play, pause, volume, fullscreen), resume where the
  * student stopped, and get a speed menu that is remembered. YouTube and Vimeo keep their own players.
  */
-const VideoPlayer = ({ lesson, videoRef, onEnded }) => {
+const VideoPlayer = ({ lesson, videoRef, positionRef, seekRef, onEnded }) => {
   const [speed, setSpeed] = useState(readSpeed);
   const { video } = lesson;
 
@@ -38,13 +131,7 @@ const VideoPlayer = ({ lesson, videoRef, onEnded }) => {
       </div>
     );
   }
-  if (video.type === 'embed') {
-    return (
-      <div className="lms-video">
-        <iframe src={video.url} title={lesson.title} allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
-      </div>
-    );
-  }
+  if (video.type === 'embed') return <EmbedPlayer lesson={lesson} positionRef={positionRef} seekRef={seekRef} onEnded={onEnded} />;
   const changeSpeed = (value) => {
     setSpeed(value);
     saveSpeed(value);
@@ -136,6 +223,8 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
   const [completed, setCompleted] = useState(null); // null until the student changes it here
   const [tab, setTab] = useState(params.get('qa') ? 'qa' : 'overview');
   const videoRef = useRef(null);
+  const positionRef = useRef(null); // YouTube/Vimeo report their time here
+  const seekRef = useRef(null); // and jump to a moment through this
   const lastBeat = useRef(0);
 
   const load = useCallback(() => lmsAPI
@@ -156,12 +245,15 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
     const now = Date.now();
     const spent = Math.min(120, Math.round((now - lastBeat.current) / 1000));
     lastBeat.current = now;
-    const video = videoRef.current;
-    const data = { spent, ...(video ? { position: Math.floor(video.currentTime) } : {}) };
-    if (!spent && !video) return;
-    const request = lmsAPI.saveProgress(lesson.id, data);
-    if (final) return;
-    request.then(({ data: result }) => {
+    const position = videoRef.current ? videoRef.current.currentTime : positionRef.current;
+    const data = { spent, ...(position != null ? { position: Math.floor(position) } : {}) };
+    if (!spent && position == null) return;
+    // Leaving (tab hidden, lesson changed, browser closed): a save that finishes even as the page goes away
+    if (final) {
+      lmsAPI.saveProgressOnLeave(lesson.id, data);
+      return;
+    }
+    lmsAPI.saveProgress(lesson.id, data).then(({ data: result }) => {
       onProgress(result);
       if (result.completed) setCompleted(true);
     }).catch(() => {});
@@ -213,7 +305,7 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
   const finishVideo = async () => {
     if (!canTrack || isDone) return;
     try {
-      const result = await save({ completed: true, position: Math.floor(videoRef.current?.currentTime || 0) });
+      const result = await save({ completed: true, position: Math.floor(videoRef.current?.currentTime ?? positionRef.current ?? 0) });
       setCompleted(result.completed);
       if (result.certificate_code) toast.success('Course complete! Your certificate is ready.');
     } catch {
@@ -221,25 +313,31 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
     }
   };
   const seek = (seconds) => {
+    if (seekRef.current) {
+      seekRef.current(seconds);
+      return;
+    }
     if (!videoRef.current) return;
     videoRef.current.currentTime = seconds;
     videoRef.current.play().catch(() => {});
     videoRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
-  const hasUploadedVideo = lesson.kind === 'video' && lesson.video?.type === 'upload';
+  const hasVideo = lesson.kind === 'video' && Boolean(lesson.video);
+  const videoTime = () => Math.floor((videoRef.current ? videoRef.current.currentTime : positionRef.current) || 0);
   const tabs = [
     ['overview', lesson.kind === 'text' ? 'Lesson' : 'Overview'],
-    ['resources', 'Resources', lesson.resources.length],
+    ['downloads', 'Downloads', lesson.downloads?.length || 0],
     ['notes', 'Notes'],
     ['qa', 'Q&A'],
     ['announcements', 'Announcements'],
-  ].filter(([key]) => (key === 'overview' ? !['quiz', 'assignment'].includes(lesson.kind) : key === 'resources' ? lesson.kind !== 'assignment' : key === 'qa' || key === 'announcements' ? canTrack || lesson.can_manage : true));
+  ].filter(([key]) => (key === 'overview' ? !['quiz', 'assignment'].includes(lesson.kind) : key === 'downloads' ? (lesson.downloads?.length || 0) > 0 : key === 'qa' || key === 'announcements' ? canTrack || lesson.can_manage : true));
   const current = tabs.some(([key]) => key === tab) ? tab : tabs[0]?.[0];
+  const mainFile = (lesson.downloads || []).find((f) => f.kind !== 'resource');
   const kind = kindOf(lesson.kind);
 
   return (
     <article className="lms-lesson-pane">
-      {lesson.kind === 'video' && <VideoPlayer lesson={lesson} videoRef={videoRef} onEnded={finishVideo} />}
+      {lesson.kind === 'video' && <VideoPlayer lesson={lesson} videoRef={videoRef} positionRef={positionRef} seekRef={seekRef} onEnded={finishVideo} />}
       {lesson.kind === 'document' && <DocumentViewer doc={lesson.document} />}
       <header className="lms-lesson-head">
         <div>
@@ -251,6 +349,11 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
           <button type="button" className={`btn btn--sm ${isDone ? 'btn--outline' : 'btn--primary'}`} onClick={toggleDone} aria-pressed={isDone}>
             <i className={`fas ${isDone ? 'fa-circle-check' : 'fa-check'}`} /> {isDone ? 'Completed' : 'Mark as complete'}
           </button>
+        )}
+        {mainFile && (
+          <a href={assetUrl(mainFile.url)} className="btn btn--outline btn--sm ld-dl" download title={`Download ${mainFile.name}`}>
+            <i className="fas fa-download" /> <span>{DOWNLOAD_LABELS[mainFile.kind]}</span>
+          </a>
         )}
         {!manual && isDone && <span className="badge badge--green"><i className="fas fa-check" /> {lesson.kind === 'quiz' ? 'Passed' : 'Approved'}</span>}
       </header>
@@ -280,23 +383,23 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
                 {paragraphs(lesson.body).length ? paragraphs(lesson.body).map((p) => <p key={p.slice(0, 40)}>{p}</p>) : <p className="muted">There are no notes for this lesson.</p>}
               </div>
             )}
-            {current === 'resources' && (lesson.resources.length ? (
+            {current === 'downloads' && (
               <ul className="lms-resources">
-                {lesson.resources.map((r) => (
-                  <li key={r.id}>
-                    <i className="fas fa-file-arrow-down" aria-hidden="true" />
-                    <span><strong>{r.title}</strong><small>{r.filename} · {formatSize(r.size)}</small></span>
-                    <a href={assetUrl(r.url)} className="btn btn--outline btn--sm" download>Download</a>
+                {lesson.downloads.map((f) => (
+                  <li key={f.url}>
+                    <i className={`fas ${DOWNLOAD_ICONS[f.kind] || 'fa-file-arrow-down'}`} aria-hidden="true" />
+                    <span><strong>{f.title || DOWNLOAD_LABELS[f.kind] || f.name}</strong><small>{f.name} · {formatSize(f.size)}</small></span>
+                    <a href={assetUrl(f.url)} className="btn btn--outline btn--sm" download>Download</a>
                   </li>
                 ))}
               </ul>
-            ) : <p className="muted">This lesson has no downloads.</p>)}
+            )}
             {current === 'notes' && (
               <NotesPanel slug={slug} lessonId={lesson.id} canTrack={canTrack}
-                getTime={hasUploadedVideo ? () => Math.floor(videoRef.current?.currentTime || 0) : undefined}
-                onSeek={hasUploadedVideo ? seek : undefined} />
+                getTime={hasVideo ? videoTime : undefined}
+                onSeek={hasVideo ? seek : undefined} />
             )}
-            {current === 'qa' && <QaPanel slug={slug} lessonId={lesson.id} admin={lesson.can_manage && !canTrack} />}
+            {current === 'qa' && <QaPanel slug={slug} lessonId={lesson.id} admin={lesson.can_manage && !canTrack} getTime={hasVideo ? videoTime : undefined} onSeek={hasVideo ? seek : undefined} />}
             {current === 'announcements' && <Announcements slug={slug} />}
           </div>
         </>
@@ -319,6 +422,8 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
 const LearnInner = ({ slug, lessonId }) => {
   const [state, setState] = useState({ outline: null, error: false });
   const [sideOpen, setSideOpen] = useState(false);
+  const [materialsOpen, setMaterialsOpen] = useState(false);
+  const closeMaterials = useCallback(() => setMaterialsOpen(false), []);
 
   const load = useCallback(
     () => lmsAPI.outline(slug).then(({ data }) => setState({ outline: data, error: false })).catch(() => setState({ outline: null, error: true })),
@@ -366,6 +471,11 @@ const LearnInner = ({ slug, lessonId }) => {
         {outline.certificate_code && (
           <Link to={`/certificate/${outline.certificate_code}`} className="btn btn--sm lms-top__cert"><i className="fas fa-certificate" /><span className="lt-hide-sm"> Certificate</span></Link>
         )}
+        {outline.can_download && (
+          <button type="button" className="lms-top__toggle lms-top__dl" onClick={() => setMaterialsOpen(true)} aria-haspopup="dialog">
+            <i className="fas fa-download" aria-hidden="true" /><span className="lt-hide-sm"> Downloads</span>
+          </button>
+        )}
         <button type="button" className="lms-top__toggle" onClick={() => setSideOpen((v) => !v)} aria-expanded={sideOpen} aria-controls="course-content" aria-label="Course content">
           <i className="fas fa-list-ul" aria-hidden="true" /><span className="lt-hide-sm"> Course content</span>
         </button>
@@ -394,6 +504,7 @@ const LearnInner = ({ slug, lessonId }) => {
         </aside>
         <button type="button" className="lms-side-backdrop" tabIndex={-1} aria-hidden="true" onClick={() => setSideOpen(false)} />
       </div>
+      {materialsOpen && <MaterialsDialog slug={slug} onClose={closeMaterials} />}
     </div>
   );
 };

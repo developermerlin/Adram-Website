@@ -3,8 +3,69 @@ import { lmsAPI, parseApiErrors } from '../../services/api';
 import { Alert } from '../ui/Form';
 import { answered, clock, readAnswers, saveAnswers, secondsUntil } from '../../utils/learn';
 import { formatDate } from '../../utils/format';
+import '../../styles/question-banks.css';
 
-const TYPE_HINT = { single: 'Choose one answer', true_false: 'True or false?', multiple: 'Choose every answer that applies', short: 'Type your answer' };
+const TYPE_HINT = {
+  single: 'Choose one answer', true_false: 'True or false?', multiple: 'Choose every answer that applies', short: 'Type your answer',
+  fill_blank: 'Fill in each blank', matching: 'Match each item to its answer',
+};
+const norm = (v) => String(v || '').normalize('NFKC').toLowerCase().replace(/\./g, ' ').split(/\s+/).filter(Boolean).join(' ');
+
+/** Fill in the blanks: the sentence with a text box at each blank. */
+const BlankField = ({ q, index, value, onChange, verdict, disabled }) => {
+  const list = Array.isArray(value) ? value : [];
+  const set = (k, v) => {
+    const next = [...list];
+    next[k] = v;
+    onChange(next);
+  };
+  return (
+    <p className="quiz-blanks">
+      {q.parts.map((part, k) => {
+        if (part.text != null) return <span key={k}>{part.text}</span>;
+        const b = part.blank;
+        const accepted = verdict?.blanks?.[b];
+        const ok = accepted ? accepted.some((a) => norm(a) === norm(list[b])) : null;
+        return (
+          <span key={k} className={`quiz-blank${ok === true ? ' is-right' : ok === false ? ' is-wrong' : ''}`}>
+            <input className="input" value={list[b] || ''} onChange={(e) => set(b, e.target.value)} disabled={disabled} maxLength={200}
+              aria-label={`Question ${index + 1}, blank ${b + 1}`} size={Math.max(8, (list[b] || '').length + 2)} />
+            {ok === false && <small>{accepted.join(' / ')}</small>}
+          </span>
+        );
+      })}
+    </p>
+  );
+};
+
+/** Matching: a drop-down of the mixed-up answers beside each item. */
+const MatchField = ({ q, index, value, onChange, verdict, disabled }) => {
+  const list = Array.isArray(value) ? value : [];
+  const set = (k, v) => {
+    const next = q.prompts.map((_, m) => list[m] || '');
+    next[k] = v;
+    onChange(next);
+  };
+  return (
+    <ul className="quiz-match">
+      {q.prompts.map((left, k) => {
+        const right = verdict?.pairs?.[k]?.right;
+        const ok = right != null ? norm(right) === norm(list[k]) : null;
+        return (
+          <li key={k} className={ok === true ? 'is-right' : ok === false ? 'is-wrong' : ''}>
+            <span className="quiz-match__left">{left}</span>
+            <i className="fas fa-arrow-right-long" aria-hidden="true" />
+            <select className="input" value={list[k] || ''} onChange={(e) => set(k, e.target.value)} disabled={disabled} aria-label={`Question ${index + 1}: match for ${left}`}>
+              <option value="">Choose…</option>
+              {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+            {ok === false && <small>Answer: {right}</small>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
 
 /** One question: radio buttons, checkboxes or a text box, and the verdict once marked. */
 const QuestionField = ({ q, index, value, onChange, verdict, disabled }) => {
@@ -18,11 +79,14 @@ const QuestionField = ({ q, index, value, onChange, verdict, disabled }) => {
   const right = new Set(verdict?.correct_ids || []);
   return (
     <fieldset className={`lms-question${verdict ? (verdict.correct ? ' is-right' : ' is-wrong') : ''}`}>
-      <legend><span>{index + 1}</span> {q.text}</legend>
+      <legend><span>{index + 1}</span> {q.kind === 'fill_blank' ? 'Complete the sentence' : q.text}</legend>
       <p className="quiz-hint">{TYPE_HINT[q.kind] || ''}{q.points > 1 ? ` · ${q.points} points` : ''}</p>
-      {q.kind === 'short' ? (
+      {q.kind === 'fill_blank' && <BlankField q={q} index={index} value={value} onChange={onChange} verdict={verdict} disabled={disabled} />}
+      {q.kind === 'matching' && <MatchField q={q} index={index} value={value} onChange={onChange} verdict={verdict} disabled={disabled} />}
+      {q.kind === 'short' && (
         <input className="input" value={value || ''} onChange={(e) => onChange(e.target.value)} disabled={disabled} aria-label={`Answer to question ${index + 1}`} maxLength={300} />
-      ) : (
+      )}
+      {!['short', 'fill_blank', 'matching'].includes(q.kind) && (
         q.choices.map((c) => {
           const state = verdict && verdict.correct_ids ? (right.has(c.id) ? ' is-correct' : chosen(c.id) ? ' is-wrong' : '') : '';
           return (

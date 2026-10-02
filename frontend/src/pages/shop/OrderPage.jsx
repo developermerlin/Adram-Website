@@ -10,20 +10,60 @@ import { money, useCourseImage } from '../../components/lms/courseUtils';
 import { cartChanged } from '../../components/lms/cartStore';
 import { assetUrl } from '../../utils/assets';
 import { formatDateTime } from '../../utils/format';
+import HowToPay from '../../components/payments/HowToPay';
+import { kindOf, METHOD_LABELS, PROOF } from '../../config/payments';
 import { NotFoundPage } from '../public/StatusPages';
 import '../../styles/marketplace.css';
 import '../../styles/shop.css';
+import '../../styles/bundles.css';
 
-const METHOD_NAMES = { afrimoney: 'Afrimoney', orange_money: 'Orange Money' };
+const METHOD_NAMES = METHOD_LABELS;
 
 // What each state means for the student, in one line.
 const BANNERS = {
-  pending: ['fa-wallet', 'Waiting for your payment', 'Send the money using the details below, then upload your receipt.'],
+  pending: ['fa-wallet', 'Waiting for your payment', 'Choose Orange Money, Afrimoney or card below, pay, then send us your proof.'],
   processing: ['fa-hourglass-half', 'We’re checking your payment', 'ADRAM will confirm it shortly and unlock your courses. We’ll email you and notify you here.'],
   successful: ['fa-circle-check', 'Payment confirmed: you’re enrolled', 'Every lesson in these courses is now open.'],
-  failed: ['fa-circle-exclamation', 'We couldn’t confirm your payment', 'Check the details and send your receipt again.'],
+  failed: ['fa-circle-exclamation', 'We couldn’t confirm your payment', 'Read ADRAM’s message, then send your proof again below.'],
   cancelled: ['fa-ban', 'This order was cancelled', 'Nothing was charged. You can add the courses to your cart again at any time.'],
   refunded: ['fa-rotate-left', 'This order was refunded', 'The money was returned and the courses were removed from your learning.'],
+};
+// The same, for a course bought as a gift
+const GIFT_BANNERS = {
+  processing: ['fa-hourglass-half', 'We’re checking your payment', 'Once ADRAM confirms it, we email your gift straight away.'],
+  successful: ['fa-gift', 'Your gift has been sent', 'We emailed them a link to start learning. You can also share the gift code below.'],
+  refunded: ['fa-rotate-left', 'This gift was refunded', 'The money was returned and the gift can no longer be used.'],
+};
+
+/** For the buyer of a gift: who it's for, the message, and (once paid) the code and link to share. */
+const GiftPanel = ({ gift }) => {
+  const link = gift.code ? `${window.location.origin}/gift/${gift.code}` : '';
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success('Gift link copied');
+    } catch {
+      toast.error('Copy the link by hand instead.');
+    }
+  };
+  return (
+    <section className="card gift-panel">
+      <h2 className="h3"><i className="fas fa-gift" aria-hidden="true" /> A gift for {gift.recipient_name}</h2>
+      <p className="muted">{gift.recipient_email}</p>
+      {gift.message && <blockquote className="gift-card__message">“{gift.message}”</blockquote>}
+      {gift.revoked ? <p className="gift-card__status is-bad">This gift was cancelled.</p>
+        : gift.redeemed_at ? <p className="gift-card__status is-good"><i className="fas fa-circle-check" aria-hidden="true" /> {gift.recipient_name} opened it on {formatDateTime(gift.redeemed_at)}.</p>
+          : gift.code ? (
+            <>
+              <p>Gift code <strong className="gift-panel__code">{gift.code}</strong></p>
+              <div className="gift-panel__share">
+                <input className="input" readOnly value={link} aria-label="Gift link" onFocus={(e) => e.target.select()} />
+                <button type="button" className="btn btn--outline btn--sm" onClick={copy}><i className="fas fa-link" /> Copy link</button>
+              </div>
+            </>
+          ) : <p className="muted small">The gift code appears here once your payment is confirmed.</p>}
+    </section>
+  );
 };
 
 const openReceipt = async (id) => {
@@ -41,7 +81,8 @@ const openReceipt = async (id) => {
 
 const PayForm = ({ order, onPaid }) => {
   const methods = order.how_to_pay?.methods || [];
-  const [pay, setPay] = useState({ method: methods.length === 1 ? methods[0].id : '', transactionId: '', receipt: null });
+  const [pay, setPay] = useState({ method: methods.length === 1 ? methods[0].id : '', transactionId: '', payer: '', receipt: null });
+  const proof = PROOF[kindOf(methods, pay.method)];
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
@@ -58,51 +99,38 @@ const PayForm = ({ order, onPaid }) => {
       setBusy(false);
     }
   };
-  if (!methods.length) return <Alert type="info">ADRAM hasn’t published its payment numbers yet. Please contact us to pay for this order.</Alert>;
+  if (!methods.length) return <Alert type="info">ADRAM hasn’t published its payment details yet. Please <Link to="/contact?subject=Course%20payment">contact us</Link> to pay for this order.</Alert>;
   return (
     <>
       <h2 className="h3">How to pay {money(order.total, order.currency)}</h2>
-      <ol className="order-steps">
-        <li>Send <strong>{money(order.total, order.currency)}</strong> to one of these accounts:</li>
-      </ol>
-      <ul className="pay-methods">
-        {methods.map((m) => (
-          <li key={m.id}>
-            <span className="pay-methods__label">{m.label}</span>
-            <strong className="pay-methods__number">{m.number}</strong>
-            {m.name && <small className="muted">{m.name}</small>}
-          </li>
-        ))}
-      </ul>
-      <p className="order-ref">Write your order number <strong>{order.number}</strong> in the transfer note.</p>
-      {order.how_to_pay.instructions && <p className="muted small">{order.how_to_pay.instructions}</p>}
+      <HowToPay methods={methods} amount={money(order.total, order.currency)} reference={order.number} selected={pay.method}
+        onSelect={(method) => setPay((p) => ({ ...p, method }))} note={order.how_to_pay.instructions} />
+      {errors.method && <p className="field-error">{errors.method}</p>}
+      {pay.method && (
       <form onSubmit={submit} className="pay-form" noValidate>
-        <h3 className="h4">Then tell us you paid</h3>
+        <h3 className="h4">After paying, send us your proof</h3>
         <div className="form-row">
           <div className="field">
-            <label htmlFor="method">Paid with</label>
-            <select id="method" className="input" value={pay.method} onChange={(e) => setPay((p) => ({ ...p, method: e.target.value }))}>
-              <option value="">Choose…</option>
-              {methods.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-            {errors.method && <p className="field-error">{errors.method}</p>}
+            <label htmlFor="tx">{proof.transaction}</label>
+            <input id="tx" className="input" value={pay.transactionId} maxLength={100} onChange={(e) => setPay((p) => ({ ...p, transactionId: e.target.value }))} placeholder={proof.transactionHint} />
+            {errors.transaction_id && <p className="field-error">{errors.transaction_id}</p>}
           </div>
           <div className="field">
-            <label htmlFor="tx">Transaction ID</label>
-            <input id="tx" className="input" value={pay.transactionId} maxLength={100} onChange={(e) => setPay((p) => ({ ...p, transactionId: e.target.value }))} placeholder="From your confirmation SMS" />
-            {errors.transaction_id && <p className="field-error">{errors.transaction_id}</p>}
+            <label htmlFor="payer">{proof.payer} <span className="optional">(helps us find it)</span></label>
+            <input id="payer" className="input" value={pay.payer} maxLength={100} onChange={(e) => setPay((p) => ({ ...p, payer: e.target.value }))} placeholder={proof.payerHint} />
           </div>
         </div>
         <div className="field">
-          <label htmlFor="receipt">Receipt (a photo or screenshot, or a PDF)</label>
+          <label htmlFor="receipt">{proof.receipt}</label>
           <input id="receipt" type="file" className="input" accept="image/*,.pdf" onChange={(e) => setPay((p) => ({ ...p, receipt: e.target.files?.[0] || null }))} />
           {errors.receipt && <p className="field-error">{errors.receipt}</p>}
         </div>
         <Alert>{errors.form}</Alert>
         <button type="submit" className="btn btn--primary" disabled={busy || !pay.method || !pay.transactionId.trim() || !pay.receipt}>
-          {busy ? <span className="btn-spinner" /> : <i className="fas fa-paper-plane" />} Send receipt
+          {busy ? <span className="btn-spinner" /> : <i className="fas fa-paper-plane" />} Send my proof of payment
         </button>
       </form>
+      )}
     </>
   );
 };
@@ -123,7 +151,7 @@ export const OrderPage = () => {
   if (missing) return <NotFoundPage />;
   if (!order) return <Spinner label="Loading your order…" />;
 
-  const [icon, heading, lead] = BANNERS[order.status] || BANNERS.pending;
+  const [icon, heading, lead] = (order.gift && GIFT_BANNERS[order.status]) || BANNERS[order.status] || BANNERS.pending;
   const cancel = async () => {
     try {
       const { data } = await shopAPI.cancel(order.id);
@@ -166,15 +194,19 @@ export const OrderPage = () => {
             <section className="card">
               <h2 className="h3">Payment sent</h2>
               <p className="muted">
-                {METHOD_NAMES[order.method] || order.method} · transaction <strong>{order.transaction_id}</strong>
+                {order.method_label || METHOD_NAMES[order.method] || order.method} · reference <strong>{order.transaction_id}</strong>{order.payer ? ` · ${order.payer}` : ''}
                 {order.submitted_at && ` · ${formatDateTime(order.submitted_at)}`}
               </p>
               {order.has_receipt && <button type="button" className="btn btn--outline btn--sm" onClick={() => openReceipt(order.id)}><i className="fas fa-file-image" /> View my receipt</button>}
             </section>
           )}
 
+          {order.gift && <GiftPanel gift={order.gift} />}
+
           <section className="card">
-            <h2 className="h3">{order.items.length === 1 ? 'Course' : `Courses (${order.items.length})`}</h2>
+            <h2 className="h3">{order.plan ? <><i className="fas fa-crown" aria-hidden="true" /> {order.plan.name}</> : order.bundle ? <>Bundle: <Link to={`/bundles/${order.bundle.slug}`}>{order.bundle.title}</Link></> : order.items.length === 1 ? 'Course' : `Courses (${order.items.length})`}</h2>
+            {order.plan && <p className="muted">{order.plan.days} days of Premium: every Premium course is open while it lasts. Paying adds the time after any you already have.</p>}
+            {order.instalment && <p className="muted">Part {order.instalment.number} of {order.instalment.parts}{order.instalment.due_at ? ` · due ${formatDateTime(order.instalment.due_at)}` : ''}. {order.instalment.number === 1 ? 'The course opens when this part is confirmed.' : 'Pay it on time to keep the lessons open.'}</p>}
             <ul className="order-items">
               {order.items.map((item) => {
                 const image = item.course_slug ? imageOf({ slug: item.course_slug, thumbnail: item.thumbnail }) : '';
@@ -186,7 +218,7 @@ export const OrderPage = () => {
                       {Number(item.discount) > 0 && <small className="shop-off">Coupon −{money(item.discount)}</small>}
                     </span>
                     <strong>{money(item.amount, order.currency)}</strong>
-                    {order.status === 'successful' && item.course_slug && <Link to={`/courses/${item.course_slug}`} className="btn btn--primary btn--sm">Start learning</Link>}
+                    {order.status === 'successful' && !order.gift && item.course_slug && <Link to={`/courses/${item.course_slug}`} className="btn btn--primary btn--sm">Start learning</Link>}
                   </li>
                 );
               })}

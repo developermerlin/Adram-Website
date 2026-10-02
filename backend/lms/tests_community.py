@@ -106,3 +106,65 @@ class QuestionTests(LmsCase):
         self.assertEqual(self.client.delete(f'{API}/qa/replies/{reply}/').status_code, 204)
         self.assertEqual(self.client.delete(f'{API}/qa/{tid}/').status_code, 204)
         self.assertFalse(Thread.objects.exists() or Reply.objects.exists())
+
+
+class QuestionVotesPinsAnswersTests(LmsCase):
+    """Upvotes, pinning, accepted answers and questions at a moment of a video."""
+
+    def setUp(self):
+        super().setUp()
+        self.enroll()
+        self.enroll(self.other)
+
+    def ask(self, title, **extra):
+        return self.client.post(f'{API}/courses/web/qa/', {'title': title, **extra}, format='json').data
+
+    def test_votes_and_sorting(self):
+        self.as_(self.student)
+        first = self.ask('First question')
+        popular = self.ask('Popular question')
+        self.assertEqual(self.client.post(f'{API}/qa/{popular["id"]}/vote/').status_code, 400)  # not your own
+        self.as_(self.other)
+        voted = self.client.post(f'{API}/qa/{popular["id"]}/vote/').data
+        self.client.post(f'{API}/qa/{popular["id"]}/vote/')  # twice counts once
+        self.assertEqual((voted['votes'], voted['voted']), (1, True))
+        Thread.objects.filter(pk=first['id']).update(title='First question (edited)')  # most recently updated
+        by_votes = self.client.get(f'{API}/courses/web/qa/?sort=votes').data['threads']
+        self.assertEqual(by_votes[0]['id'], popular['id'])
+        self.assertEqual(self.client.delete(f'{API}/qa/{popular["id"]}/vote/').data['votes'], 0)
+
+    def test_pinned_first_and_only_staff_pin(self):
+        self.as_(self.student)
+        old = self.ask('Old but important')
+        self.ask('Newer question')
+        self.assertEqual(self.client.post(f'{API}/qa/{old["id"]}/pin/', {'pinned': True}, format='json').status_code, 403)
+        self.as_(self.admin)
+        self.assertTrue(self.client.post(f'{API}/qa/{old["id"]}/pin/', {'pinned': True}, format='json').data['is_pinned'])
+        self.as_(self.student)
+        self.assertEqual(self.client.get(f'{API}/courses/web/qa/').data['threads'][0]['id'], old['id'])
+
+    def test_asker_accepts_one_answer(self):
+        self.as_(self.student)
+        thread = self.ask('Why does my page not load?')
+        self.as_(self.other)
+        one = self.client.post(f'{API}/qa/{thread["id"]}/replies/', {'body': 'Check the file name.'}, format='json').data
+        two = self.client.post(f'{API}/qa/{thread["id"]}/replies/', {'body': 'Clear the cache.'}, format='json').data
+        self.assertEqual(self.client.post(f'{API}/qa/replies/{one["id"]}/accept/').status_code, 403)  # not the asker
+        self.as_(self.student)
+        self.assertTrue(self.client.post(f'{API}/qa/replies/{one["id"]}/accept/').data['is_accepted'])
+        self.client.post(f'{API}/qa/replies/{two["id"]}/accept/')
+        self.assertEqual(list(Reply.objects.filter(is_accepted=True).values_list('id', flat=True)), [two['id']])  # one at a time
+        row = self.client.get(f'{API}/courses/web/qa/').data['threads'][0]
+        self.assertTrue(row['answered'] and row['accepted'])
+        self.assertTrue(self.other.lms_notifications.filter(title='Your answer was accepted').exists())
+
+    def test_questions_at_a_video_moment(self):
+        self.as_(self.student)
+        at = self.ask('What is this diagram?', lesson=self.intro.id, position=75.6)
+        self.ask('General question', lesson=self.intro.id)
+        self.assertEqual(at['position_seconds'], 75)
+        self.assertEqual(self.client.post(f'{API}/courses/web/qa/', {'title': 'x', 'lesson': self.intro.id, 'position': 'soon'}, format='json').status_code, 400)
+        self.ask('Later moment', lesson=self.intro.id, position=10)
+        moments = self.client.get(f'{API}/courses/web/qa/?lesson={self.intro.id}&filter=moments').data['threads']
+        self.assertEqual([m['position_seconds'] for m in moments], [10, 75])
+        self.assertIsNone(self.ask('No lesson', position=30)['position_seconds'])  # a moment needs a lesson

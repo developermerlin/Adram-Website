@@ -7,14 +7,29 @@ import { Alert, TextField } from '../../components/ui/Form';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
 import { ImageField } from '../../components/admin/contentFields';
 import NoteDialog from '../../components/lms/NoteDialog';
+import FlashSalesPanel from '../../components/lms/FlashSalesPanel';
+import BundlesPanel from '../../components/lms/BundlesPanel';
+import ReferralsPanel from '../../components/lms/ReferralsPanel';
+import AffiliatesPanel from '../../components/lms/AffiliatesPanel';
+import PremiumPanel from '../../components/lms/PremiumPanel';
+import WithdrawalQueue from '../../components/admin/WithdrawalQueue';
 import { StatusPill } from '../../components/lms/Price';
 import { money } from '../../components/lms/courseUtils';
 import { formatDate, formatDateTime } from '../../utils/format';
 import '../../styles/marketplace.css';
 import '../../styles/lms-admin.css';
+import '../../styles/payments.css';
 
 const STATUSES = [['processing', 'To check'], ['pending', 'Awaiting payment'], ['successful', 'Paid'], ['failed', 'Failed'], ['cancelled', 'Cancelled'], ['refunded', 'Refunded'], ['', 'All']];
-const METHOD_NAMES = { afrimoney: 'Afrimoney', orange_money: 'Orange Money' };
+const METHOD_NAMES = { afrimoney: 'Afrimoney', orange_money: 'Orange Money', card: 'Card' };
+// Ready-made messages when a payment can't be confirmed (the admin can edit them)
+const REJECT_REASONS = [
+  'We couldn’t find this transaction ID. Please check it and send it again.',
+  'The amount received doesn’t match the order total. Please pay the difference or contact us.',
+  'The receipt isn’t clear enough to read. Please upload a clearer screenshot or photo.',
+  'This transaction ID was already used for another order.',
+  'The payment hasn’t reached our account yet. Please send your proof again once it has.',
+];
 
 const openReceipt = async (id) => {
   const tab = window.open('', '_blank');
@@ -91,7 +106,18 @@ const OrderDrawer = ({ id, onClose, onChanged }) => {
               <section>
                 <h3 className="h4">Payment</h3>
                 {order.method ? (
-                  <p>{METHOD_NAMES[order.method] || order.method} · transaction <strong className="la-mono">{order.transaction_id}</strong>{order.submitted_at ? ` · sent ${formatDateTime(order.submitted_at)}` : ''}</p>
+                  <div className="pay-check">
+                    <p><strong>{order.method_label || METHOD_NAMES[order.method] || order.method}</strong> · expected <strong>{money(order.total)}</strong></p>
+                    <p>{order.method === 'card' ? 'Reference / approval code' : 'Transaction ID'}: <strong className="la-mono">{order.transaction_id}</strong></p>
+                    {order.payer && <p>{order.method === 'card' ? 'Name on card' : 'Paid from'}: <strong>{order.payer}</strong></p>}
+                    {order.submitted_at && <p className="muted small">Sent {formatDateTime(order.submitted_at)}</p>}
+                    {order.same_transaction?.length > 0 && (
+                      <p className="pay-check__dup" role="alert">
+                        <i className="fas fa-triangle-exclamation" /> This transaction ID was also used for{' '}
+                        {order.same_transaction.map((o) => `${o.number} (${o.student}, ${o.status})`).join(', ')}. Check before confirming.
+                      </p>
+                    )}
+                  </div>
                 ) : <p className="muted">{order.provider === 'free' ? 'Nothing to pay (free / 100% coupon).' : 'No payment sent yet.'}</p>}
                 {order.has_receipt && <button type="button" className="btn btn--outline btn--sm" onClick={() => openReceipt(order.id)}><i className="fas fa-file-image" /> View the receipt</button>}
                 {order.transactions.length > 0 && (
@@ -123,7 +149,7 @@ const OrderDrawer = ({ id, onClose, onChanged }) => {
       )}
       {dialog === 'reject' && (
         <NoteDialog title="Reject this payment" text="Tell the student what was wrong so they can send the receipt again." label="Message to the student" required
-          confirm="Reject payment" tone="danger" onConfirm={(note) => decide('reject', note)} onClose={() => setDialog(null)} />
+          confirm="Reject payment" tone="danger" suggestions={REJECT_REASONS} onConfirm={(note) => decide('reject', note)} onClose={() => setDialog(null)} />
       )}
       {dialog === 'refund' && (
         <NoteDialog title="Refund this order" text={`Record that ${money(order.total)} was returned to ${order.student.name}. Their access to these courses is removed.`} label="Reason"
@@ -344,6 +370,7 @@ const Earnings = () => {
   return (
     <div className="la-page">
       {data && <p className="muted">The platform keeps {Number(data.commission_percent)}% of each instructor sale (change it under Settings). Courses without an instructor account earn the platform everything.</p>}
+      <WithdrawalQueue onChanged={load} />
       <section className="card table-card">
         <div className="table-card__head"><div><h2 className="h3">Instructor earnings</h2></div></div>
         {!data ? <div className="skeleton skeleton--block" /> : data.instructors.length === 0 ? <div className="la-empty"><i className="fas fa-wallet" /><strong>No instructors yet</strong><p>Give a user the Instructor role under Users.</p></div> : (
@@ -355,7 +382,7 @@ const Earnings = () => {
                   <tr key={i.id}>
                     <td><strong>{i.name}</strong><br /><small className="muted">{i.email}</small></td>
                     <td>{i.sales}</td><td>{money(i.gross)}</td><td>{money(i.commission)}</td><td>{money(i.refunds)}</td>
-                    <td><strong>{money(i.net)}</strong></td><td>{money(i.paid)}</td><td><strong>{money(i.pending)}</strong></td>
+                    <td><strong>{money(i.net)}</strong></td><td>{money(i.paid)}</td><td><strong>{money(i.pending)}</strong><br /><small className="muted">{money(i.available)} available</small></td>
                     <td>{Number(i.pending) > 0 && <button type="button" className="btn btn--outline btn--sm" onClick={() => setForm((f) => ({ ...f, instructor: String(i.id), amount: i.pending }))}>Pay</button>}</td>
                   </tr>
                 ))}
@@ -434,6 +461,59 @@ const Settings = () => {
     <form className="card panel la-form la-settings" onSubmit={save} noValidate>
       <h2 className="h3">Marketplace settings</h2>
       <TextField label="Platform commission (%)" inputMode="decimal" hint="The platform keeps this share of each instructor sale; the instructor earns the rest. Changes apply to new orders." name="commission_percent" value={form.commission_percent} error={errors.commission_percent} onChange={(e) => set('commission_percent')(e.target.value)} />
+      <h3 className="h4">Instructor withdrawals</h3>
+      <div className="form-row">
+        <TextField label="Hold new earnings for (days)" type="number" min="0" hint="Sales this recent can't be withdrawn yet, in case they're refunded." name="payout_hold_days" value={form.payout_hold_days} error={errors.payout_hold_days} onChange={(e) => set('payout_hold_days')(e.target.value)} />
+        <TextField label="Minimum withdrawal (NLe)" inputMode="decimal" name="min_withdrawal" value={form.min_withdrawal} error={errors.min_withdrawal} onChange={(e) => set('min_withdrawal')(e.target.value)} />
+      </div>
+      <h3 className="h4">Inviting friends</h3>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.referrals_enabled)} onChange={(e) => set('referrals_enabled')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Students can invite friends<small>A friend who joins through a student’s link gets a welcome discount; the student is rewarded after the friend’s first purchase.</small></span>
+      </label>
+      <div className="form-row">
+        <TextField label="Friend’s welcome discount (%)" type="number" min="0" max="100" name="referral_friend_percent" value={form.referral_friend_percent} error={errors.referral_friend_percent} onChange={(e) => set('referral_friend_percent')(e.target.value)} />
+        <TextField label="Reward for inviting (%)" type="number" min="0" max="100" name="referral_reward_percent" value={form.referral_reward_percent} error={errors.referral_reward_percent} onChange={(e) => set('referral_reward_percent')(e.target.value)} />
+        <TextField label="Codes valid for (days)" type="number" min="1" name="referral_valid_days" value={form.referral_valid_days} error={errors.referral_valid_days} onChange={(e) => set('referral_valid_days')(e.target.value)} />
+      </div>
+      <h3 className="h4">Affiliates</h3>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.affiliates_enabled)} onChange={(e) => set('affiliates_enabled')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Affiliate programme open<small>Partners earn a commission on orders placed through their links (paid from the platform’s share).</small></span>
+      </label>
+      <div className="form-row">
+        <TextField label="Default commission for new affiliates (%)" inputMode="decimal" name="affiliate_percent" value={form.affiliate_percent} error={errors.affiliate_percent} onChange={(e) => set('affiliate_percent')(e.target.value)} />
+        <TextField label="A click counts for (days)" type="number" min="1" name="affiliate_cookie_days" value={form.affiliate_cookie_days} error={errors.affiliate_cookie_days} onChange={(e) => set('affiliate_cookie_days')(e.target.value)} />
+      </div>
+      <h3 className="h4">Premium and paying in parts</h3>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.premium_enabled)} onChange={(e) => set('premium_enabled')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Premium plan on sale<small>Subscribers can start any course marked Premium. Manage the plans in the Premium tab.</small></span>
+      </label>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.instalments_enabled)} onChange={(e) => set('instalments_enabled')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Students can pay in parts<small>Monthly parts; the course opens after the first and pauses if a part is late.</small></span>
+      </label>
+      <div className="form-row">
+        <TextField label="From a course price of (NLe)" inputMode="decimal" name="instalment_min_price" value={form.instalment_min_price} error={errors.instalment_min_price} onChange={(e) => set('instalment_min_price')(e.target.value)} />
+        <TextField label="Up to (parts)" type="number" min="2" max="3" name="instalment_max_parts" value={form.instalment_max_parts} error={errors.instalment_max_parts} onChange={(e) => set('instalment_max_parts')(e.target.value)} />
+        <TextField label="Lessons pause after (days late)" type="number" min="0" name="instalment_grace_days" value={form.instalment_grace_days} error={errors.instalment_grace_days} onChange={(e) => set('instalment_grace_days')(e.target.value)} />
+      </div>
+      <h3 className="h4">Mobile apps</h3>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.push_enabled)} onChange={(e) => set('push_enabled')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Push notifications<small>Every in-app notification also goes to the student’s phones, if they use the app.</small></span>
+      </label>
+      <div className="form-row">
+        <TextField label="Oldest app version allowed" placeholder="e.g. 1.2.0 (empty: any)" name="app_min_version" value={form.app_min_version || ''} error={errors.app_min_version} onChange={(e) => set('app_min_version')(e.target.value)} />
+        <TextField label="Saved lessons work offline for (days)" type="number" min="1" name="offline_days" value={form.offline_days} error={errors.offline_days} onChange={(e) => set('offline_days')(e.target.value)} />
+        <TextField label="Devices per student for saved lessons" type="number" min="1" name="offline_devices" value={form.offline_devices} error={errors.offline_devices} onChange={(e) => set('offline_devices')(e.target.value)} />
+      </div>
       <h3 className="h4">Certificate signature</h3>
       <div className="form-row">
         <TextField label="Signed by" placeholder="e.g. Ibrahim Kamara" name="certificate_signer_name" value={form.certificate_signer_name} onChange={(e) => set('certificate_signer_name')(e.target.value)} />
@@ -449,7 +529,7 @@ const Settings = () => {
   );
 };
 
-const TABS = [['orders', 'Orders'], ['coupons', 'Coupons'], ['earnings', 'Earnings & payouts'], ['settings', 'Settings']];
+const TABS = [['orders', 'Orders'], ['coupons', 'Coupons'], ['flash', 'Flash sales'], ['bundles', 'Bundles'], ['referrals', 'Referrals'], ['affiliates', 'Affiliates'], ['premium', 'Premium'], ['earnings', 'Earnings & payouts'], ['settings', 'Settings']];
 
 /** Selling courses: orders and payments to check, refunds, coupons, instructor earnings and payouts, commission. */
 export const CourseSalesPage = () => {
@@ -465,6 +545,11 @@ export const CourseSalesPage = () => {
         </div>
         {tab === 'orders' && <Orders />}
         {tab === 'coupons' && <Coupons />}
+        {tab === 'flash' && <FlashSalesPanel />}
+        {tab === 'bundles' && <BundlesPanel />}
+        {tab === 'referrals' && <ReferralsPanel />}
+        {tab === 'affiliates' && <AffiliatesPanel />}
+        {tab === 'premium' && <PremiumPanel />}
         {tab === 'earnings' && <Earnings />}
         {tab === 'settings' && <Settings />}
       </div>

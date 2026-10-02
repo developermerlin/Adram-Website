@@ -88,6 +88,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'instructor_name', 'instructor_title', 'instructor_bio', 'instructor_photo', 'enrollment_mode', 'stats',
             'id', 'subtitle', 'discount_price', 'sale_price', 'currency', 'is_free', 'faqs', 'category', 'subcategory',
             'instructor', 'updated_at', 'published_at', 'is_premium', 'highlight', 'format_label',
+            'caption_languages', 'includes', 'premium_note', 'feature', 'allow_downloads', 'allow_video_downloads',
         ]
 
     def get_category(self, obj):
@@ -117,6 +118,14 @@ class CourseSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['lesson_count'] = data['stats']['lesson_count']  # kept for the Training page cards
+        # Only a sale running now is shown (a timed sale price outside its window, or a finished flash sale, isn't)
+        deal = instance.current_deal()
+        data['discount_price'] = f"{deal['price']:.2f}" if deal else None
+        data['sale_price'] = f"{(deal['price'] if deal else (instance.price or 0)):.2f}"
+        data['sale_ends_at'] = deal['ends_at'] if deal else None
+        data['sale_label'] = deal['label'] if deal else None
+        from lms.topics import topic_links
+        data['topic_links'] = topic_links(instance.topics)
         return data
 
 
@@ -197,6 +206,30 @@ class FaqField(serializers.ListField):
         return clean
 
 
+class FeatureBoxField(serializers.Field):
+    """The highlighted box on a course page: {title, text, image, link_label, link_url}. Empty title = no box."""
+    LIMITS = {'title': 120, 'text': 600, 'image': 300, 'link_label': 60, 'link_url': 500}
+
+    def to_representation(self, value):
+        return value or {}
+
+    def to_internal_value(self, data):
+        if data in (None, ''):
+            return {}
+        if not isinstance(data, dict):
+            raise serializers.ValidationError('Fill in the feature box fields.')
+        box = {key: str(data.get(key) or '').strip()[:limit] for key, limit in self.LIMITS.items()}
+        if not box['title']:
+            return {}
+        box['image'] = _safe_image(box['image'])
+        url = box['link_url']
+        if url and not (url.startswith('/') and not url.startswith('//') or url.lower().startswith(('http://', 'https://'))):
+            raise serializers.ValidationError('The link must be a web address (https://…) or a page on this site (/…).')
+        if url and not box['link_label']:
+            box['link_label'] = 'Learn more'
+        return box
+
+
 class CourseManageSerializer(ManageSerializerMixin, serializers.ModelSerializer):
     topics = TextListField(line_length=60, max_length=8)
     learn_points = TextListField(line_length=200, max_length=12, required=False)
@@ -206,7 +239,12 @@ class CourseManageSerializer(ManageSerializerMixin, serializers.ModelSerializer)
     instructor_photo = serializers.CharField(max_length=300, required=False, allow_blank=True, validators=[_safe_image])
     price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
     discount_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
+    sale_starts_at = serializers.DateTimeField(required=False, allow_null=True)
+    sale_ends_at = serializers.DateTimeField(required=False, allow_null=True)
     faqs = FaqField(required=False)
+    caption_languages = TextListField(line_length=40, max_length=40, required=False)
+    includes = TextListField(line_length=120, max_length=10, required=False)
+    feature = FeatureBoxField(required=False)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(parent__isnull=True), required=False, allow_null=True)
     subcategory = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(parent__isnull=False), required=False, allow_null=True)
     instructor_account = serializers.SerializerMethodField()
@@ -215,10 +253,11 @@ class CourseManageSerializer(ManageSerializerMixin, serializers.ModelSerializer)
     class Meta:
         model = Course
         fields = [
-            'id', 'slug', 'title', 'subtitle', 'icon', 'summary', 'topics', 'duration', 'fee', 'price', 'discount_price', 'next_intake',
+            'id', 'slug', 'title', 'subtitle', 'icon', 'summary', 'topics', 'duration', 'fee', 'price', 'discount_price',
+            'sale_starts_at', 'sale_ends_at', 'next_intake',
             'description', 'learn_points', 'requirements', 'audience', 'level', 'language', 'thumbnail', 'promo_video_url',
             'instructor_name', 'instructor_title', 'instructor_bio', 'instructor_photo', 'enrollment_mode',
-            'category', 'subcategory', 'faqs', 'instructor', 'instructor_account', 'is_premium', 'highlight', 'format_label', 'stats', 'status', 'review_note', 'submitted_at', 'published_at',
+            'category', 'subcategory', 'faqs', 'instructor', 'instructor_account', 'is_premium', 'highlight', 'format_label', 'caption_languages', 'includes', 'premium_note', 'feature', 'allow_downloads', 'allow_video_downloads', 'stats', 'status', 'review_note', 'submitted_at', 'published_at',
             'is_published', 'sort_order', 'created_at', 'updated_at', 'updated_by_name',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'status', 'review_note', 'submitted_at', 'published_at']
@@ -246,6 +285,10 @@ class CourseManageSerializer(ManageSerializerMixin, serializers.ModelSerializer)
         sale = attrs.get('discount_price', getattr(self.instance, 'discount_price', None))
         if sale is not None and (not price or sale >= price):
             raise serializers.ValidationError({'discount_price': 'The sale price must be lower than the price.'})
+        starts = attrs.get('sale_starts_at', getattr(self.instance, 'sale_starts_at', None))
+        ends = attrs.get('sale_ends_at', getattr(self.instance, 'sale_ends_at', None))
+        if starts and ends and ends <= starts:
+            raise serializers.ValidationError({'sale_ends_at': 'The sale must end after it starts.'})
         return attrs
 
     def validate_promo_video_url(self, value):

@@ -13,6 +13,7 @@ import { ColumnChart, Donut, Funnel, HBars, Heatmap, Meter, MiniBars, SeriesTabl
 import DashboardArt from '../../components/brand/DashboardArt';
 import { Delta, StatTile } from '../../components/admin/StatTile';
 import CommsSecurityOverview from '../../components/admin/CommsSecurityOverview';
+import '../../styles/security.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 const RANGES = [7, 30, 90];
@@ -178,7 +179,7 @@ export const AdminDashboard = () => {
     { key: 'requests', count: service?.service_requests, label: 'Apply-for-me requests', icon: 'fa-handshake-angle', to: '/admin/applications?stage=review', tone: 'blue' },
     { key: 'payments', count: service?.payments_to_check, label: 'Payments to check', icon: 'fa-receipt', to: '/admin/applications?stage=review', tone: 'green' },
     { key: 'documents', count: service?.documents_to_check, label: 'Documents to review', icon: 'fa-file-circle-check', to: '/admin/applications?stage=review', tone: 'violet' },
-    { key: 'training', count: service?.training_requests, label: 'Training requests', icon: 'fa-laptop-code', to: '/admin/courses#enrollments', tone: 'cyan' },
+    { key: 'training', count: service?.training_requests, label: 'Training requests', icon: 'fa-laptop-code', to: '/admin/enrollments', tone: 'cyan' },
     { key: 'enquiries', count: unread, label: 'Unread enquiries', icon: 'fa-envelope', to: '/admin/messages', tone: 'red' },
   ];
   const waiting = attention.reduce((n, a) => n + (a.count || 0), 0);
@@ -204,6 +205,13 @@ export const AdminDashboard = () => {
   return (
     <PortalLayout title="Overview" subtitle={todayFmt.format(new Date())} actions={periodSwitch}>
       <div className="viz-root admin-ov">
+        {user && user.two_step === false && (
+          <div className="sec-remind" role="note">
+            <i className="fas fa-shield-halved" aria-hidden="true" />
+            <span><strong>Protect your admin account.</strong> You confirm payments and manage the website: turn on two-step sign-in with an authenticator app.</span>
+            <Link to="/profile" className="btn btn--primary btn--sm">Turn it on</Link>
+          </div>
+        )}
         {/* Banner */}
         <section className="ov-hero ov-hero--admin">
           <div className="ov-hero__copy">
@@ -393,7 +401,7 @@ export const AdminDashboard = () => {
               {b && <HBars rows={b.pipeline.map((p) => ({ key: p.stage, label: p.label, value: p.count }))} />}
             </Panel>
 
-            <Panel title="Training enrollments" note="By programme" link="/admin/courses#enrollments" linkLabel="Manage" ready={Boolean(b)}>
+            <Panel title="Training enrollments" note="By programme" link="/admin/enrollments" linkLabel="Manage" ready={Boolean(b)}>
               {b?.training.by_course.length === 0 && <p className="muted small">No enrollments yet.</p>}
               {b && b.training.by_course.length > 0 && <HBars rows={b.training.by_course.map((c) => ({ key: c.label, label: c.label, value: c.count }))} />}
               {b && <p className="panel__foot">{fmt.format(b.training.active)} active · {fmt.format(b.training.requested)} requested · {fmt.format(b.training.completed)} completed</p>}

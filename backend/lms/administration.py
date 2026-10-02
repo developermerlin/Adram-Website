@@ -541,9 +541,10 @@ class CreateUserView(APIView):
 
 
 class EditUserView(APIView):
-    """PATCH /lms/admin/users/<id>/ {first_name, last_name, email, phone_number, country}"""
+    """PATCH /lms/admin/users/<id>/ {first_name, last_name, email, phone_number, country, in_training, in_scholarships}"""
     permission_classes = [IsAdmin]
     FIELDS = {'first_name': 150, 'last_name': 150, 'email': 254, 'phone_number': 20, 'country': 100}
+    SWITCHES = ['in_training', 'in_scholarships']  # a student's dashboards
 
     def patch(self, request, pk):
         user = get_object_or_404(User, pk=pk)
@@ -564,6 +565,11 @@ class EditUserView(APIView):
                     errors[field] = 'Another account uses this email.'
             if value != (getattr(user, field) or ''):
                 changes[field] = value or (None if field in ('phone_number', 'country') else value)
+        for field in self.SWITCHES:
+            if field in request.data:
+                value = request.data.get(field) in (True, 'true', '1', 1)
+                if value != getattr(user, field):
+                    changes[field] = value
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
         for field, value in changes.items():
@@ -571,7 +577,7 @@ class EditUserView(APIView):
         if changes:
             user.save(update_fields=[*changes, 'updated_at'])
             audit.record(request, 'user_edited', user, label=f'{user.get_full_name()} ({user.email})', fields=', '.join(changes))
-        return Response({'id': user.id, **{f: getattr(user, f) for f in self.FIELDS}})
+        return Response({'id': user.id, **{f: getattr(user, f) for f in [*self.FIELDS, *self.SWITCHES]}, 'tracks': user.tracks})
 
 
 class BroadcastView(APIView):

@@ -483,3 +483,113 @@ class OTPLimitTests(TestCase):
             EmailOTP.objects.filter(user=user).update(created_at=timezone.now() - timedelta(minutes=2))  # past the 60s wait
             issue_otp(user, EmailOTP.LOGIN)
         self.assertEqual(len(mail.outbox), 8)
+
+
+# ============================================================ Two-step sign-in and signed-in devices
+
+class TwoStepSignInTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = make_user(role=User.ADMIN)
+        self.client = APIClient()
+
+    def sign_in_with_email_code(self, client=None):
+        client = client or self.client
+        challenge = client.post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data['challenge']
+        data = client.post('/api/v1/auth/otp/verify/', {'challenge': challenge, 'code': last_code()}, format='json').data
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {data["access"]}')
+        return data
+
+    def turn_on(self):
+        import time
+        from . import mfa
+        setup = self.client.post('/api/v1/auth/2fa/setup/').data
+        self.assertIn('<svg', setup['qr_svg'])
+        self.assertTrue(setup['uri'].startswith('otpauth://totp/'))
+        # the code from 30 seconds ago, so a sign-in right after can use the current one (each code works once)
+        old = mfa.code_for(setup['secret'], at=time.time() - 30)
+        done = self.client.post('/api/v1/auth/2fa/confirm/', {'code': old}, format='json')
+        self.assertEqual(done.status_code, 200)
+        return setup['secret'], done.data['recovery_codes']
+
+    def test_turning_it_on_then_signing_in_with_the_app(self):
+        from . import mfa
+        self.sign_in_with_email_code()
+        self.assertEqual(self.client.post('/api/v1/auth/2fa/confirm/', {'code': '123456'}, format='json').status_code, 400)  # no setup yet
+        secret, recovery = self.turn_on()
+        self.assertEqual(len(recovery), 10)
+        self.assertTrue(self.client.get('/api/v1/auth/profile/').data['two_step'])
+        self.assertTrue(ActivityLog.objects.filter(user=self.user, action=ActivityLog.TWO_STEP_ON).exists())
+
+        mail.outbox.clear()
+        fresh = APIClient()
+        step = fresh.post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data
+        self.assertEqual((step['method'], step['purpose']), ('authenticator', 'TOTP'))
+        self.assertEqual(len(mail.outbox), 0)  # no email code when the app is on
+        wrong = fresh.post('/api/v1/auth/otp/verify/', {'challenge': step['challenge'], 'code': '000000'}, format='json')
+        self.assertEqual(wrong.status_code, 400)
+        code = mfa.code_for(secret)
+        ok = fresh.post('/api/v1/auth/otp/verify/', {'challenge': step['challenge'], 'code': code}, format='json')
+        self.assertEqual(ok.data['status'], 'signed_in')
+        # the same code is refused a second time
+        again = fresh.post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data
+        self.assertEqual(fresh.post('/api/v1/auth/otp/verify/', {'challenge': again['challenge'], 'code': code}, format='json').status_code, 400)
+        # a recovery code works once
+        first = fresh.post('/api/v1/auth/otp/verify/', {'challenge': again['challenge'], 'code': recovery[0]}, format='json')
+        self.assertEqual(first.data['status'], 'signed_in')
+        self.assertEqual(fresh.post('/api/v1/auth/otp/verify/', {'challenge': again['challenge'], 'code': recovery[0]}, format='json').status_code, 400)
+
+    def test_too_many_wrong_codes_are_blocked(self):
+        self.sign_in_with_email_code()
+        self.turn_on()
+        step = APIClient().post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data
+        for _ in range(5):
+            self.client.post('/api/v1/auth/otp/verify/', {'challenge': step['challenge'], 'code': '000000'}, format='json')
+        self.assertEqual(self.client.post('/api/v1/auth/otp/verify/', {'challenge': step['challenge'], 'code': '000000'}, format='json').status_code, 429)
+
+    def test_turning_it_off_needs_password_and_code(self):
+        from . import mfa
+        self.sign_in_with_email_code()
+        secret, _ = self.turn_on()
+        self.assertEqual(self.client.post('/api/v1/auth/2fa/disable/', {'password': 'nope', 'code': mfa.code_for(secret)}, format='json').status_code, 400)
+        off = self.client.post('/api/v1/auth/2fa/disable/', {'password': PASSWORD, 'code': mfa.code_for(secret)}, format='json')
+        self.assertFalse(off.data['enabled'])
+        self.assertEqual(APIClient().post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data['purpose'], 'LOGIN')
+
+
+@patch('accounts.otp.RESEND_COOLDOWN', timedelta(0))  # several sign-ins in a row, each with a new email code
+class SignedInDevicesTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = make_user()
+
+    def device(self, agent):
+        client = APIClient(HTTP_USER_AGENT=agent)
+        challenge = client.post('/api/v1/auth/login/', {'email': self.user.email, 'password': PASSWORD}, format='json').data['challenge']
+        data = client.post('/api/v1/auth/otp/verify/', {'challenge': challenge, 'code': last_code()}, format='json').data
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {data["access"]}')
+        return client, data
+
+    def test_signing_out_another_device_stops_it_at_once(self):
+        laptop, _ = self.device('Mozilla/5.0 (Windows NT 10.0) Chrome/130.0')
+        phone, phone_tokens = self.device('Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile')
+        rows = laptop.get('/api/v1/auth/sessions/').data
+        self.assertEqual(sorted(r['device'] for r in rows), ['Chrome on Android', 'Chrome on Windows'])
+        self.assertEqual([r['current'] for r in rows if r['device'] == 'Chrome on Windows'], [True])
+
+        phone_row = next(r for r in rows if r['device'] == 'Chrome on Android')
+        self.assertEqual(laptop.delete(f'/api/v1/auth/sessions/{phone_row["id"]}/').status_code, 204)
+        self.assertEqual(phone.get('/api/v1/auth/profile/').status_code, 401)  # its access token stops straight away
+        refresh = APIClient().post('/api/v1/auth/token/refresh/', {'refresh': phone_tokens['refresh']}, format='json')
+        self.assertEqual(refresh.status_code, 401)
+        self.assertEqual(laptop.get('/api/v1/auth/profile/').status_code, 200)
+
+    def test_sign_out_everywhere_else_and_log_out(self):
+        laptop, laptop_tokens = self.device('Mozilla/5.0 (Windows NT 10.0) Firefox/130.0')
+        tablet, _ = self.device('Mozilla/5.0 (iPad) Safari/605.1')
+        self.assertEqual(laptop.post('/api/v1/auth/sessions/revoke-others/').data['signed_out'], 1)
+        self.assertEqual(tablet.get('/api/v1/auth/profile/').status_code, 401)
+        refreshed = APIClient().post('/api/v1/auth/token/refresh/', {'refresh': laptop_tokens['refresh']}, format='json')
+        self.assertEqual(refreshed.status_code, 200)  # this device keeps working, through token refreshes
+        laptop.post('/api/v1/auth/logout/', {'refresh': refreshed.data['refresh']}, format='json')
+        self.assertEqual(laptop.get('/api/v1/auth/profile/').status_code, 401)  # logging out ends the device too

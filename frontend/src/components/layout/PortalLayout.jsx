@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminAPI, messagesAPI, portalAPI, staffPortalAPI } from '../../services/api';
+import { adminAPI, lmsAPI, messagesAPI, portalAPI, staffPortalAPI } from '../../services/api';
 import { timeAgo } from '../../utils/format';
 import { MESSAGES_CHANGED } from '../../utils/messageEvents';
 import { portalNavFor, ROLES } from '../../config/roles';
+import { currentTrack, rememberTrack, TRACK_ORDER, TRACKS, trackOfPath, tracksOf } from '../../config/tracks';
 import Brand from '../ui/Brand';
 import Avatar from '../ui/Avatar';
 import ThemeMenu from './ThemeMenu';
 import CallOverlay from '../chat/CallOverlay';
+import '../../styles/student-sides.css';
 import NotificationBell from '../lms/NotificationBell';
 import { watchIncomingCalls } from '../chat/callStore';
 import { SIDEBARS, usePortalPrefs } from './portalPrefs';
@@ -318,8 +320,20 @@ const UserMenu = ({ user, mode, onMode, onLogout }) => {
   );
 };
 
+/** Students who use both sides: Training | Scholarships at the top of the sidebar. */
+const SideSwitch = ({ track }) => (
+  <div className="side-switch" role="tablist" aria-label="Dashboard">
+    {TRACK_ORDER.map((t) => (
+      <Link key={t} to={TRACKS[t].home} role="tab" aria-selected={track === t} className={`side-switch__tab${track === t ? ' is-on' : ''}`} title={`${TRACKS[t].label} dashboard`}>
+        <i className={`fas ${TRACKS[t].icon}`} aria-hidden="true" />
+        <span className="sidebar__label">{TRACKS[t].label}</span>
+      </Link>
+    ))}
+  </div>
+);
+
 export const PortalLayout = ({ title, subtitle, actions, children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -334,9 +348,23 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
       adminAPI.getStats().then(merge).catch(() => {});
       staffPortalAPI.summary().then(merge).catch(() => {});
     } else if (user?.role === 'STUDENT') {
+      // Messages and the scholarships side come from the portal; the training side has its own counts
       portalAPI.summary().then(merge).catch(() => {});
+      if (user.in_training) lmsAPI.trainingSummary().then(merge).catch(() => {});
     }
-  }, [user?.role, pathname]);
+  }, [user?.role, user?.in_training, pathname]);
+
+  // Students: the server adds a side when they enrol on a course or apply for a scholarship, so re-read the
+  // account on each page; and remember the side they're on for shared pages like Messages.
+  const isStudent = user?.role === 'STUDENT';
+  useEffect(() => {
+    if (isStudent) refreshUser().catch(() => {});
+  }, [isStudent, refreshUser]);
+  const track = isStudent ? currentTrack(user, pathname) : null;
+  useEffect(() => {
+    const side = trackOfPath(pathname);
+    if (side) rememberTrack(side);
+  }, [pathname]);
 
   // Close the mobile drawer whenever the page changes.
   const [lastPath, setLastPath] = useState(pathname);
@@ -360,7 +388,7 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
     navigate('/login');
   };
 
-  const nav = portalNavFor(user?.role).map((section) => ({
+  const nav = portalNavFor(user?.role, track).map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.requires || counts[item.requires] > 0),
   }));
@@ -388,6 +416,8 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
         <div className="sidebar__brand">
           <Brand light={mode === 'dark' || sidebarStyle.dark} />
         </div>
+
+        {isStudent && tracksOf(user).length > 1 && <SideSwitch track={track} />}
 
         <nav className="sidebar__nav">
           {nav.map((section) => {

@@ -1,0 +1,41 @@
+/* Profile & security: two-step sign-in and signed-in devices; the sign-in code step */
+.sec-card { display: grid; gap: 14px; }
+.sec-card__head { display: flex; align-items: flex-start; gap: 14px; }
+.sec-card__head > div { flex: 1; min-width: 0; }
+.sec-card__head h2 { margin: 0 0 4px; }
+.sec-card__head p { margin: 0; }
+.sec-card__icon { display: grid; flex: none; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--surface, #f1f5f9); color: var(--muted, #64748b); font-size: 1.1rem; }
+.sec-card__icon.is-on { background: #dcfce7; color: #15803d; }
+.sec-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sec-steps { display: grid; gap: 4px; margin: 0; padding-left: 20px; font-size: 0.93rem; }
+.sec-setup { display: grid; gap: 14px; }
+.sec-setup__grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; }
+.sec-setup__side { display: grid; gap: 10px; }
+.sec-qr { width: 190px; padding: 6px; border: 1px solid var(--line, #dfe5ef); border-radius: 12px; background: #fff; }
+.sec-qr svg { display: block; width: 100%; height: auto; }
+.sec-secret { padding: 8px 10px; border-radius: 8px; background: var(--surface, #f1f5f9); font-size: 0.95rem; letter-spacing: 0.04em; word-break: break-all; }
+.sec-code-input, .auth-step__input { max-width: 220px; font-size: 1.3rem; letter-spacing: 0.25em; text-align: center; }
+.sec-codes { display: grid; gap: 12px; }
+.sec-codes__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 20px; margin: 0; padding: 14px 14px 14px 34px; border: 1px dashed var(--line-strong, #cbd5e1); border-radius: 10px; }
+.sec-codes__list code { font-size: 1rem; letter-spacing: 0.05em; }
+.sec-confirm { display: grid; gap: 10px; max-width: 420px; }
+.sec-devices { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.sec-devices li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line, #eef2f7); }
+.sec-devices li:last-child { border-bottom: 0; }
+.sec-devices li > i { width: 22px; color: var(--muted, #64748b); text-align: center; }
+.sec-devices__main { display: grid; flex: 1; min-width: 0; }
+.sec-devices__main strong { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.auth-step { justify-items: center; text-align: center; }
+.auth-step .field { width: 100%; justify-items: center; }
+.auth-step__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--blue-50, #eef4ff); color: var(--blue-600, #2563eb); font-size: 1.4rem; }
+.auth-step__input { margin: 0 auto; }
+.auth-step__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+
+@media (max-width: 560px) {
+  .sec-setup__grid { grid-template-columns: 1fr; justify-items: center; }
+  .sec-codes__list { grid-template-columns: 1fr; }
+}
+.sec-remind { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; padding: 12px 16px; border: 1px solid #fcd34d; border-radius: 12px; background: #fffbeb; color: #78350f; }
+.sec-remind > i { font-size: 1.2rem; }
+.sec-remind > span { flex: 1; min-width: 220px; }

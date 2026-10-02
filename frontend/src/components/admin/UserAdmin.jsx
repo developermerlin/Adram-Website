@@ -17,6 +17,11 @@ export const StatusBadges = ({ user }) => {
     <span className="badge-row">
       <span className={`badge ${meta.badge}`}><i className={`fas ${meta.icon}`} /> {meta.label}</span>
       {!user.is_verified && <span className="badge badge--outline" title="Email not verified yet">Email unverified</span>}
+      {user.role === 'STUDENT' && (user.tracks || []).map((t) => (
+        <span key={t} className={`badge ${t === 'training' ? 'badge--blue' : 'badge--violet'}`} title={`Uses the ${t} dashboard`}>
+          <i className={`fas ${t === 'training' ? 'fa-laptop-code' : 'fa-graduation-cap'}`} /> {t === 'training' ? 'Training' : 'Scholarships'}
+        </span>
+      ))}
     </span>
   );
 };

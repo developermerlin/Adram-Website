@@ -8,7 +8,9 @@ import AuthLayout from '../../components/layout/AuthLayout';
 import { Alert, PasswordChecklist, PasswordField, TextField } from '../../components/ui/Form';
 import { isStrongPassword } from '../../utils/password';
 import OAuthButtons from '../../components/ui/OAuthButtons';
+import { forgetReferral, savedReferral } from '../../utils/referral';
 import OtpVerify from '../../components/ui/OtpVerify';
+import '../../styles/student-sides.css';
 
 const initialForm = {
   first_name: '',
@@ -18,10 +20,24 @@ const initialForm = {
   country: 'Sierra Leone',
   password: '',
   password_confirm: '',
+  track: '',
+};
+
+// What they're joining for; each gets its own dashboard (one account can have both).
+const TRACK_CHOICES = [
+  { value: 'training', icon: 'fa-laptop-code', label: 'Training', text: 'Take courses and earn certificates' },
+  { value: 'scholarships', icon: 'fa-graduation-cap', label: 'Scholarships', text: 'Find and apply for scholarships' },
+  { value: 'both', icon: 'fa-layer-group', label: 'Both', text: 'Courses and scholarships' },
+];
+// Coming from a course or a scholarship page picks the matching choice.
+const trackFrom = (from = '') => {
+  if (/^\/(courses|learn|cart|checkout|bundles|gift)/.test(from)) return 'training';
+  if (from.startsWith('/scholarships')) return 'scholarships';
+  return '';
 };
 
 // Fields on step 1; server errors for these send the user back to that step.
-const STEP_ONE_FIELDS = ['first_name', 'last_name', 'email', 'phone_number', 'country'];
+const STEP_ONE_FIELDS = ['track', 'first_name', 'last_name', 'email', 'phone_number', 'country'];
 
 const STEPS = ['About you', 'Secure account', 'Verify email'];
 
@@ -50,7 +66,7 @@ export const RegisterPage = () => {
   const [step, setStep] = useState(1);
   const [challenge, setChallenge] = useState(null);
   const [done, setDone] = useState(null); // { detail } once the email is verified
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => ({ ...initialForm, track: trackFrom(location.state?.from) }));
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -83,12 +99,14 @@ export const RegisterPage = () => {
     try {
       const data = await register({
         ...form,
+        referral: savedReferral() || undefined,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         email: form.email.trim(),
         phone_number: form.phone_number.replace(/[\s-]/g, ''),
       });
       setChallenge(data);
+      forgetReferral();
       setStep(3);
     } catch (err) {
       const parsed = parseApiErrors(err, 'Registration failed. Please check your details.');
@@ -119,7 +137,9 @@ export const RegisterPage = () => {
             <li><i className="fas fa-hourglass-half" /> Waiting for administrator approval</li>
           </ol>
           <div className="auth-success__actions">
-            <Link to="/scholarships" className="btn btn--primary"><i className="fas fa-graduation-cap" /> Explore scholarships</Link>
+            {form.track === 'training'
+              ? <Link to="/courses" className="btn btn--primary"><i className="fas fa-laptop-code" /> Explore courses</Link>
+              : <Link to="/scholarships" className="btn btn--primary"><i className="fas fa-graduation-cap" /> Explore scholarships</Link>}
             <Link to="/" className="btn btn--outline"><i className="fas fa-house" /> Back to website</Link>
           </div>
         </div>
@@ -146,6 +166,21 @@ export const RegisterPage = () => {
         <form className="form-grid form-grid--tight" onSubmit={goToSecurity}>
           <OAuthButtons action="Sign up" next={location.state?.from} />
           <div className="auth__divider auth__divider--flush"><span>or sign up with email</span></div>
+
+          <fieldset className="form-section">
+            <legend>What are you joining ADRAM for?</legend>
+            <div className="track-pick" role="radiogroup" aria-label="What are you joining ADRAM for?">
+              {TRACK_CHOICES.map((t) => (
+                <label key={t.value} className={`track-pick__option${form.track === t.value ? ' is-on' : ''}`}>
+                  <input type="radio" name="track" value={t.value} required checked={form.track === t.value} onChange={handleChange} />
+                  <i className={`fas ${t.icon}`} aria-hidden="true" />
+                  <strong>{t.label}</strong>
+                  <small>{t.text}</small>
+                </label>
+              ))}
+            </div>
+            {errors.track ? <p className="field-error">{errors.track}</p> : <p className="hint">Each has its own dashboard. You can add the other one later.</p>}
+          </fieldset>
 
           <fieldset className="form-section">
             <legend>Personal details</legend>
@@ -201,6 +236,7 @@ export const RegisterPage = () => {
             <div>
               <strong>{form.first_name} {form.last_name}</strong>
               <span>{form.email}{form.country ? ` · ${form.country}` : ''}</span>
+              <span>Joining for: {TRACK_CHOICES.find((t) => t.value === form.track)?.label}</span>
             </div>
             <button type="button" className="btn btn--text btn--sm" onClick={() => setStep(1)}>
               <i className="fas fa-pen" /> Edit

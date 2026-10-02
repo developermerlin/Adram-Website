@@ -31,7 +31,23 @@ def category_info(category):
     return {'id': category.id, 'slug': category.slug, 'name': category.name} if category else None
 
 
+def _embed(url):
+    from .media import embed_url
+    return embed_url(url) if url else None
+
+
+def _topics(topics):
+    from .topics import topic_links
+    return topic_links(topics)
+
+
+def _trending():
+    from .search import trending_ids
+    return trending_ids()
+
+
 def course_brief(course, stats=None):
+    deal = course.current_deal()
     return {
         'id': course.id,
         'slug': course.slug,
@@ -44,13 +60,20 @@ def course_brief(course, stats=None):
         'language': course.language,
         'currency': course.currency,
         'price': money(course.price),
-        'discount_price': money(course.discount_price),
-        'sale_price': money(course.sale_price),
+        'discount_price': money(deal['price']) if deal else None,  # only a sale running now
+        'sale_price': money(deal['price'] if deal else (course.price or 0)),
+        'sale_ends_at': deal['ends_at'] if deal else None,
+        'sale_label': deal['label'] if deal else None,
         'is_free': course.is_free,
         'enrollment_mode': course.enrollment_mode,
         'is_premium': course.is_premium,
         'highlight': course.highlight,
         'format_label': course.format_label or 'Course',
+        'learn_points': (course.learn_points or [])[:3],  # the card's hover preview
+        'caption_count': len(course.caption_languages or []),
+        'promo_embed_url': _embed(course.promo_video_url),
+        'topic_links': _topics(course.topics),
+        'trending': course.id in _trending(),
         'instructor': instructor_info(course),
         'category': category_info(course.category),
         'subcategory': category_info(course.subcategory),

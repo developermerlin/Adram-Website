@@ -147,16 +147,31 @@ def send_training_confirmed(enrollment):
     )
 
 
+def send_training_declined(enrollment):
+    course = enrollment.course
+    rows = [('Programme', course.title)]
+    if enrollment.note:
+        rows.append(('Message from ADRAM', enrollment.note))
+    _notify(
+        enrollment.student, subject=f'About your enrollment: {course.title}', label='Training', tone='warning',
+        title='Your enrollment request wasn’t accepted',
+        paragraphs=[f'Thank you for your interest in {course.title}. ADRAM couldn’t accept your enrollment request this time.',
+                    'You can contact us with any questions, or ask again later from the course page.'],
+        extra_html=details(rows), extra_text='\n'.join(f'{k}: {v}' for k, v in rows),
+        cta=('See the course', _frontend(f'/courses/{course.slug}')),
+    )
+
+
 def notify_team_training(enrollment):
     try:
         student, course = enrollment.student, enrollment.course
         title = 'New training enrollment request'
         lead = f'{student.get_full_name()} wants to enroll in {course.title}.'
         rows = [('Student', student.get_full_name()), ('Email', student.email), ('Phone', student.phone_number), ('Programme', course.title)]
-        review = _frontend(f'/admin/students/{student.pk}')
+        review = _frontend('/admin/enrollments')
         reason = 'You received this email because you are an ADRAM portal administrator.'
         html = layout(preheader=lead, label='Action needed', tone='warning', title=title, reason=reason,
-                      body=paragraph(escape(lead)) + details(rows) + button('Review in the portal', review))
+                      body=paragraph(escape(lead)) + details(rows) + button('Confirm or decline', review))
         text = _plain(title, [lead, '\n'.join(f'{k}: {v or "—"}' for k, v in rows), f'Review: {review}'], reason)
         _send(settings.CONTACT_NOTIFY_EMAIL, f'Training request: {course.title} for {student.get_full_name()}', text, html)
     except Exception:

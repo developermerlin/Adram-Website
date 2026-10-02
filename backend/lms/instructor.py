@@ -45,8 +45,9 @@ class InstructorCourseSerializer(CourseManageSerializer):
     class Meta(CourseManageSerializer.Meta):
         fields = [
             'id', 'slug', 'title', 'subtitle', 'icon', 'summary', 'topics', 'duration', 'price', 'discount_price',
+            'sale_starts_at', 'sale_ends_at',
             'description', 'learn_points', 'requirements', 'audience', 'level', 'language', 'thumbnail', 'promo_video_url',
-            'category', 'subcategory', 'faqs', 'status', 'review_note', 'submitted_at', 'published_at', 'is_published',
+            'category', 'subcategory', 'faqs', 'caption_languages', 'includes', 'feature', 'allow_downloads', 'allow_video_downloads', 'status', 'review_note', 'submitted_at', 'published_at', 'is_published',
             'created_at', 'updated_at', 'updated_by_name',
         ]
         read_only_fields = ['id', 'status', 'review_note', 'submitted_at', 'published_at', 'is_published', 'created_at', 'updated_at']
@@ -91,7 +92,7 @@ class DashboardView(APIView):
         enrollments = TrainingEnrollment.objects.filter(course__in=courses, status__in=LEARNING).select_related('student', 'course')
         reviews = Review.objects.filter(course__in=courses, is_hidden=False).select_related('student', 'course')
         rated = [s for s in stats.values() if s['rating_count']]
-        threads = annotated_threads().filter(course__in=courses)
+        threads = annotated_threads(request.user).filter(course__in=courses)
         return Response({
             'totals': {
                 'courses': len(courses), 'published': counts[Course.PUBLISHED],
@@ -256,12 +257,12 @@ class QuestionsView(APIView):
     permission_classes = [access.IsAdminOrInstructor]
 
     def get(self, request):
-        threads = annotated_threads().filter(course__in=my_courses(request.user))
+        threads = annotated_threads(request.user).filter(course__in=my_courses(request.user))
         if request.query_params.get('filter') == 'unanswered':
             threads = threads.filter(answered=False)
         if request.query_params.get('course'):
             threads = threads.filter(course__slug=request.query_params['course'])
-        return Response({'unanswered': annotated_threads().filter(course__in=my_courses(request.user), answered=False).count(),
+        return Response({'unanswered': annotated_threads(request.user).filter(course__in=my_courses(request.user), answered=False).count(),
                          'threads': [thread_row(t, request.user) for t in threads.order_by('-updated_at')[:200]]})
 
 

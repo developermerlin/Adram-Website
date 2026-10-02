@@ -13,6 +13,7 @@ import { formatDuration } from '../../utils/lms';
 import '../../styles/lms.css';
 import '../../styles/marketplace.css';
 import '../../styles/shop.css';
+import '../../styles/bundles.css';
 
 /** The shopping cart: courses waiting to be bought, a coupon, the totals and checkout. */
 export const CartPage = () => {
@@ -189,6 +190,17 @@ export const CartPage = () => {
                 </form>
               )}
               {cart.coupon_error && <p className="shop-error" role="alert">{cart.coupon_error}</p>}
+              {!cart.coupon && cart.my_codes?.length > 0 && (
+                <div className="shop-mycodes">
+                  <small className="muted">Your codes:</small>
+                  {cart.my_codes.map((c) => (
+                    <button key={c.code} type="button" className="shop-mycode" title={c.description}
+                      onClick={() => { setCode(c.code); setApplied(c.code); load(c.code); }}>
+                      <i className="fas fa-ticket" aria-hidden="true" /> {c.code} · {c.percent}% off
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </aside>
         </div>

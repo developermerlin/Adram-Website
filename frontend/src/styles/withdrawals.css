@@ -1,0 +1,29 @@
+/* Instructor withdrawals (earnings page) and the admin's queue */
+.wd { display: grid; gap: 18px; }
+.wd-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.wd-balance { display: grid; gap: 14px; }
+.wd-balance h2 { margin: 0; }
+.wd-balance__figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wd-balance__figures > div { display: grid; gap: 2px; padding: 12px; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; }
+.wd-balance__figures span { color: var(--muted, #64748b); font-size: 0.82rem; }
+.wd-balance__figures strong { font-size: 1.15rem; }
+.wd-balance__figures small { color: var(--muted, #64748b); font-size: 0.75rem; }
+.wd-balance__figures .is-main { border-color: #86efac; background: #f0fdf4; }
+.wd-balance__figures .is-main strong { color: #15803d; font-size: 1.4rem; }
+.wd-form { display: grid; gap: 10px; }
+.wd-amount { display: flex; gap: 6px; align-items: center; }
+.wd-tax, .wd-report { display: grid; gap: 10px; }
+.wd-tax h2, .wd-report h2 { margin: 0; }
+.wd-report__row { display: flex; gap: 8px; align-items: center; }
+.wd-report__row select { max-width: 120px; }
+.wd-reason { display: block; margin-top: 4px; color: #b91c1c; }
+.wd-queue__who { display: grid; }
+.wd-queue__actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+@media (max-width: 900px) {
+  .wd-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .wd-balance__figures { grid-template-columns: 1fr; }
+}
+.wd-filter { width: auto; min-width: 130px; }

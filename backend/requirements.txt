@@ -7,6 +7,7 @@ drf-yasg==1.21.15
 python-decouple==3.8
 Pillow==12.3.0
 django-filter==24.1
+segno==1.6.6  # QR codes for authenticator-app setup
 
 # Only needed when DB_ENGINE is PostgreSQL
 psycopg2-binary==2.9.13

@@ -1,42 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { lmsAPI, parseApiErrors } from '../../services/api';
+import { DIFFICULTIES, TYPES, blankQuestion, fromServer, toServer } from '../../utils/questions';
 import { Alert } from '../ui/Form';
+import { QuestionFields } from './QuestionEditor';
+import BankPicker from './BankPicker';
 
-const TYPES = [
-  ['single', 'Multiple choice (one answer)'],
-  ['multiple', 'Multiple answers'],
-  ['true_false', 'True / false'],
-  ['short', 'Short answer'],
-];
+const ruleFromServer = (r) => ({ bank: r.bank, category: r.category || '', difficulty: r.difficulty || '', count: r.count, available: r.available });
 
-const blankQuestion = (kind = 'single') => ({
-  kind,
-  text: '',
-  explanation: '',
-  points: 1,
-  answer: true,
-  accepted_answers: [''],
-  choices: [{ text: '', is_correct: true }, { text: '', is_correct: false }],
-});
-
-const fromServer = (q) => ({
-  kind: q.kind || 'single',
-  text: q.text,
-  explanation: q.explanation,
-  points: q.points || 1,
-  answer: q.kind === 'true_false' ? Boolean(q.choices.find((c) => c.text === 'True')?.is_correct) : true,
-  accepted_answers: q.accepted_answers?.length ? q.accepted_answers : [''],
-  choices: q.kind === 'true_false' || q.kind === 'short' ? blankQuestion().choices : q.choices.map((c) => ({ text: c.text, is_correct: c.is_correct })),
-});
-
-// What the server expects for each type
-const toServer = (q) => {
-  const base = { kind: q.kind, text: q.text, explanation: q.explanation, points: Number(q.points) || 1 };
-  if (q.kind === 'short') return { ...base, accepted_answers: q.accepted_answers.filter((a) => a.trim()) };
-  if (q.kind === 'true_false') return { ...base, answer: q.answer };
-  return { ...base, choices: q.choices };
-};
 
 const SETTINGS = (lesson) => ({
   pass_mark: lesson.pass_mark,
@@ -49,33 +21,23 @@ const SETTINGS = (lesson) => ({
   is_required: lesson.is_required !== false,
 });
 
-// Builds a quiz: its settings, and questions of four kinds (one right answer, several, true/false, a typed answer).
+// Builds a quiz: its settings, its own questions (six kinds, typed in or copied from a question bank) and rules that
+// draw random questions from question banks on every attempt.
 export const QuizBuilder = ({ lesson, onSaved }) => {
   const [questions, setQuestions] = useState(() => lesson.questions.map(fromServer));
+  const [rules, setRules] = useState(() => (lesson.rules || []).map(ruleFromServer));
+  const [banks, setBanks] = useState(null);
+  const [picking, setPicking] = useState(false);
   const [settings, setSettings] = useState(() => SETTINGS(lesson));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const banksPath = useLocation().pathname.startsWith('/admin') ? '/admin/question-banks' : '/instructor/question-banks';
+  useEffect(() => {
+    lmsAPI.banks().then(({ data }) => setBanks(data)).catch(() => setBanks([]));
+  }, []);
 
   const setSetting = (key) => (e) => setSettings((s) => ({ ...s, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const setQuestion = (i, patch) => setQuestions((list) => list.map((q, j) => (j === i ? { ...q, ...patch } : q)));
-  const setChoice = (i, k, patch) => setQuestion(i, { choices: questions[i].choices.map((c, m) => (m === k ? { ...c, ...patch } : c)) });
-  const markCorrect = (i, k) => {
-    const q = questions[i];
-    setQuestion(i, { choices: q.choices.map((c, m) => (q.kind === 'multiple' ? (m === k ? { ...c, is_correct: !c.is_correct } : c) : { ...c, is_correct: m === k })) });
-  };
-  const addChoice = (i) => questions[i].choices.length < 8 && setQuestion(i, { choices: [...questions[i].choices, { text: '', is_correct: false }] });
-  const removeChoice = (i, k) => {
-    const rest = questions[i].choices.filter((_, m) => m !== k);
-    setQuestion(i, { choices: rest.some((c) => c.is_correct) ? rest : rest.map((c, m) => ({ ...c, is_correct: m === 0 })) });
-  };
-  const changeKind = (i, kind) => {
-    const q = questions[i];
-    // one right answer when switching to single choice
-    const choices = kind === 'single' && q.choices.filter((c) => c.is_correct).length !== 1
-      ? q.choices.map((c, m) => ({ ...c, is_correct: m === Math.max(0, q.choices.findIndex((x) => x.is_correct)) }))
-      : q.choices;
-    setQuestion(i, { kind, choices });
-  };
   const move = (i, step) => setQuestions((list) => {
     const next = [...list];
     [next[i], next[i + step]] = [next[i + step], next[i]];
@@ -86,12 +48,17 @@ export const QuizBuilder = ({ lesson, onSaved }) => {
     setSaving(true);
     setError('');
     try {
-      const { data } = await lmsAPI.saveQuiz(lesson.id, { ...settings, questions: questions.map(toServer) });
+      const { data } = await lmsAPI.saveQuiz(lesson.id, {
+        ...settings,
+        questions: questions.map(toServer),
+        rules: rules.map((r) => ({ bank: r.bank, category: r.category || null, difficulty: r.difficulty, count: Number(r.count) || 1 })),
+      });
+      setRules((data.rules || []).map(ruleFromServer));
       onSaved(data);
       toast.success('Quiz saved.');
     } catch (err) {
       const errors = parseApiErrors(err);
-      setError(errors.questions || errors.pass_mark || errors.time_limit_minutes || errors.max_attempts || errors.form || 'The quiz could not be saved.');
+      setError(errors.questions || errors.rules || errors.pass_mark || errors.time_limit_minutes || errors.max_attempts || errors.form || 'The quiz could not be saved.');
     } finally {
       setSaving(false);
     }
@@ -116,7 +83,10 @@ export const QuizBuilder = ({ lesson, onSaved }) => {
         </div>
       </fieldset>
 
-      <div className="lb-quiz__head"><h4>Questions ({questions.length})</h4></div>
+      <div className="lb-quiz__head">
+        <h4>Questions ({questions.length})</h4>
+        {banks?.length > 0 && <button type="button" className="btn btn--outline btn--sm" onClick={() => setPicking(true)}><i className="fas fa-box-archive" /> Add from a bank</button>}
+      </div>
       {questions.length === 0 && <p className="muted small">No questions yet. Add the first one below.</p>}
       {questions.map((q, i) => (
         <fieldset key={i} className="lb-question">
@@ -126,53 +96,45 @@ export const QuizBuilder = ({ lesson, onSaved }) => {
             <button type="button" className="icon-btn" aria-label={`Move question ${i + 1} down`} disabled={i === questions.length - 1} onClick={() => move(i, 1)}><i className="fas fa-arrow-down" /></button>
             <button type="button" className="icon-btn icon-btn--danger" aria-label={`Delete question ${i + 1}`} onClick={() => setQuestions((list) => list.filter((_, j) => j !== i))}><i className="fas fa-trash-can" /></button>
           </div>
-          <div className="qb-row">
-            <select className="input" aria-label={`Question ${i + 1} type`} value={q.kind} onChange={(e) => changeKind(i, e.target.value)}>
-              {TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-            <label className="qb-points">Points <input type="number" min="1" max="100" className="input" value={q.points} onChange={(e) => setQuestion(i, { points: e.target.value })} aria-label={`Points for question ${i + 1}`} /></label>
-          </div>
-          <input className="input" placeholder={q.kind === 'true_false' ? 'Type the statement' : 'Type the question'} aria-label={`Question ${i + 1}`} value={q.text} maxLength={500} onChange={(e) => setQuestion(i, { text: e.target.value })} />
-
-          {q.kind === 'true_false' && (
-            <div className="qb-tf" role="radiogroup" aria-label="The statement is">
-              <label className={`lb-pill${q.answer ? ' is-active' : ''}`}><input type="radio" name={`tf-${i}`} checked={q.answer} onChange={() => setQuestion(i, { answer: true })} /> True</label>
-              <label className={`lb-pill${!q.answer ? ' is-active' : ''}`}><input type="radio" name={`tf-${i}`} checked={!q.answer} onChange={() => setQuestion(i, { answer: false })} /> False</label>
-            </div>
-          )}
-
-          {q.kind === 'short' && (
-            <div className="qb-accepted">
-              <p className="hint">Accepted answers (capital letters and extra spaces are ignored):</p>
-              {q.accepted_answers.map((a, k) => (
-                <div key={k} className="qb-accepted__row">
-                  <input className="input" value={a} maxLength={200} placeholder={`Accepted answer ${k + 1}`} aria-label={`Accepted answer ${k + 1}`}
-                    onChange={(e) => setQuestion(i, { accepted_answers: q.accepted_answers.map((x, m) => (m === k ? e.target.value : x)) })} />
-                  <button type="button" className="icon-btn" aria-label={`Remove accepted answer ${k + 1}`} disabled={q.accepted_answers.length <= 1}
-                    onClick={() => setQuestion(i, { accepted_answers: q.accepted_answers.filter((_, m) => m !== k) })}><i className="fas fa-xmark" /></button>
-                </div>
-              ))}
-              <button type="button" className="btn btn--text btn--sm" onClick={() => setQuestion(i, { accepted_answers: [...q.accepted_answers, ''] })} disabled={q.accepted_answers.length >= 20}><i className="fas fa-plus" /> Add another accepted answer</button>
-            </div>
-          )}
-
-          {(q.kind === 'single' || q.kind === 'multiple') && (
-            <>
-              <ul className="lb-choices">
-                {q.choices.map((c, k) => (
-                  <li key={k}>
-                    <input type={q.kind === 'multiple' ? 'checkbox' : 'radio'} name={`correct-${lesson.id}-${i}`} checked={c.is_correct} onChange={() => markCorrect(i, k)} aria-label={`Answer ${k + 1} is correct`} title="Correct answer" />
-                    <input className="input" placeholder={`Answer ${k + 1}`} aria-label={`Question ${i + 1}, answer ${k + 1}`} value={c.text} maxLength={300} onChange={(e) => setChoice(i, k, { text: e.target.value })} />
-                    <button type="button" className="icon-btn" aria-label={`Remove answer ${k + 1}`} disabled={q.choices.length <= 2} onClick={() => removeChoice(i, k)}><i className="fas fa-xmark" /></button>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" className="btn btn--text btn--sm" onClick={() => addChoice(i)} disabled={q.choices.length >= 8}><i className="fas fa-plus" /> Add answer</button>
-            </>
-          )}
-          <input className="input" placeholder="Explanation shown after answering (optional)" aria-label={`Explanation for question ${i + 1}`} value={q.explanation} maxLength={500} onChange={(e) => setQuestion(i, { explanation: e.target.value })} />
+          <QuestionFields q={q} index={i} name={`${lesson.id}-${i}`} onChange={(patch) => setQuestion(i, patch)} />
         </fieldset>
       ))}
+
+      <fieldset className="qb-rules">
+        <legend>Random questions from question banks</legend>
+        <p className="hint">Every attempt also asks questions picked at random from your banks, so students get a different quiz each time. <Link to={banksPath}>Manage question banks</Link></p>
+        {banks && banks.length === 0 && <p className="muted small">You have no question banks yet. <Link to={banksPath}>Create one</Link> to draw random questions from it.</p>}
+        {rules.map((r, k) => {
+          const bank = banks?.find((b) => b.id === Number(r.bank));
+          const set = (patch) => setRules((list) => list.map((x, m) => (m === k ? { ...x, ...patch, available: undefined } : x)));
+          return (
+            <div key={k} className="qb-rule">
+              <label>Ask<input type="number" min="1" max="50" className="input" value={r.count} onChange={(e) => set({ count: e.target.value })} aria-label={`Rule ${k + 1}: how many questions`} /></label>
+              <select className="input" value={r.difficulty} onChange={(e) => set({ difficulty: e.target.value })} aria-label={`Rule ${k + 1}: difficulty`}>
+                <option value="">questions of any difficulty</option>
+                {DIFFICULTIES.map(([v, label]) => <option key={v} value={v}>{label.toLowerCase()} questions</option>)}
+              </select>
+              <span>from</span>
+              <select className="input" value={r.bank} onChange={(e) => set({ bank: Number(e.target.value), category: '' })} aria-label={`Rule ${k + 1}: bank`}>
+                {(banks || []).map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+              </select>
+              <select className="input" value={r.category} onChange={(e) => set({ category: e.target.value })} aria-label={`Rule ${k + 1}: category`}>
+                <option value="">any category</option>
+                {(bank?.categories || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {r.available != null && <small className={r.available < r.count ? 'qb-rule__short' : 'muted'}>{r.available} available{r.available < r.count ? ', so fewer will be asked' : ''}</small>}
+              <button type="button" className="icon-btn icon-btn--danger" aria-label={`Remove rule ${k + 1}`} onClick={() => setRules((list) => list.filter((_, m) => m !== k))}><i className="fas fa-trash-can" /></button>
+            </div>
+          );
+        })}
+        {banks?.length > 0 && (
+          <button type="button" className="btn btn--text btn--sm" disabled={rules.length >= 20}
+            onClick={() => setRules((list) => [...list, { bank: banks[0].id, category: '', difficulty: '', count: 5 }])}>
+            <i className="fas fa-plus" /> Add a random draw
+          </button>
+        )}
+      </fieldset>
+
       <Alert>{error}</Alert>
       <div className="lb-quiz__actions">
         <div className="qb-add">
@@ -187,6 +149,13 @@ export const QuizBuilder = ({ lesson, onSaved }) => {
         </button>
       </div>
       <p className="hint">Mark the correct answer(s) with the circle or box beside them. Saving the quiz replaces its questions; attempts in progress restart.</p>
+      {picking && (
+        <BankPicker banks={banks} onClose={() => setPicking(false)} onAdd={(picked) => {
+          setQuestions((list) => [...list, ...picked.map((q) => ({ ...fromServer(q), id: undefined, category: null }))].slice(0, 100));
+          setPicking(false);
+          toast.success(`${picked.length} ${picked.length === 1 ? 'question' : 'questions'} added. Save the quiz to keep them.`);
+        }} />
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
 import PortalLayout from '../../components/layout/PortalLayout';
 import { Alert } from '../../components/ui/Form';
@@ -74,7 +74,9 @@ const LearningCard = ({ row, imageOf }) => {
 /** "My learning": the student's learning dashboard. */
 export const MyLearningPage = () => {
   const [state, setState] = useState({ data: null, error: false });
-  const [tab, setTab] = useState('all');
+  const { hash } = useLocation();
+  // A link like /student/learning#wishlist opens that tab.
+  const [tab, setTab] = useState(() => (TABS.some(([id]) => `#${id}` === hash) ? hash.slice(1) : 'all'));
   const imageOf = useCourseImage();
   const wish = useWishlist();
   const addToCart = useAddToCart();

@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { assetUrl } from '../../utils/assets';
 import BrandIcon from '../brand/BrandIcon';
 import { cartChanged } from './cartStore';
+import CoursePopover from './CoursePopover';
+import PremiumMark from './PremiumMark';
 import { useLibrary } from './libraryStore';
 import { HIGHLIGHT_LABELS, instructorName, isPaid, onSale, salePrice, shortMoney, useCourseImage } from './courseUtils';
 import '../../styles/marketplace.css';
@@ -51,56 +53,73 @@ export const CourseCard = ({ course, progress, wish, preview = false }) => {
   else if (!user) action = <button type="button" className="uc__btn" onClick={() => navigate('/login', { state: { from: to } })}>Add to cart</button>;
   else action = <button type="button" className="uc__btn" onClick={addToCart} disabled={busy}>{busy ? <span className="btn-spinner" /> : null}Add to cart</button>;
 
+  let heart = null;
+  if (wish && !preview) {
+    heart = (
+      <button type="button" className={`uc__heart${saved ? ' is-on' : ''}`} onClick={() => wish.toggle(course.slug)} aria-pressed={!!saved} aria-label={saved ? 'Remove from wishlist' : 'Add to wishlist'}>
+        <i className={`${saved ? 'fas' : 'far'} fa-heart`} aria-hidden="true" />
+      </button>
+    );
+  } else if (!user && !preview) {
+    heart = (
+      <button type="button" className="uc__heart" onClick={() => navigate('/login', { state: { from: to } })} aria-label="Sign in to save this course">
+        <i className="far fa-heart" aria-hidden="true" />
+      </button>
+    );
+  }
+
   const title = preview ? <span>{course.title || 'Course title'}</span> : <Link to={to} className="uc__link">{course.title}</Link>;
 
-  return (
+  const card = (
     <article className={`uc${preview ? ' uc--preview' : ''}`}>
       <div className="uc__media">
         {image ? <img src={assetUrl(image)} alt="" loading="lazy" width="640" height="360" /> : <span className="uc__fallback"><BrandIcon name={course.icon} size={46} /></span>}
-        {course.is_premium && <span className="uc__premium"><i className="far fa-circle-check" aria-hidden="true" /> Premium</span>}
-        {wish && !preview && (
-          <button type="button" className={`uc__heart${saved ? ' is-on' : ''}`} onClick={() => wish.toggle(course.slug)} aria-pressed={!!saved} aria-label={saved ? 'Remove from wishlist' : 'Add to wishlist'}>
-            <i className={`${saved ? 'fas' : 'far'} fa-heart`} aria-hidden="true" />
-          </button>
-        )}
-        {!wish && !user && !preview && (
-          <button type="button" className="uc__heart" onClick={() => navigate('/login', { state: { from: to } })} aria-label="Sign in to save this course">
-            <i className="far fa-heart" aria-hidden="true" />
-          </button>
-        )}
+        {course.is_premium && <span className="uc__premium"><PremiumMark /> Premium</span>}
+        {heart}
         {preview && <span className="uc__heart" aria-hidden="true"><i className="far fa-heart" /></span>}
       </div>
 
       <h3 className="uc__title">{title}</h3>
       <p className="uc__by">{instructorName(course)}</p>
-
-      <div className="uc__chips">
-        {course.highlight && <span className={`uc__hl uc__hl--${course.highlight}`}>{HIGHLIGHT_LABELS[course.highlight]}</span>}
-        <span className="uc__chip">{course.format_label || 'Course'}</span>
-        {stats.rating_count > 0
-          ? <span className="uc__chip"><i className="fas fa-star" aria-hidden="true" /> {Number(stats.rating_average).toFixed(1)}</span>
-          : <span className="uc__chip">New</span>}
-      </div>
-      {stats.rating_count > 0 && (
-        <div className="uc__chips"><span className="uc__chip">{fmt.format(stats.rating_count)} {stats.rating_count === 1 ? 'rating' : 'ratings'}</span></div>
+      {(stats.student_count > 0 || course.language || course.caption_count > 0) && (
+        <p className="uc__meta">
+          {stats.student_count > 0 && <span><i className="fas fa-user-group" aria-hidden="true" /> {fmt.format(stats.student_count)} {stats.student_count === 1 ? 'student' : 'students'}</span>}
+          {course.language && <span><i className="fas fa-globe" aria-hidden="true" /> {course.language}</span>}
+          {course.caption_count > 0 && <span title={`Subtitles in ${course.caption_count} language${course.caption_count === 1 ? '' : 's'}`}><i className="far fa-closed-captioning" aria-hidden="true" /> CC</span>}
+        </p>
       )}
 
-      {progress ? (
-        <div className="uc__progress">
-          <span className="lms-progress"><span style={{ width: `${progress.percent}%` }} /></span>
-          <small>{progress.percent}% complete</small>
+      <div className="uc__bottom">
+        <div className="uc__chips">
+          {course.highlight && <span className={`uc__hl uc__hl--${course.highlight}`}>{HIGHLIGHT_LABELS[course.highlight]}</span>}
+          {!course.highlight && course.trending && <span className="uc__hl uc__hl--trending" title="Popular this week"><i className="fas fa-arrow-trend-up" aria-hidden="true" /> Trending</span>}
+          <span className="uc__chip">{course.format_label || 'Course'}</span>
+          {stats.rating_count > 0
+            ? <span className="uc__chip"><i className="fas fa-star" aria-hidden="true" /> {Number(stats.rating_average).toFixed(1)}</span>
+            : <span className="uc__chip">New</span>}
+          {stats.rating_count > 0 && <span className="uc__chip">{fmt.format(stats.rating_count)} {stats.rating_count === 1 ? 'rating' : 'ratings'}</span>}
         </div>
-      ) : (
-        <div className="uc__foot">
-          <div className="uc__price">
-            {paid ? <strong>{shortMoney(salePrice(course), course.currency)}</strong> : <strong className="uc__free">Free</strong>}
-            {paid && onSale(course) && <s>{shortMoney(course.price, course.currency)}</s>}
+
+        {progress ? (
+          <div className="uc__progress">
+            <span className="lms-progress"><span style={{ width: `${progress.percent}%` }} /></span>
+            <small>{progress.percent}% complete</small>
           </div>
-          {action}
-        </div>
-      )}
+        ) : (
+          <div className="uc__foot">
+            <div className="uc__price">
+              {paid ? <strong>{shortMoney(salePrice(course), course.currency)}</strong> : <strong className="uc__free">Free</strong>}
+              {paid && onSale(course) && <s>{shortMoney(course.price, course.currency)}</s>}
+            </div>
+            {action}
+          </div>
+        )}
+      </div>
     </article>
   );
+
+  if (preview || progress) return card;
+  return <CoursePopover course={course} action={action} heart={heart}>{card}</CoursePopover>;
 };
 
 export default CourseCard;

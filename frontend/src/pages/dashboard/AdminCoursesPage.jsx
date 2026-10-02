@@ -4,7 +4,7 @@ import { formatDate, timeAgo } from '../../utils/format';
 import PortalLayout from '../../components/layout/PortalLayout';
 import BrandIcon from '../../components/brand/BrandIcon';
 import { Alert } from '../../components/ui/Form';
-import { staffPortalAPI } from '../../services/api';
+import { lmsAdminAPI } from '../../services/api';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
 import { PublishBadge } from '../../components/admin/catalog';
 import { DELETE_CONFIRM, useCatalogList } from '../../components/admin/useCatalogAdmin';
@@ -35,7 +35,7 @@ export const AdminCoursesPage = () => {
   };
 
   useEffect(() => {
-    staffPortalAPI.enrollments().then(({ data }) => setEnrollments(data)).catch(() => setEnrollments([]));
+    lmsAdminAPI.enrollments({ status: 'requested' }).then(({ data }) => setEnrollments(data.results)).catch(() => setEnrollments([]));
   }, []);
   const requests = enrollments?.filter((e) => e.status === 'requested').length || 0;
   const published = items?.filter((c) => c.is_published).length;
@@ -160,38 +160,14 @@ export const AdminCoursesPage = () => {
         </div>
       </section>}
 
-      <section className="card table-card enrollments" id="enrollments">
-        <div className="table-card__head">
-          <div>
-            <h2 className="h3">Enrollments</h2>
-            <p className="muted small">Students who enrolled from the Training page. Open a student to confirm their place, set a start date and add a note.</p>
-          </div>
-          {requests > 0 && <span className="badge badge--amber"><i className="fas fa-bell" /> {requests} new request{requests === 1 ? '' : 's'}</span>}
+      <section className="card panel ac-enrol" id="enrollments">
+        <div>
+          <h2 className="h3">Enrollments</h2>
+          <p className="muted small">Students who asked to join a course set to “By approval”. Confirm or decline them on the Enrollments page; they’re told straight away.</p>
         </div>
-        <div className="table-scroll">
-          <table className="table table--catalog">
-            <thead>
-              <tr><th>Student</th><th>Programme</th><th>Status</th><th>Starts</th><th className="col-edited">Requested</th></tr>
-            </thead>
-            <tbody className={enrollments ? '' : 'is-loading'}>
-              {enrollments?.length === 0 && <tr><td colSpan="5" className="table__empty"><i className="fas fa-user-graduate" /> No enrollments yet.</td></tr>}
-              {enrollments?.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <Link to={`/admin/students/${e.student_id}`} className="title-cell">
-                      <strong>{e.student_name}</strong>
-                      <small>{e.student_email}</small>
-                    </Link>
-                  </td>
-                  <td>{e.course.title}</td>
-                  <td><span className={`badge ${e.status === 'requested' ? 'badge--amber' : e.status === 'active' ? 'badge--green' : 'badge--blue'}`}>{e.status_display}</span></td>
-                  <td>{e.start_date ? formatDate(`${e.start_date}T00:00`) : <span className="muted">Not set</span>}</td>
-                  <td className="col-edited">{timeAgo(e.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Link to="/admin/enrollments" className={`btn btn--sm ${requests ? 'btn--primary' : 'btn--outline'}`}>
+          {requests ? <><i className="fas fa-bell" /> {requests} waiting: review now</> : <><i className="fas fa-user-check" /> Open Enrollments</>}
+        </Link>
       </section>
 
       {deleting && (
