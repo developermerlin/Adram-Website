@@ -7,7 +7,7 @@ export const DEFAULT_PREFS = { mode: 'light', accent: 'blue', sidebar: 'light', 
 
 // Each accent's shades live in dashboard-skin.css / portal.css under .portal[data-accent='<id>'].
 export const ACCENTS = [
-  { id: 'blue', label: 'ADRAM blue', color: '#1454e8' },
+  { id: 'blue', label: 'Website colours', color: 'var(--t-600, #1454e8)' }, // follows the site colour scheme
   { id: 'indigo', label: 'Indigo', color: '#4f46e5' },
   { id: 'violet', label: 'Violet', color: '#6d4aff' },
   { id: 'fuchsia', label: 'Fuchsia', color: '#c026d3' },

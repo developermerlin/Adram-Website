@@ -29,7 +29,7 @@ class StudyGroupTests(LmsCase):
         # progress board
         self.client.post(f'{API}/lessons/{self.reading.id}/progress/', {'completed': True}, format='json')
         board = self.client.get(f'{API}/groups/{group["id"]}/').data['members_list']
-        self.assertEqual(board[0]['name'], 'B.' if board[0]['progress'] and not board[0]['name'] else board[0]['name'])
+        self.assertEqual(board[0]['progress'], max(m['progress'] for m in board))  # furthest along first
         self.assertGreater(next(m for m in board if m['you'])['progress'], 0)
         # posts notify the others
         self.client.post(f'{API}/groups/{group["id"]}/posts/', {'body': 'Shall we do the quiz tonight?'}, format='json')

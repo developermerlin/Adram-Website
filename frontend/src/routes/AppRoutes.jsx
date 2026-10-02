@@ -61,6 +61,7 @@ import TrainingDashboard from '../pages/dashboard/TrainingDashboard';
 import MyProgressPage from '../pages/dashboard/MyProgressPage';
 import ReferralsPage from '../pages/dashboard/ReferralsPage';
 import AffiliatePage from '../pages/dashboard/AffiliatePage';
+import StudyGroupsPage, { StudyGroupPage } from '../pages/dashboard/StudyGroupsPage';
 import ScholarshipDashboard from '../pages/dashboard/ScholarshipDashboard';
 import TrackGate from '../components/portal/TrackGate';
 import AdminDashboard from '../pages/dashboard/AdminDashboard';
@@ -146,6 +147,8 @@ export const AppRoutes = () => (
     <Route path="/student/progress" element={side('training', <MyProgressPage />)} />
     <Route path="/student/referrals" element={side('training', <ReferralsPage />)} />
     <Route path="/student/affiliate" element={side('training', <AffiliatePage />)} />
+    <Route path="/student/groups" element={side('training', <StudyGroupsPage />)} />
+    <Route path="/student/groups/:id" element={side('training', <StudyGroupPage />)} />
     <Route path="/student/certificates" element={side('training', <MyCertificatesPage />)} />
     <Route path="/student/purchases" element={side('training', <PurchasesPage />)} />
     <Route path="/student/training" element={side('training', <StudentTrainingPage />)} />

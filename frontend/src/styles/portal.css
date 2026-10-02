@@ -22,8 +22,8 @@
   gap: 24px;
   padding: 28px clamp(28px, 3.5vw, 52px);
   background:
-    radial-gradient(600px 400px at 100% 0%, rgba(20, 84, 232, 0.45), transparent 60%),
-    radial-gradient(500px 360px at 0% 100%, rgba(22, 200, 245, 0.16), transparent 60%),
+    radial-gradient(600px 400px at 100% 0%, color-mix(in srgb, var(--t-600, #1454e8) 45%, transparent), transparent 60%),
+    radial-gradient(500px 360px at 0% 100%, color-mix(in srgb, var(--a-400, #16c8f5) 16%, transparent), transparent 60%),
     var(--navy-900);
   color: var(--line-strong);
 }
@@ -38,8 +38,8 @@
   top: 32%;
   border-radius: 50%;
   border: 2px solid transparent;
-  border-top-color: rgba(22, 200, 245, 0.4);
-  border-right-color: rgba(47, 107, 255, 0.3);
+  border-top-color: color-mix(in srgb, var(--a-400, #16c8f5) 40%, transparent);
+  border-right-color: color-mix(in srgb, var(--t-500, #2f6bff) 30%, transparent);
   transform: rotate(-18deg);
   pointer-events: none;
 }
@@ -80,7 +80,7 @@
   padding: 5px 11px;
   margin-bottom: 16px;
   border-radius: 6px;
-  background: rgba(22, 200, 245, 0.12);
+  background: color-mix(in srgb, var(--a-400, #16c8f5) 12%, transparent);
   color: var(--cyan-300);
   font-size: 0.78rem;
   font-weight: 700;
@@ -562,7 +562,7 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(420px 260px at 0% 0%, rgba(20, 84, 232, 0.28), transparent 70%),
+    radial-gradient(420px 260px at 0% 0%, color-mix(in srgb, var(--t-600, #1454e8) 28%, transparent), transparent 70%),
     var(--navy-900);
   color: #aebbe0;
 }
@@ -762,7 +762,7 @@
     inset: 0;
     z-index: 35;
     border: none;
-    background: rgba(4, 12, 43, 0.5);
+    background: color-mix(in srgb, var(--d-950, #040c2b) 50%, transparent);
   }
 
   .portal__body {
@@ -950,7 +950,7 @@
   margin-bottom: 28px;
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(420px 240px at 100% 0%, rgba(22, 200, 245, 0.4), transparent 70%),
+    radial-gradient(420px 240px at 100% 0%, color-mix(in srgb, var(--a-400, #16c8f5) 40%, transparent), transparent 70%),
     linear-gradient(120deg, var(--navy-800), var(--blue-700));
   color: var(--border-blue);
 }
@@ -963,7 +963,7 @@
   right: -120px;
   bottom: -70px;
   border-radius: 50%;
-  border: 2px solid rgba(95, 220, 250, 0.35);
+  border: 2px solid color-mix(in srgb, var(--a-300, #5fdcfa) 35%, transparent);
   transform: rotate(-14deg);
   pointer-events: none;
 }
@@ -1221,7 +1221,7 @@
 }
 
 .stat__icon--blue { background: var(--blue-50); color: var(--blue-600); }
-.stat__icon--cyan { background: var(--tint-cyan); color: #0689b0; }
+.stat__icon--cyan { background: var(--tint-cyan); color: var(--a-600, #0689b0); }
 .stat__icon--violet { background: var(--tint-violet); color: #6a44d9; }
 .stat__icon--amber { background: var(--warning-bg); color: var(--warning); }
 
@@ -2295,7 +2295,7 @@
   position: absolute;
   inset: 0;
   border: none;
-  background: rgba(4, 12, 43, 0.5);
+  background: color-mix(in srgb, var(--d-950, #040c2b) 50%, transparent);
   cursor: default;
 }
 
@@ -2753,7 +2753,7 @@
   height: 2px;
   margin-right: 4px;
   vertical-align: middle;
-  background: #5b8dff;
+  background: var(--t-400, #5b8dff);
   border-radius: 2px;
 }
 
@@ -5333,7 +5333,7 @@ a.ov-kpi:hover {
 .ov-kpi__icon--amber { background: var(--warning-bg); color: var(--warning); }
 .ov-kpi__icon--green { background: var(--success-bg); color: var(--success); }
 .ov-kpi__icon--red { background: var(--danger-bg); color: var(--danger); }
-.ov-kpi__icon--cyan { background: var(--tint-cyan); color: #0689b0; }
+.ov-kpi__icon--cyan { background: var(--tint-cyan); color: var(--a-600, #0689b0); }
 
 .ov-kpi__label {
   grid-area: label;
@@ -7581,3 +7581,33 @@ body.text-edit-mode #root :is(h1, h2, h3, h4, h5, p, span, a, button, label, li,
   gap: 4px;
   min-width: 160px;
 }
+
+/* ---------- Site content: colour scheme picker ---------- */
+.cf-theme { display: grid; gap: 14px; }
+.cf-theme__label { margin: 0; font-weight: 600; color: var(--ink); }
+.cf-theme__presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.cf-theme__preset {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--white); color: var(--ink); font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer;
+}
+.cf-theme__preset:hover { border-color: var(--line-strong); }
+.cf-theme__preset.is-active { border-color: var(--blue-600); box-shadow: 0 0 0 2px var(--blue-50); font-weight: 600; }
+.cf-theme__swatch { display: inline-flex; flex: none; align-items: center; gap: 3px; padding: 5px; border-radius: 8px; }
+.cf-theme__swatch i { width: 12px; height: 12px; border-radius: 50%; }
+.cf-theme__colours { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.cf-colour .hint { margin: 4px 0 0; }
+.cf-colour__row { display: flex; align-items: center; gap: 8px; }
+.cf-colour__row input[type='color'] { flex: none; width: 44px; height: 40px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); cursor: pointer; }
+.cf-colour__row .input { font-family: ui-monospace, Consolas, monospace; text-transform: lowercase; }
+.cf-theme__warn { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--warning-bg); color: var(--warning-ink); font-size: 0.88rem; }
+.cf-theme__preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 20px; border-radius: 12px; }
+.cf-theme__preview strong {
+  margin-right: auto; font-family: var(--font-display); font-size: 1.2rem;
+  background-clip: text; -webkit-background-clip: text; color: transparent;
+}
+.cf-theme__btn { padding: 8px 16px; border-radius: 999px; color: #fff; font-size: 0.88rem; font-weight: 600; }
+.cf-theme__chip { padding: 3px 10px; border: 1px solid; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+
+/* Site content editor on phones: let the column shrink to the screen instead of to its widest field */
+.editor__main { grid-template-columns: minmax(0, 1fr); }
+.editor__main > * { min-width: 0; }

@@ -5,6 +5,7 @@ import { lmsAPI } from '../../services/api';
 import Brand from '../../components/ui/Brand';
 import Curriculum from '../../components/lms/Curriculum';
 import QaPanel from '../../components/lms/QaPanel';
+import GroupsPanel from '../../components/lms/GroupsPanel';
 import QuizRunner from '../../components/lms/QuizRunner';
 import AssignmentPane from '../../components/lms/AssignmentPane';
 import NotesPanel from '../../components/lms/NotesPanel';
@@ -104,6 +105,7 @@ const EmbedPlayer = ({ lesson, positionRef, seekRef, onEnded }) => {
     <div className="lv-wrap">
       <div className="lms-video">
         <iframe ref={frame} src={src} onLoad={onLoad} title={lesson.title} allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+        <Watermark text={lesson.watermark} />
       </div>
       {(lesson.position_seconds > 5 || lesson.watch_percent > 0) && (
         <div className="lv-controls">
@@ -119,9 +121,73 @@ const EmbedPlayer = ({ lesson, positionRef, seekRef, onEnded }) => {
  * The video. Uploaded videos keep the browser's own controls (play, pause, volume, fullscreen), resume where the
  * student stopped, and get a speed menu that is remembered. YouTube and Vimeo keep their own players.
  */
+const SHORTCUTS = [
+  ['Space or K', 'Play / pause'], ['← / →', 'Back / forward 5 seconds'], ['J / L', 'Back / forward 10 seconds'],
+  ['↑ / ↓', 'Volume up / down'], ['M', 'Mute'], ['F', 'Full screen'], ['C', 'Subtitles on / off'], ['P', 'Picture-in-picture'],
+  ['< / >', 'Slower / faster'], ['?', 'Show these shortcuts'],
+];
+
+/** Keyboard control of the uploaded video (ignored while typing in a box). */
+const usePlayerKeys = (videoRef, { onSpeed, onHelp }) => {
+  useEffect(() => {
+    const onKey = (e) => {
+      const v = videoRef.current;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+      if (!v || typing || e.ctrlKey || e.metaKey || e.altKey) return;
+      const jump = (s) => { v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + s)); };
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const actions = {
+        ' ': () => (v.paused ? v.play() : v.pause()), k: () => (v.paused ? v.play() : v.pause()),
+        ArrowLeft: () => jump(-5), ArrowRight: () => jump(5), j: () => jump(-10), l: () => jump(10),
+        ArrowUp: () => { v.volume = Math.min(1, v.volume + 0.1); }, ArrowDown: () => { v.volume = Math.max(0, v.volume - 0.1); },
+        m: () => { v.muted = !v.muted; },
+        f: () => (document.fullscreenElement ? document.exitFullscreen() : v.closest('.lms-video')?.requestFullscreen?.()),
+        c: () => {
+          const tracks = [...v.textTracks];
+          const on = tracks.find((t) => t.mode === 'showing');
+          tracks.forEach((t) => { t.mode = 'disabled'; });
+          if (!on && tracks[0]) tracks[0].mode = 'showing';
+        },
+        p: () => (document.pictureInPictureElement ? document.exitPictureInPicture() : v.requestPictureInPicture?.()),
+        '<': () => onSpeed(-1), '>': () => onSpeed(1), ',': () => onSpeed(-1), '.': () => onSpeed(1), '?': onHelp,
+      };
+      const act = actions[key];
+      if (!act) return;
+      e.preventDefault();
+      Promise.resolve().then(act).catch(() => {});
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [videoRef, onSpeed, onHelp]);
+};
+
+/** The student's email, faint, moving every 20 seconds: a screen recording shows whose account it came from. */
+const Watermark = ({ text }) => {
+  const [spot, setSpot] = useState(0);
+  useEffect(() => {
+    if (!text) return undefined;
+    const timer = setInterval(() => setSpot((n) => (n + 1) % 4), 20000);
+    return () => clearInterval(timer);
+  }, [text]);
+  if (!text) return null;
+  return <span className={`lv-mark lv-mark--${spot}`} aria-hidden="true">{text}</span>;
+};
+
 const VideoPlayer = ({ lesson, videoRef, positionRef, seekRef, onEnded }) => {
   const [speed, setSpeed] = useState(readSpeed);
+  const [help, setHelp] = useState(false);
   const { video } = lesson;
+  const stepSpeed = useCallback((dir) => {
+    setSpeed((current) => {
+      const next = SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, SPEEDS.indexOf(current) + dir))] ?? current;
+      saveSpeed(next);
+      if (videoRef.current) videoRef.current.playbackRate = next;
+      return next;
+    });
+  }, [videoRef]);
+  const toggleHelp = useCallback(() => setHelp((h) => !h), []);
+  usePlayerKeys(videoRef, { onSpeed: stepSpeed, onHelp: toggleHelp }); // only the uploaded <video> fills videoRef
+  const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled;
 
   if (!video) {
     return (
@@ -147,12 +213,16 @@ const VideoPlayer = ({ lesson, videoRef, positionRef, seekRef, onEnded }) => {
           playsInline
           preload="metadata"
           controlsList="nodownload"
+          crossOrigin={video.captions?.length ? 'anonymous' : undefined} // subtitles from the API need CORS; plain videos don't
           onLoadedMetadata={(e) => {
             e.currentTarget.playbackRate = speed;
             if (lesson.position_seconds > 5) e.currentTarget.currentTime = lesson.position_seconds;
           }}
           onEnded={onEnded}
-        />
+        >
+          {(video.captions || []).map((c) => <track key={c.id} kind="subtitles" src={assetUrl(c.url)} srcLang={c.language} label={c.label} />)}
+        </video>
+        <Watermark text={lesson.watermark} />
       </div>
       <div className="lv-controls">
         <label className="lv-speed">
@@ -162,9 +232,21 @@ const VideoPlayer = ({ lesson, videoRef, positionRef, seekRef, onEnded }) => {
             {SPEEDS.map((s) => <option key={s} value={s}>{s === 1 ? 'Normal' : `${s}×`}</option>)}
           </select>
         </label>
+        {canPip && (
+          <button type="button" className="btn btn--text btn--sm" onClick={() => videoRef.current?.requestPictureInPicture?.().catch(() => {})} title="Keep watching in a small window (P)">
+            <i className="fas fa-clone" aria-hidden="true" /> Picture-in-picture
+          </button>
+        )}
+        {video.captions?.length > 0 && <span className="muted small"><i className="fas fa-closed-captioning" aria-hidden="true" /> Subtitles: {video.captions.map((c) => c.label).join(', ')} (CC button or C)</span>}
+        <button type="button" className="btn btn--text btn--sm" onClick={toggleHelp} aria-expanded={help}><i className="fas fa-keyboard" aria-hidden="true" /> Shortcuts</button>
         {lesson.position_seconds > 5 && <span className="muted small">Resumed where you stopped</span>}
         {lesson.watch_percent > 0 && <span className="muted small">{lesson.watch_percent}% watched</span>}
       </div>
+      {help && (
+        <dl className="lv-keys" aria-label="Keyboard shortcuts">
+          {SHORTCUTS.map(([k, what]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{what}</dd></div>)}
+        </dl>
+      )}
     </div>
   );
 };
@@ -225,6 +307,8 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
   const videoRef = useRef(null);
   const positionRef = useRef(null); // YouTube/Vimeo report their time here
   const seekRef = useRef(null); // and jump to a moment through this
+  const lastPosition = useRef(null);
+  const [streamBlock, setStreamBlock] = useState(null); // this account plays on too many devices
   const lastBeat = useRef(0);
 
   const load = useCallback(() => lmsAPI
@@ -246,7 +330,11 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
     const spent = Math.min(120, Math.round((now - lastBeat.current) / 1000));
     lastBeat.current = now;
     const position = videoRef.current ? videoRef.current.currentTime : positionRef.current;
-    const data = { spent, ...(position != null ? { position: Math.floor(position) } : {}) };
+    // Playing: an uploaded video not paused, or an embedded one whose time moved since the last beat
+    const playing = lesson.kind === 'video' && (videoRef.current ? !videoRef.current.paused
+      : position != null && lastPosition.current != null && Math.abs(position - lastPosition.current) > 1);
+    lastPosition.current = position;
+    const data = { spent, ...(position != null ? { position: Math.floor(position) } : {}), ...(lesson.kind === 'video' ? { playing } : {}) };
     if (!spent && position == null) return;
     // Leaving (tab hidden, lesson changed, browser closed): a save that finishes even as the page goes away
     if (final) {
@@ -256,8 +344,21 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
     lmsAPI.saveProgress(lesson.id, data).then(({ data: result }) => {
       onProgress(result);
       if (result.completed) setCompleted(true);
+      if (result.stream?.blocked) {
+        videoRef.current?.pause();
+        setStreamBlock(result.stream);
+      }
     }).catch(() => {});
   }, [lesson, onProgress]);
+  const watchHere = async () => {
+    try {
+      await lmsAPI.saveProgress(lesson.id, { take_over: true, playing: true });
+      setStreamBlock(null);
+      videoRef.current?.play().catch(() => {});
+    } catch {
+      /* try again from the banner */
+    }
+  };
   useEffect(() => {
     if (!canTrack) return undefined;
     lastBeat.current = Date.now();
@@ -329,6 +430,7 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
     ['downloads', 'Downloads', lesson.downloads?.length || 0],
     ['notes', 'Notes'],
     ['qa', 'Q&A'],
+    ['groups', 'Study groups'],
     ['announcements', 'Announcements'],
   ].filter(([key]) => (key === 'overview' ? !['quiz', 'assignment'].includes(lesson.kind) : key === 'downloads' ? (lesson.downloads?.length || 0) > 0 : key === 'qa' || key === 'announcements' ? canTrack || lesson.can_manage : true));
   const current = tabs.some(([key]) => key === tab) ? tab : tabs[0]?.[0];
@@ -337,6 +439,16 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
 
   return (
     <article className="lms-lesson-pane">
+      {lesson.kind === 'video' && streamBlock && (
+        <div className="lv-blocked" role="alert">
+          <i className="fas fa-tv" aria-hidden="true" />
+          <div>
+            <strong>{streamBlock.reason === 'taken_over' ? 'You started watching on another device' : 'Your account is playing videos on another device'}</strong>
+            <p>One account can play on {streamBlock.limit} {streamBlock.limit === 1 ? 'device' : 'devices'} at a time. Your progress is saved.</p>
+          </div>
+          <button type="button" className="btn btn--primary btn--sm" onClick={watchHere}>Watch here instead</button>
+        </div>
+      )}
       {lesson.kind === 'video' && <VideoPlayer lesson={lesson} videoRef={videoRef} positionRef={positionRef} seekRef={seekRef} onEnded={finishVideo} />}
       {lesson.kind === 'document' && <DocumentViewer doc={lesson.document} />}
       <header className="lms-lesson-head">
@@ -399,6 +511,8 @@ const LessonPane = ({ id, slug, onProgress, titleOf }) => {
                 getTime={hasVideo ? videoTime : undefined}
                 onSeek={hasVideo ? seek : undefined} />
             )}
+            {current === 'groups' && canTrack && <GroupsPanel slug={slug} />}
+            {current === 'groups' && !canTrack && <p className="muted">Enrol on this course to join its study groups.</p>}
             {current === 'qa' && <QaPanel slug={slug} lessonId={lesson.id} admin={lesson.can_manage && !canTrack} getTime={hasVideo ? videoTime : undefined} onSeek={hasVideo ? seek : undefined} />}
             {current === 'announcements' && <Announcements slug={slug} />}
           </div>

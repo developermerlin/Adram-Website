@@ -7,8 +7,8 @@
 .ins-note { margin: 10px 0 0; }
 .ins-weeks { display: grid; grid-template-columns: repeat(16, 1fr); align-items: end; gap: 4px; height: 200px; padding-top: 8px; }
 .ins-weeks__col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 4px; }
-.ins-weeks__bar { align-self: end; width: 100%; border-radius: 4px 4px 0 0; background: var(--viz-accent, #2563eb); }
-.ins-weeks__col.is-forecast .ins-weeks__bar { background: repeating-linear-gradient(135deg, #93c5fd 0 4px, #dbeafe 4px 8px); outline: 1px dashed #3b82f6; }
+.ins-weeks__bar { align-self: end; width: 100%; border-radius: 4px 4px 0 0; background: var(--viz-accent, var(--t-600, #2563eb)); }
+.ins-weeks__col.is-forecast .ins-weeks__bar { background: repeating-linear-gradient(135deg, var(--t-300, #93c5fd) 0 4px, var(--t-100, #dbeafe) 4px 8px); outline: 1px dashed var(--t-500, #3b82f6); }
 .ins-weeks small { overflow: hidden; color: var(--muted); font-size: 0.6rem; text-align: center; white-space: nowrap; }
 .ins-cohorts__cell { min-width: 56px; font-weight: 600; }
 .ins-quality, .ins-flags { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }

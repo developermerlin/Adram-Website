@@ -74,6 +74,15 @@ class ContentTests(APITestCase):
         ok = self.client.put(f'{BASE}/manage/home/', {'data': {'hero': {'link': '/services', 'other': 'https://example.com'}}}, format='json')
         self.assertEqual(ok.status_code, 200)
 
+    def test_site_colours_must_be_hex(self):
+        self.client.force_authenticate(self.admin)
+        url = f'{BASE}/manage/site/'
+        for bad in ({'primary': 'red; background:url(x)'}, {'dark': '#12345'}, {'accent': 12}, 'blue'):
+            self.assertEqual(self.client.put(url, {'data': {'theme': bad}}, format='json').status_code, 400, bad)
+        ok = self.client.put(url, {'data': {'theme': {'preset': 'custom', 'primary': '#0D9488', 'dark': '#042f2e'}}}, format='json')
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(self.client.get(f'{BASE}/site/').data['data']['theme']['primary'], '#0D9488')
+
     def test_content_must_be_an_object_and_not_too_large(self):
         self.client.force_authenticate(self.admin)
         self.assertEqual(self.client.put(f'{BASE}/manage/home/', {'data': ['x']}, format='json').status_code, 400)

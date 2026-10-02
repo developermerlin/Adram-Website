@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { AssignmentSettings } from './AssignmentSettings';
+import { CaptionsEditor } from './CaptionsEditor';
 import toast from 'react-hot-toast';
 import { lmsAPI, parseApiErrors } from '../../services/api';
 import { assetUrl } from '../../utils/assets';
@@ -45,6 +46,7 @@ const initial = (lesson) => ({
   late_penalty_percent: lesson.late_penalty_percent ?? 10,
   max_files: lesson.max_files || 1,
   rubric: (lesson.rubric || []).map((c) => ({ ...c })),
+  peer_reviews: lesson.peer_reviews || 0,
   section_id: lesson.section_id,
 });
 
@@ -99,6 +101,7 @@ export const LessonEditor = ({ lesson, sections, limits, onSaved, onReload, onMo
       fields.late_penalty_percent = Number(form.late_penalty_percent) || 0;
       fields.max_files = Number(form.max_files) || 1;
       fields.rubric = form.rubric.map((c) => ({ ...c, points: Number(c.points) || 0 }));
+      fields.peer_reviews = Number(form.peer_reviews) || 0;
     }
     if (isVideo) {
       fields.video_source = form.video_source;
@@ -270,6 +273,7 @@ export const LessonEditor = ({ lesson, sections, limits, onSaved, onReload, onMo
                 </div>
               )}
               {field('video_file')}
+              {lesson.has_video_file && !file && <CaptionsEditor lesson={lesson} />}
             </div>
           )}
 

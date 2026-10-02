@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { contentAPI, parseApiErrors } from '../../services/api';
 import { getPath, setPath } from '../../content/merge';
 import { SITE_LIBRARY, TECH_LOGOS } from '../../content/schema';
+import { DEFAULT_THEME, THEME_PRESETS, isHex } from '../../content/theme';
 import { assetUrl } from '../../utils/assets';
 import BrandIcon, { ICON_NAMES } from '../brand/BrandIcon';
 import { ListEditor } from './catalog';
@@ -120,6 +121,90 @@ const ImageLibrary = ({ current, onPick, onClose }) => {
           ))
         )}
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- Colour scheme
+
+const COLOUR_ROLES = [
+  ['primary', 'Main colour', 'Buttons, links and highlights.'],
+  ['accent', 'Second colour', 'The bright end of gradients, badges and small accents.'],
+  ['dark', 'Dark colour', 'The banners at the top of pages and the footer.'],
+];
+
+// Relative luminance (WCAG), to warn when white text on the main colour would be hard to read
+const luminance = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+};
+
+const ColourInput = ({ id, label, hint, value, onChange }) => {
+  const [draft, setDraft] = useState(null); // what is being typed, until it is a full #rrggbb
+  return (
+    <div className="field cf-colour">
+      <label htmlFor={id}>{label}</label>
+      <div className="cf-colour__row">
+        <input type="color" aria-label={`${label}: pick`} value={value} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} className="input" value={draft ?? value} maxLength={7} spellCheck={false}
+          onChange={(e) => {
+            const text = e.target.value.trim();
+            const hex = text.startsWith('#') ? text : `#${text}`;
+            if (isHex(hex)) {
+              setDraft(null);
+              onChange(hex.toLowerCase());
+            } else setDraft(text);
+          }}
+          onBlur={() => setDraft(null)} />
+      </div>
+      <p className="hint">{hint}</p>
+    </div>
+  );
+};
+
+/** Ready-made colour schemes plus the admin's own three colours, with a small preview. */
+export const ThemeField = ({ field, value, onChange, id }) => {
+  const current = { ...DEFAULT_THEME, preset: 'adram', ...(value || {}) };
+  const preset = THEME_PRESETS.find((p) => p.id === current.preset);
+  const colours = preset || current;
+  const pick = (p) => onChange({ preset: p.id, primary: p.primary, accent: p.accent, dark: p.dark });
+  const setColour = (role) => (hex) => onChange({ ...colours, preset: 'custom', [role]: hex });
+  const unreadable = contrast(colours.primary, '#ffffff') < 3;
+  return (
+    <div className="cf-theme">
+      <p className="cf-theme__label">{field.label}</p>
+      <div className="cf-theme__presets" role="radiogroup" aria-label={field.label}>
+        {[...THEME_PRESETS, { primary: colours.primary, accent: colours.accent, dark: colours.dark, id: 'custom', label: 'Your own' }].map((p) => (
+          <button key={p.id} type="button" role="radio" aria-checked={current.preset === p.id}
+            className={`cf-theme__preset${current.preset === p.id ? ' is-active' : ''}`}
+            onClick={() => (p.id === 'custom' ? onChange({ ...colours, preset: 'custom' }) : pick(p))}>
+            <span className="cf-theme__swatch" style={{ background: p.dark }} aria-hidden="true">
+              <i style={{ background: p.primary }} />
+              <i style={{ background: p.accent }} />
+            </span>
+            {p.id === 'custom' && <i className="fas fa-palette" aria-hidden="true" />} {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="cf-theme__colours">
+        {COLOUR_ROLES.map(([role, label, hint]) => (
+          <ColourInput key={role} id={`${id}-${role}`} label={label} hint={hint} value={colours[role]} onChange={setColour(role)} />
+        ))}
+      </div>
+      {unreadable && <p className="cf-theme__warn"><i className="fas fa-triangle-exclamation" aria-hidden="true" /> White text on this main colour is hard to read. A darker main colour works better for buttons.</p>}
+      <div className="cf-theme__preview" style={{ background: colours.dark }} aria-label="Preview">
+        <strong style={{ backgroundImage: `linear-gradient(120deg, ${colours.primary}, ${colours.accent})` }}>Building solutions</strong>
+        <span className="cf-theme__btn" style={{ background: colours.primary }}>Get started</span>
+        <span className="cf-theme__chip" style={{ color: colours.accent, borderColor: colours.accent }}>New</span>
+      </div>
+      <p className="hint">Changes show across the website and portal once you save.</p>
     </div>
   );
 };
@@ -290,6 +375,8 @@ export const ContentField = ({ field, value, onChange, id, error }) => {
       return <ImageField field={field} value={value || ''} onChange={onChange} id={id} />;
     case 'icon':
       return <IconField field={field} value={value || ''} onChange={onChange} id={id} />;
+    case 'theme':
+      return <ThemeField field={field} value={value} onChange={onChange} id={id} />;
     case 'weekdays':
       return <WeekdaysField field={field} value={value} onChange={onChange} id={id} />;
     case 'list':

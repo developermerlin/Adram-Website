@@ -95,6 +95,7 @@ class Lesson(models.Model):
     late_penalty_percent = models.PositiveSmallIntegerField(default=10, help_text='Penalty: the share of the grade taken off late work.')
     max_files = models.PositiveSmallIntegerField(default=1, help_text='Assignment: how many files may be handed in at once.')
     rubric = models.JSONField(default=list, blank=True, help_text='Assignment: grading criteria [{title, description, points}].')
+    peer_reviews = models.PositiveSmallIntegerField(default=0, help_text='Assignment: classmates each student reviews after handing in (0 = none).')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -120,6 +121,23 @@ class Resource(models.Model):
 
     class Meta:
         ordering = ['sort_order', 'id']
+
+
+def caption_upload_to(instance, filename):
+    return f'lms/captions/{uuid.uuid4().hex}.vtt'
+
+
+class LessonCaption(models.Model):
+    """Subtitles for an uploaded video, in one language (a WebVTT file; .srt is converted on upload)."""
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='captions')
+    language = models.CharField(max_length=10, help_text='A language code: en, fr, kri…')
+    label = models.CharField(max_length=40, help_text='Shown in the player: English, Français, Krio…')
+    file = models.FileField(upload_to=caption_upload_to, storage=lms_storage)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['label']
+        constraints = [models.UniqueConstraint(fields=['lesson', 'language'], name='one_caption_per_language')]
 
 
 class QuestionBank(models.Model):
@@ -493,6 +511,8 @@ class Submission(models.Model):
     penalty_percent = models.PositiveSmallIntegerField(default=0, help_text='Taken off the grade because the work was late.')
     raw_grade = models.PositiveSmallIntegerField(null=True, blank=True, help_text='The grade before any late penalty.')
     rubric_scores = models.JSONField(default=list, blank=True, help_text='Points given for each rubric criterion, in order.')
+    similarity = models.PositiveSmallIntegerField(null=True, blank=True, help_text='% of wording shared with another student’s work (highest).')
+    similar_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -509,6 +529,22 @@ class SubmissionFile(models.Model):
 
     class Meta:
         ordering = ['sort_order', 'id']
+
+
+class PeerReview(models.Model):
+    """A student reviewing a classmate's work (names hidden both ways). Claimed first, then completed."""
+    PENDING, DONE = 'pending', 'done'
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='peer_reviews')
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='peer_reviews_given')
+    status = models.CharField(max_length=8, choices=[(PENDING, 'To do'), (DONE, 'Done')], default=PENDING)
+    scores = models.JSONField(default=list, blank=True)
+    comment = models.TextField(blank=True, max_length=3000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    done_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [models.UniqueConstraint(fields=['submission', 'reviewer'], name='review_once')]
 
 
 # ================================================================ shopping
@@ -784,6 +820,9 @@ class LmsSettings(models.Model):
     app_min_version = models.CharField(max_length=20, blank=True, help_text='Older app versions are asked to update (e.g. 1.2.0).')
     offline_days = models.PositiveSmallIntegerField(default=30, help_text='Saved lessons play offline this long before the app must check in.')
     offline_devices = models.PositiveSmallIntegerField(default=3, help_text='Devices a student can keep saved lessons on.')
+    # Anti-sharing
+    max_streams = models.PositiveSmallIntegerField(default=2, help_text='Devices that may play videos at the same time on one account (0 = no limit).')
+    watermark_videos = models.BooleanField(default=True, help_text='Show the student’s email faintly over videos.')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

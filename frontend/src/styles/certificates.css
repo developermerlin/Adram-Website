@@ -16,7 +16,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 22px;
-  background: linear-gradient(90deg, var(--cert-accent), color-mix(in srgb, var(--cert-accent) 55%, #16c8f5));
+  background: linear-gradient(90deg, var(--cert-accent), color-mix(in srgb, var(--cert-accent) 55%, var(--a-400, #16c8f5)));
 }
 .cert--modern .cert__name { border-bottom-color: var(--cert-accent); }
 .cert--modern .cert__seal { background: var(--cert-accent); }
@@ -40,7 +40,7 @@
 .ct-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
 .ct-list { display: grid; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; }
 .ct-list button { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; background: var(--white); text-align: left; font: inherit; cursor: pointer; }
-.ct-list button.is-on { border-color: var(--blue-600); background: #eff6ff; }
+.ct-list button.is-on { border-color: var(--blue-600); background: var(--t-50, #eff6ff); }
 .ct-list button > span { display: flex; align-items: center; gap: 8px; }
 .ct-swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }
 .ct-form { display: grid; gap: 12px; }
@@ -50,7 +50,7 @@
 .ct-color input[type='color'] { width: 44px; height: 40px; padding: 2px; border: 1px solid var(--line, #e2e8f0); border-radius: 8px; background: var(--white); }
 .ct-checks { display: grid; gap: 6px; }
 .ct-checks label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-.ct-checks input, .ct-courses input { width: 16px; height: 16px; accent-color: #2563eb; }
+.ct-checks input, .ct-courses input { width: 16px; height: 16px; accent-color: var(--t-600, #2563eb); }
 .ct-courses__label { display: block; margin-bottom: 6px; font-size: 0.9rem; }
 .ct-courses { display: grid; gap: 4px; max-height: 220px; overflow: auto; padding: 8px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; }
 .ct-courses label { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }

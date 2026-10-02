@@ -206,6 +206,7 @@ export const lmsAPI = {
   deleteSavedSearch: (id) => api.delete(`/v1/lms/me/saved-searches/${id}/`),
   categories: () => api.get('/v1/lms/categories/'),
   related: (slug) => api.get(`/v1/lms/courses/${slug}/related/`),
+  alsoTaken: (slug) => api.get(`/v1/lms/courses/${slug}/also-taken/`),
   viewed: (slug) => api.post(`/v1/lms/courses/${slug}/view/`),
   instructor: (id) => api.get(`/v1/lms/instructors/${id}/`),
   follow: (id, following) => (following ? api.post(`/v1/lms/instructors/${id}/follow/`) : api.delete(`/v1/lms/instructors/${id}/follow/`)),
@@ -225,6 +226,20 @@ export const lmsAPI = {
   premiumEnrol: (slug) => api.post(`/v1/lms/courses/${slug}/premium-enrol/`),
   startInstalments: (slug, parts) => api.post(`/v1/lms/courses/${slug}/instalments/`, withAffiliate({ parts })),
   myInstalments: () => api.get('/v1/lms/me/instalments/'),
+  // study groups
+  courseGroups: (slug) => api.get(`/v1/lms/courses/${slug}/groups/`),
+  createGroup: (slug, data) => api.post(`/v1/lms/courses/${slug}/groups/`, data),
+  myGroups: () => api.get('/v1/lms/me/groups/'),
+  group: (id) => api.get(`/v1/lms/groups/${id}/`),
+  updateGroup: (id, data) => api.patch(`/v1/lms/groups/${id}/`, data),
+  deleteGroup: (id) => api.delete(`/v1/lms/groups/${id}/`),
+  joinGroup: (id, code) => api.post(`/v1/lms/groups/${id}/join/`, code ? { code } : {}),
+  joinGroupByCode: (code) => api.post('/v1/lms/groups/join/', { code }),
+  leaveGroup: (id) => api.post(`/v1/lms/groups/${id}/leave/`),
+  groupPost: (id, body) => api.post(`/v1/lms/groups/${id}/posts/`, { body }),
+  removeGroupPost: (id) => api.delete(`/v1/lms/group-posts/${id}/`),
+  pinGroupPost: (id) => api.post(`/v1/lms/group-posts/${id}/pin/`),
+  removeGroupMember: (id, userId) => api.delete(`/v1/lms/groups/${id}/members/${userId}/`),
   emailPreferences: () => api.get('/v1/lms/me/email-preferences/'),
   saveEmailPreferences: (marketing) => api.put('/v1/lms/me/email-preferences/', { marketing_emails: marketing }),
   unsubscribeInfo: (token) => api.get(`/v1/lms/unsubscribe/${token}/`),
@@ -262,6 +277,9 @@ export const lmsAPI = {
     files.forEach((f) => body.append('files', f));
     return api.post(`/v1/lms/lessons/${id}/submissions/`, body, multipart);
   },
+  // peer review of assignments
+  peerReview: (lessonId) => api.get(`/v1/lms/lessons/${lessonId}/peer-review/`),
+  completePeerReview: (id, data) => api.post(`/v1/lms/peer-reviews/${id}/`, data),
   // assignments due soon or overdue on the student's courses
   deadlines: () => api.get('/v1/lms/me/deadlines/'),
   lessonNotes: (id) => api.get(`/v1/lms/lessons/${id}/notes/`),
@@ -326,6 +344,9 @@ export const lmsAPI = {
     }),
   removeLesson: (id) => api.delete(`/v1/lms/manage/lessons/${id}/`),
   addResource: (lessonId, file, title) => api.post(`/v1/lms/manage/lessons/${lessonId}/resources/`, toForm({ file, title }), multipart),
+  // subtitles for uploaded videos (.vtt or .srt)
+  addCaption: (lessonId, file, language, label) => api.post(`/v1/lms/manage/lessons/${lessonId}/captions/`, toForm({ file, language, label }), multipart),
+  removeCaption: (id) => api.delete(`/v1/lms/manage/captions/${id}/`),
   removeResource: (id) => api.delete(`/v1/lms/manage/resources/${id}/`),
   reorderResources: (lessonId, ids) => api.post(`/v1/lms/manage/lessons/${lessonId}/resources/order/`, { ids }),
   // quiz settings (pass_mark, time_limit_minutes, max_attempts, questions_per_attempt, shuffle_questions, shuffle_choices,

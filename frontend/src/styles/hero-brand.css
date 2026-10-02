@@ -21,13 +21,13 @@
   border-radius: 28px;
   /* A light panel with a gradient edge (blue → cyan → violet) */
   background:
-    radial-gradient(circle at 50% 50%, rgba(47, 107, 255, 0.14), transparent 60%),
-    radial-gradient(circle at 88% 8%, rgba(22, 200, 245, 0.16), transparent 42%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--t-500, #2f6bff) 14%, transparent), transparent 60%),
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--a-400, #16c8f5) 16%, transparent), transparent 42%),
     radial-gradient(circle at 10% 92%, rgba(139, 92, 246, 0.12), transparent 42%),
     linear-gradient(160deg, #ffffff 0%, var(--tint-blue) 100%) padding-box,
-    linear-gradient(135deg, #2f6bff, #16c8f5 45%, #8b5cf6) border-box;
+    linear-gradient(135deg, var(--t-500, #2f6bff), var(--a-400, #16c8f5) 45%, var(--t-700, #8b5cf6)) border-box;
   box-shadow:
-    0 50px 80px -40px rgba(20, 84, 232, 0.55),
+    0 50px 80px -40px color-mix(in srgb, var(--t-600, #1454e8) 55%, transparent),
     0 24px 40px -30px rgba(139, 92, 246, 0.45);
   transform: rotateX(var(--rx)) rotateY(var(--ry));
   transform-style: preserve-3d;
@@ -53,7 +53,7 @@
   width: 64%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #2f6bff, #16c8f5, #8b5cf6, #2f6bff);
+  background: conic-gradient(from 0deg, var(--t-500, #2f6bff), var(--a-400, #16c8f5), var(--t-700, #8b5cf6), var(--t-500, #2f6bff));
   filter: blur(34px);
   opacity: 0.55;
   animation: hero-spin 14s linear infinite;
@@ -75,7 +75,7 @@
   aspect-ratio: 1;
   border: 1px solid rgba(255, 255, 255, 0.9);
   background: radial-gradient(circle, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.15) 70%);
-  box-shadow: inset 0 0 24px rgba(47, 107, 255, 0.12);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--t-500, #2f6bff) 12%, transparent);
   transform: translate(-50%, -50%) translateZ(20px);
 }
 
@@ -96,8 +96,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #16c8f5, var(--blue-600));
-  box-shadow: 0 0 0 4px rgba(22, 200, 245, 0.2), 0 0 16px rgba(22, 200, 245, 0.75);
+  background: linear-gradient(135deg, var(--a-400, #16c8f5), var(--blue-600));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--a-400, #16c8f5) 20%, transparent), 0 0 16px color-mix(in srgb, var(--a-400, #16c8f5) 75%, transparent);
   transform: translateY(-50%);
 }
 
@@ -110,10 +110,10 @@
   border-radius: 50%;
   background:
     var(--white) padding-box,
-    conic-gradient(from 210deg, #2f6bff, #16c8f5, #8b5cf6, #2f6bff) border-box;
+    conic-gradient(from 210deg, var(--t-500, #2f6bff), var(--a-400, #16c8f5), var(--t-700, #8b5cf6), var(--t-500, #2f6bff)) border-box;
   box-shadow:
     0 0 0 8px rgba(255, 255, 255, 0.55),
-    0 26px 44px -18px rgba(20, 84, 232, 0.55),
+    0 26px 44px -18px color-mix(in srgb, var(--t-600, #1454e8) 55%, transparent),
     0 10px 24px -14px rgba(139, 92, 246, 0.5);
   transform: translate(-50%, -50%) translateZ(70px);
 }
@@ -134,7 +134,7 @@
 }
 
 .hero-brand__satellite {
-  --tile: linear-gradient(135deg, #2f6bff, #1454e8);
+  --tile: linear-gradient(135deg, var(--t-500, #2f6bff), var(--t-600, #1454e8));
   --glow: rgba(20, 84, 232, 0.6);
   position: absolute;
   width: 40px;
@@ -156,17 +156,17 @@
 
 .hero-brand__satellite:nth-child(1) { left: 14.6%; top: 14.6%; }
 .hero-brand__satellite:nth-child(2) {
-  --tile: linear-gradient(135deg, #22d3ee, #0891b2);
+  --tile: linear-gradient(135deg, var(--a-400, #22d3ee), var(--a-600, #0891b2));
   --glow: rgba(8, 145, 178, 0.6);
   left: 85.4%; top: 14.6%; animation-delay: -1.5s;
 }
 .hero-brand__satellite:nth-child(3) {
-  --tile: linear-gradient(135deg, #a78bfa, #7c3aed);
+  --tile: linear-gradient(135deg, var(--t-400, #a78bfa), var(--t-800, #7c3aed));
   --glow: rgba(124, 58, 237, 0.55);
   left: 85.4%; top: 85.4%; animation-delay: -3s;
 }
 .hero-brand__satellite:nth-child(4) {
-  --tile: linear-gradient(135deg, #38bdf8, #4f46e5);
+  --tile: linear-gradient(135deg, var(--a-300, #38bdf8), var(--t-700, #4f46e5));
   --glow: rgba(79, 70, 229, 0.55);
   left: 14.6%; top: 85.4%; animation-delay: -4.5s;
 }
@@ -215,7 +215,7 @@
 .hero-brand--interactive:hover {
   transition: transform 0.12s ease-out, box-shadow 0.5s ease;
   box-shadow:
-    0 60px 90px -40px rgba(20, 84, 232, 0.65),
+    0 60px 90px -40px color-mix(in srgb, var(--t-600, #1454e8) 65%, transparent),
     0 30px 50px -30px rgba(139, 92, 246, 0.55);
 }
 
@@ -248,7 +248,7 @@
   transform: translate(-50%, -50%) translateZ(70px) scale(1.07);
   box-shadow:
     0 0 0 12px rgba(255, 255, 255, 0.6),
-    0 34px 54px -18px rgba(20, 84, 232, 0.65),
+    0 34px 54px -18px color-mix(in srgb, var(--t-600, #1454e8) 65%, transparent),
     0 14px 30px -14px rgba(139, 92, 246, 0.6);
 }
 
@@ -311,10 +311,10 @@
   --rx: 0deg;
   --ry: 0deg;
   background:
-    radial-gradient(circle at 50% 50%, rgba(47, 107, 255, 0.35), transparent 62%),
-    radial-gradient(circle at 90% 6%, rgba(22, 200, 245, 0.22), transparent 42%),
-    linear-gradient(160deg, #0f2a78 0%, var(--navy-900) 100%) padding-box,
-    linear-gradient(135deg, #2f6bff, #16c8f5 45%, #8b5cf6) border-box;
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--t-500, #2f6bff) 35%, transparent), transparent 62%),
+    radial-gradient(circle at 90% 6%, color-mix(in srgb, var(--a-400, #16c8f5) 22%, transparent), transparent 42%),
+    linear-gradient(160deg, var(--d-700, #0f2a78) 0%, var(--navy-900) 100%) padding-box,
+    linear-gradient(135deg, var(--t-500, #2f6bff), var(--a-400, #16c8f5) 45%, var(--t-700, #8b5cf6)) border-box;
   box-shadow: 0 40px 70px -40px rgba(14, 22, 48, 0.8);
   transform: none;
   will-change: auto;
@@ -331,11 +331,11 @@
 .hero-brand--flat .hero-brand__ring--inner {
   border-color: rgba(255, 255, 255, 0.18);
   background: radial-gradient(circle, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 70%);
-  box-shadow: inset 0 0 24px rgba(22, 200, 245, 0.16);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--a-400, #16c8f5) 16%, transparent);
 }
 
 .hero-brand--flat .hero-brand__orbit {
-  border-color: rgba(22, 200, 245, 0.5);
+  border-color: color-mix(in srgb, var(--a-400, #16c8f5) 50%, transparent);
 }
 
 .hero-brand--flat .hero-brand__badge {

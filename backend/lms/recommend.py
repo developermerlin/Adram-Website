@@ -76,3 +76,23 @@ def similar(course, candidates, stats, limit=4):
         rows.append((score, other))
     rows.sort(key=lambda r: r[0], reverse=True)
     return [r[1] for r in rows[:limit]]
+
+
+def also_taken(course, limit=4):
+    """Published courses most often taken by this course's students: [(course, shared students)], cached 10 minutes."""
+    from django.core.cache import cache
+    from django.db.models import Count
+    from catalog.models import Course
+    from portal.models import TrainingEnrollment
+    key = f'also-taken:{course.pk}'
+    found = cache.get(key)
+    if found is None:
+        learning = [TrainingEnrollment.ACTIVE, TrainingEnrollment.COMPLETED]
+        students = TrainingEnrollment.objects.filter(course=course, status__in=learning).values('student_id')
+        found = list(TrainingEnrollment.objects.filter(student_id__in=students, status__in=learning, course__is_published=True)
+                     .exclude(course=course).values('course_id').annotate(n=Count('student', distinct=True)).order_by('-n')
+                     .values_list('course_id', 'n')[:limit * 2])
+        cache.set(key, found, 600)
+    courses = {c.id: c for c in Course.objects.filter(pk__in=[cid for cid, _ in found], is_published=True)}
+    return [(courses[cid], n) for cid, n in found if cid in courses][:limit]
+

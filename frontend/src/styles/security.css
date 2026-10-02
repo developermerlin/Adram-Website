@@ -28,7 +28,7 @@
 
 .auth-step { justify-items: center; text-align: center; }
 .auth-step .field { width: 100%; justify-items: center; }
-.auth-step__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--blue-50, #eef4ff); color: var(--blue-600, #2563eb); font-size: 1.4rem; }
+.auth-step__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--blue-50, var(--t-50, #eef4ff)); color: var(--blue-600, var(--t-600, #2563eb)); font-size: 1.4rem; }
 .auth-step__input { margin: 0 auto; }
 .auth-step__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
 

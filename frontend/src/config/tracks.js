@@ -24,7 +24,7 @@ export const TRACK_ORDER = ['training', 'scholarships'];
 
 // Pages that belong to one side (anything else, like messages or the profile, is shared).
 const PATHS = {
-  training: ['/student/dashboard/training', '/student/learning', '/student/progress', '/student/referrals', '/student/affiliate', '/student/certificates', '/student/purchases', '/student/training'],
+  training: ['/student/dashboard/training', '/student/learning', '/student/progress', '/student/groups', '/student/referrals', '/student/affiliate', '/student/certificates', '/student/purchases', '/student/training'],
   scholarships: ['/student/dashboard/scholarships', '/student/applications', '/student/saved'],
 };
 

@@ -56,6 +56,15 @@ export const AssignmentSettings = ({ id, form, set }) => {
           </div>
         )}
         <div className="field">
+          <label htmlFor={`peer-${id}`}>Peer review</label>
+          <select id={`peer-${id}`} className="input" value={form.peer_reviews} onChange={(e) => set('peer_reviews')(Number(e.target.value))}>
+            <option value={0}>Off</option>
+            <option value={1}>Each student reviews 1 classmate</option>
+            <option value={2}>Each student reviews 2 classmates</option>
+            <option value={3}>Each student reviews 3 classmates</option>
+          </select>
+        </div>
+        <div className="field">
           <label htmlFor={`files-${id}`}>Files students can hand in</label>
           <input id={`files-${id}`} type="number" min="1" max="10" className="input" value={form.max_files} onChange={(e) => set('max_files')(e.target.value)} />
         </div>

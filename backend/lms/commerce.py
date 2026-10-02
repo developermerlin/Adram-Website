@@ -410,7 +410,7 @@ class SettingsSerializer(serializers.ModelSerializer):
                   'payout_hold_days', 'min_withdrawal', 'referrals_enabled', 'referral_friend_percent', 'referral_reward_percent',
                   'referral_valid_days', 'affiliates_enabled', 'affiliate_percent', 'affiliate_cookie_days',
                   'premium_enabled', 'instalments_enabled', 'instalment_min_price', 'instalment_max_parts', 'instalment_grace_days',
-                  'push_enabled', 'app_min_version', 'offline_days', 'offline_devices', 'updated_at']
+                  'push_enabled', 'app_min_version', 'offline_days', 'offline_devices', 'max_streams', 'watermark_videos', 'updated_at']
         read_only_fields = ['updated_at']
 
 

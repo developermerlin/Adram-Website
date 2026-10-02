@@ -36,7 +36,7 @@ Status key: **Have** = built and tested · **Partial** = the base exists, the br
 | Feature | Status | Notes |
 |---|---|---|
 | Recommendations (history, wishlist, enrolments, interests) | Have | Rule-based scorer in `lms/recommend.py`, swappable |
-| Similar-student behaviour ("students also bought") | Missing | Needs co-enrolment matrix |
+| Similar-student behaviour ("students also bought") | **Done** | "Students also took" on course pages (recommend.also_taken, cached) |
 | AI recommendations | Missing | Plug into the recommender interface (Phase 3) |
 | Personalised home rows | Partial | Catalogue rows + "Recommended for you"; no per-user home layout |
 | Sorting: relevance, rating, popular, newest, price low/high | Have | `sort` parameter in catalogue search |
@@ -60,17 +60,17 @@ Status key: **Have** = built and tested · **Partial** = the base exists, the br
 |---|---|---|
 | YouTube, Vimeo, uploaded video | Have | |
 | Signed URLs, access verification, resume, speed, fullscreen | Have | Resume works for all three sources |
-| Picture-in-picture, keyboard shortcuts | Partial | Browser defaults only; no custom shortcuts |
+| Picture-in-picture, keyboard shortcuts | **Done** | PiP button + 10 shortcuts (Space/K, arrows, J/L, M, F, C, P, </>, ?) for uploaded videos |
 | Encoding server, HLS, adaptive bitrate, 360p–1080p | Missing | Needs ffmpeg workers + storage |
-| Automatic subtitles, transcripts, transcript search | Missing | Caption *languages* can be listed by admin, but no caption files |
+| Automatic subtitles, transcripts, transcript search | **Half** | Uploaded .vtt/.srt subtitle files per language (lms/captions.py); automatic (AI) subtitles skipped with Phase 3 |
 
 ### 4. Student analytics
 | Feature | Status | Notes |
 |---|---|---|
 | Learning hours, lessons/courses completed, quiz average | Have | Training dashboard |
 | Streak, goals, daily target, progress graph | **Done** | /student/progress page + dashboard streak card (lms/learning_analytics.py) |
-| Assignment performance, skills achieved | Missing | |
-| Completion prediction | Missing | |
+| Assignment performance, skills achieved | **Done** | My progress page: assignments, quizzes, skills (lms/learning_analytics.py) |
+| Completion prediction | **Done** | "Probably done by" per course on My progress |
 | Continue learning everywhere | Have | Course page, dashboards, player, any device |
 
 ### 5. Quiz engine
@@ -80,15 +80,15 @@ Status key: **Have** = built and tested · **Partial** = the base exists, the br
 | Fill in the blank, matching | **Done** | lms/questions.py; quiz player + editors |
 | Random selection, shuffling (questions and choices), timer, attempts, pass mark, auto-grading, explanations | Have | |
 | Question bank, categories, difficulty | **Done** | lms/question_bank.py, QuizRule random draws, CSV import, per-question stats |
-| Quiz analytics (per question) | Missing | |
+| Quiz analytics (per question) | **Done** | Answered / right % on every bank question |
 
 ### 6. Assignments
 | Feature | Status | Notes |
 |---|---|---|
 | Text and file submission, grading, feedback, resubmission | Have | |
 | Multiple files, deadlines, rubrics | **Done** | lms/assignments.py: due date or days after enrolling, late policy, rubric grading, up to 10 files, /lms/me/deadlines/, send_deadline_reminders command |
-| Peer review | Missing | |
-| Plagiarism detection | Missing | Needs an external service or in-house similarity check |
+| Peer review | **Done** | Anonymous classmate reviews with rubric scores + comments (lms/peer.py) |
+| Plagiarism detection | **Done** (in-house) | Similarity check between classmates’ hand-ins: text, code files, .docx (lms/similarity.py); not against the web |
 
 ### 7. Certificates
 | Feature | Status | Notes |
@@ -104,7 +104,7 @@ Status key: **Have** = built and tested · **Partial** = the base exists, the br
 | Lesson-level questions | Have | Q&A tab in the player |
 | Timestamped notes (private) | Have | |
 | Pin discussions, mark best answer | **Done** | Thread.is_pinned (staff), Reply.is_accepted (asker), ThreadVote upvotes, sort by votes |
-| Public timestamp comments, study groups | **Half** | Questions at a video moment with jump-to links (YouTube, Vimeo, uploads); study groups not done |
+| Public timestamp comments, study groups | **Done** | Questions at a video moment; study groups with board + shared progress (lms/groups.py) |
 
 ### 9. Instructor marketplace
 | Feature | Status | Notes |
@@ -153,7 +153,7 @@ Status key: **Have** = built and tested · **Partial** = the base exists, the br
 | Login history | Partial | Activity log records sign-ins |
 | Device/session list, sign out other devices | Have | Added 2 Oct 2026; sign-out takes effect immediately |
 | Download protection | Partial | Signed links, per-course download switches |
-| DRM, anti-sharing (concurrent session limits, watermark) | Missing | |
+| DRM, anti-sharing (concurrent session limits, watermark) | **Mostly** | Devices playing at once + take-over, moving email watermark (lms/streams.py); real DRM needs a video service |
 
 ### 15. Mobile readiness
 | Feature | Status | Notes |

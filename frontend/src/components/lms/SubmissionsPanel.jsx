@@ -121,6 +121,7 @@ export const SubmissionsPanel = ({ slug }) => {
             <button type="button" className="sp-item" onClick={() => setOpen(open === sub.id ? null : sub.id)} aria-expanded={open === sub.id}>
               <span className="sp-item__who"><strong>{sub.student.name}</strong><small className="muted">{sub.lesson.title} · {formatDateTime(sub.created_at)}{sub.lesson.due_at ? ` · due ${formatDateTime(sub.lesson.due_at)}` : ''}</small></span>
               {sub.is_late && <span className="badge badge--amber">Late{sub.penalty_percent ? ` −${sub.penalty_percent}%` : ''}</span>}
+              {sub.similarity?.flag && <span className="badge badge--red" title={`Shares ${sub.similarity.percent}% of its wording with ${sub.similarity.with}’s work`}><i className="fas fa-clone" /> {sub.similarity.percent}% similar</span>}
               {sub.grade != null && <span className="sp-item__grade">{sub.grade}/{sub.max_points}</span>}
               <StatusPill status={TONE[sub.status]} label={sub.status_display} />
               <i className={`fas fa-chevron-${open === sub.id ? 'up' : 'down'}`} aria-hidden="true" />
@@ -128,7 +129,21 @@ export const SubmissionsPanel = ({ slug }) => {
             {open === sub.id && (
               <div className="sp-body">
                 {sub.text ? <div className="asg-sub__text">{paragraphs(sub.text).map((p) => <p key={p.slice(0, 40)}>{p}</p>)}</div> : <p className="muted">No written answer.</p>}
+                {sub.similarity?.flag && (
+                  <p className="sp-similar"><i className="fas fa-triangle-exclamation" aria-hidden="true" /> {sub.similarity.percent}% of this work’s wording also appears in {sub.similarity.with}’s submission. Shared starter code or a quoted question can explain it: compare before deciding.</p>
+                )}
                 <Files files={sub.files} />
+                {sub.peer_reviews?.length > 0 && (
+                  <details className="pr-instructor">
+                    <summary>Peer reviews ({sub.peer_reviews.length})</summary>
+                    {sub.peer_reviews.map((r, i) => (
+                      <div key={i} className="pr-received__item">
+                        <strong>{r.reviewer}</strong>{r.scores.length > 0 && <small className="muted"> · scores {r.scores.join(' + ')}</small>}
+                        <p>{r.comment}</p>
+                      </div>
+                    ))}
+                  </details>
+                )}
                 <GradeForm sub={sub} onGraded={() => { setOpen(null); load(); }} />
               </div>
             )}

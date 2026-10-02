@@ -10,7 +10,7 @@
 .cp-rules__row--picks { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
 .cp-rules label { display: grid; gap: 4px; font-size: 0.82rem; font-weight: 600; }
 .cp-check { display: flex !important; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 500 !important; }
-.cp-check input, .cp-pick input { width: 16px; height: 16px; accent-color: #2563eb; }
+.cp-check input, .cp-pick input { width: 16px; height: 16px; accent-color: var(--t-600, #2563eb); }
 .cp-pick { border: 1px solid var(--line, #dfe5ef); border-radius: 8px; background: var(--white, #fff); }
 .cp-pick summary { padding: 8px 10px; cursor: pointer; font-size: 0.86rem; font-weight: 600; }
 .cp-pick__list { display: grid; gap: 4px; max-height: 180px; overflow: auto; padding: 0 10px 10px; }
@@ -19,7 +19,7 @@
 .cp-count strong { font-size: 1.15rem; }
 .cp-segments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .cp-segment { padding: 4px 10px; border: 1px solid var(--line, #dfe5ef); border-radius: 999px; background: var(--white, #fff); font: inherit; font-size: 0.82rem; cursor: pointer; }
-.cp-segment:hover { border-color: var(--blue-600, #2563eb); }
+.cp-segment:hover { border-color: var(--blue-600, var(--t-600, #2563eb)); }
 .cp-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .cp-side { position: sticky; top: 90px; }
 .cp-preview { overflow: hidden; border: 1px solid var(--line, #e2e8f0); border-radius: 12px; background: #f1f5f9; }
@@ -28,12 +28,12 @@
 .cp-preview__mail h3 { margin: 4px 0; }
 .cp-preview__mail p { margin: 0; white-space: pre-line; }
 .cp-preview__mail small { margin-top: 10px; color: #64748b; text-decoration: underline; }
-.cp-preview__pill { justify-self: start; padding: 2px 10px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 0.72rem; font-weight: 700; }
-.cp-preview__btn { justify-self: start; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: #1454e8; color: #fff; font-weight: 700; }
+.cp-preview__pill { justify-self: start; padding: 2px 10px; border-radius: 999px; background: var(--t-100, #dbeafe); color: var(--t-700, #1d4ed8); font-size: 0.72rem; font-weight: 700; }
+.cp-preview__btn { justify-self: start; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: var(--t-600, #1454e8); color: #fff; font-weight: 700; }
 
 .unsub-page { padding: 56px 0 72px; }
 .unsub-card { display: grid; justify-items: center; gap: 12px; max-width: 520px; margin: 0 auto; padding: 36px; text-align: center; }
-.unsub-card > i { color: var(--blue-600, #2563eb); font-size: 2.4rem; }
+.unsub-card > i { color: var(--blue-600, var(--t-600, #2563eb)); font-size: 2.4rem; }
 .unsub-card h1 { margin: 0; font-size: 1.6rem; }
 .unsub-card p { margin: 0; }
 

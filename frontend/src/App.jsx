@@ -7,11 +7,13 @@ import AppRoutes from './routes/AppRoutes';
 import { BrandDefs } from './components/brand/BrandIcon';
 import PageMeta from './content/PageMeta';
 import TextOverrides from './components/admin/TextOverrides';
+import SiteTheme from './components/layout/SiteTheme';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SiteTheme />
         <BrandDefs />
         <ScrollManager />
         <ReferralCatcher />

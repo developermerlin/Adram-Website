@@ -1,0 +1,49 @@
+/* =====================================================================
+   Site colour scheme (content/theme.js). Only active when the admin picked
+   colours other than ADRAM blue: <html data-site-theme> with --t-primary,
+   --t-accent and --t-dark set inline. Every shade comes from those three.
+   Stylesheets use var(--t-600, #2563eb) and the like, so with no scheme set
+   the original colours apply unchanged.
+   ===================================================================== */
+:root[data-site-theme] {
+  /* main colour, light to dark */
+  --t-50: color-mix(in srgb, var(--t-primary) 7%, white);
+  --t-100: color-mix(in srgb, var(--t-primary) 15%, white);
+  --t-200: color-mix(in srgb, var(--t-primary) 28%, white);
+  --t-300: color-mix(in srgb, var(--t-primary) 45%, white);
+  --t-400: color-mix(in srgb, var(--t-primary) 68%, white);
+  --t-500: color-mix(in srgb, var(--t-primary) 86%, white);
+  --t-600: var(--t-primary);
+  --t-700: color-mix(in srgb, var(--t-primary) 82%, black);
+  --t-800: color-mix(in srgb, var(--t-primary) 64%, black);
+  --t-900: color-mix(in srgb, var(--t-primary) 48%, black);
+  --t-mid: color-mix(in srgb, var(--t-primary) 55%, var(--t-accent));
+  /* second colour */
+  --a-50: color-mix(in srgb, var(--t-accent) 12%, white);
+  --a-300: color-mix(in srgb, var(--t-accent) 62%, white);
+  --a-400: var(--t-accent);
+  --a-600: color-mix(in srgb, var(--t-accent) 72%, black);
+  /* dark colour (banners, footer) */
+  --d-700: color-mix(in srgb, var(--t-dark) 72%, var(--t-primary));
+  --d-800: color-mix(in srgb, var(--t-dark) 84%, var(--t-primary));
+  --d-900: var(--t-dark);
+  --d-950: color-mix(in srgb, var(--t-dark) 70%, black);
+
+  /* the original design tokens (global.css) */
+  --navy-950: var(--d-950);
+  --navy-900: var(--d-900);
+  --navy-800: var(--d-800);
+  --blue-700: var(--t-700);
+  --blue-600: var(--t-600);
+  --blue-500: var(--t-500);
+  --blue-50: var(--t-50);
+  --cyan-400: var(--a-400);
+  --cyan-300: var(--a-300);
+  --tint-blue: color-mix(in srgb, var(--t-primary) 5%, white);
+  --tint-cyan: var(--a-50);
+  --border-blue: color-mix(in srgb, var(--t-primary) 25%, white);
+  --brand-gradient: linear-gradient(120deg, var(--t-700) 0%, var(--t-mid) 55%, var(--a-400) 100%);
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--t-dark) 6%, transparent), 0 2px 8px color-mix(in srgb, var(--t-dark) 5%, transparent);
+  --shadow: 0 10px 30px -12px color-mix(in srgb, var(--t-dark) 22%, transparent);
+  --shadow-lg: 0 30px 60px -24px color-mix(in srgb, var(--t-dark) 35%, transparent);
+}

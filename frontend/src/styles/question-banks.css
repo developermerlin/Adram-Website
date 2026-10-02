@@ -47,8 +47,8 @@
 .qbk-grid .skeleton--block { min-height: 150px; }
 .qbk-card { display: grid; gap: 8px; align-content: start; padding: 18px; }
 .qbk-card__title { display: flex; align-items: center; gap: 8px; color: inherit; font-size: 1.05rem; font-weight: 700; text-decoration: none; }
-.qbk-card__title i { color: var(--blue-600, #2563eb); }
-.qbk-card__title:hover { color: var(--blue-600, #2563eb); }
+.qbk-card__title i { color: var(--blue-600, var(--t-600, #2563eb)); }
+.qbk-card__title:hover { color: var(--blue-600, var(--t-600, #2563eb)); }
 .qbk-card p { margin: 0; }
 .qbk-card__meta { display: flex; gap: 16px; color: var(--muted, #64748b); }
 .qbk-card__meta strong { color: var(--text, #111827); }
@@ -66,7 +66,7 @@
 button.qbk-cat { padding-right: 12px; }
 .qbk-cat > button { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
 .qbk-cat small { color: var(--muted, #64748b); }
-.qbk-cat.is-on { border-color: var(--blue-600, #2563eb); background: #eff6ff; color: var(--blue-700, #1d4ed8); font-weight: 600; }
+.qbk-cat.is-on { border-color: var(--blue-600, var(--t-600, #2563eb)); background: var(--t-50, #eff6ff); color: var(--blue-700, var(--t-700, #1d4ed8)); font-weight: 600; }
 .qbk-cat .qbk-cat__tool { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--muted, #94a3b8); font-size: 0.7rem; }
 .qbk-cat .qbk-cat__tool:hover { background: var(--surface, #f1f5f9); color: var(--text, #111827); }
 .qbk-cats__add { display: flex; gap: 6px; margin-left: auto; }

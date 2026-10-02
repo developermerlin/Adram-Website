@@ -6,6 +6,7 @@ import { assetUrl } from '../../utils/assets';
 import { formatDateTime } from '../../utils/format';
 import { formatSize, paragraphs } from '../../utils/lms';
 import '../../styles/assignments.css';
+import { PeerReviewBox } from './PeerReviewBox';
 
 const TONE = { submitted: 'processing', approved: 'successful', rejected: 'failed' };
 
@@ -201,6 +202,8 @@ export const AssignmentPane = ({ lesson, canTrack, onChanged }) => {
       {canTrack && info.latest && !info.can_submit && !info.closed && info.latest.status !== 'approved' && (
         <p className="muted small">This assignment can only be handed in once.</p>
       )}
+
+      {canTrack && info.peer_reviews > 0 && <PeerReviewBox key={info.latest?.id || 'none'} lessonId={lesson.id} />}
 
       {info.history?.length > 0 && (
         <details className="asg-block asg-history">

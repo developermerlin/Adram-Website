@@ -8,6 +8,8 @@ from django.conf import settings
 from django.core import signing
 from django.http import HttpResponse, StreamingHttpResponse
 
+mimetypes.add_type('text/vtt', '.vtt')  # subtitles: browsers only play them with this type
+
 SALT = 'lms-media'
 TOKEN_MAX_AGE = 6 * 60 * 60  # a link to a video or file stays valid for six hours
 

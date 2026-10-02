@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import administration, affiliates, assignments, builder, campaigns, certificates, commerce, community, discovery, enrolment, followers, gifting, groups, insights, instructor, learning_analytics, marketing, materials, mobile, premium, question_bank, referrals, search, topics, views, withdrawals
+from . import administration, affiliates, assignments, builder, campaigns, captions, certificates, commerce, community, discovery, enrolment, followers, gifting, groups, insights, instructor, learning_analytics, marketing, materials, mobile, peer, premium, question_bank, referrals, search, topics, views, withdrawals
 
 app_name = 'lms'
 
@@ -69,6 +69,7 @@ urlpatterns = [
     path('courses/<slug:slug>/', views.CourseOutlineView.as_view(), name='outline'),
     path('courses/<slug:slug>/view/', discovery.CourseViewedView.as_view(), name='course_viewed'),
     path('courses/<slug:slug>/related/', discovery.RelatedView.as_view(), name='related'),
+    path('courses/<slug:slug>/also-taken/', discovery.AlsoTakenView.as_view(), name='also_taken'),
     path('courses/<slug:slug>/certificate/', views.CertificateView.as_view(), name='certificate'),
     path('courses/<slug:slug>/reviews/', views.ReviewsView.as_view(), name='reviews'),
     path('courses/<slug:slug>/notes/', views.CourseNotesView.as_view(), name='course_notes'),
@@ -157,6 +158,8 @@ urlpatterns = [
     path('manage/bank-categories/<int:pk>/', question_bank.BankCategoryDetailView.as_view(), name='bank_category'),
     path('manage/bank-questions/<int:pk>/', question_bank.BankQuestionDetailView.as_view(), name='bank_question'),
     path('me/deadlines/', assignments.MyDeadlinesView.as_view(), name='my_deadlines'),
+    path('lessons/<int:pk>/peer-review/', peer.PeerReviewView.as_view(), name='peer_review'),
+    path('peer-reviews/<int:pk>/', peer.CompleteReviewView.as_view(), name='peer_review_done'),
     path('manage/courses/<slug:slug>/curriculum/', builder.CurriculumView.as_view(), name='curriculum'),
     path('manage/courses/<slug:slug>/sections/', builder.SectionsView.as_view(), name='sections'),
     path('manage/courses/<slug:slug>/reorder/', builder.ReorderView.as_view(), name='reorder'),
@@ -168,6 +171,8 @@ urlpatterns = [
     path('manage/lessons/<int:pk>/', builder.LessonDetailView.as_view(), name='manage_lesson'),
     path('manage/lessons/<int:pk>/resources/', builder.ResourcesView.as_view(), name='resources'),
     path('manage/lessons/<int:pk>/quiz/', builder.QuizView.as_view(), name='manage_quiz'),
+    path('manage/lessons/<int:pk>/captions/', captions.CaptionsView.as_view(), name='lesson_captions'),
+    path('manage/captions/<int:pk>/', captions.CaptionView.as_view(), name='caption'),
     path('manage/resources/<int:pk>/', builder.ResourceDetailView.as_view(), name='resource'),
     path('manage/lessons/<int:pk>/resources/order/', builder.ResourceOrderView.as_view(), name='resource_order'),
     path('admin/users/<int:pk>/', administration.EditUserView.as_view(), name='admin_edit_user'),

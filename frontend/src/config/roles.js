@@ -30,6 +30,7 @@ const STUDENT_SIDES = {
     { to: '/student/dashboard/training', label: 'Overview', icon: 'fa-gauge-high', end: true },
     { to: '/student/learning', label: 'My learning', icon: 'fa-circle-play' },
     { to: '/student/progress', label: 'My progress', icon: 'fa-chart-line' },
+    { to: '/student/groups', label: 'Study groups', icon: 'fa-people-group' },
     { to: '/student/referrals', label: 'Invite friends', icon: 'fa-user-plus' },
     { to: '/student/affiliate', label: 'Affiliate programme', icon: 'fa-handshake' },
     { to: '/student/training', label: 'My training', icon: 'fa-laptop-code', requires: 'training' },

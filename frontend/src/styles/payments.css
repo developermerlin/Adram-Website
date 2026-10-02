@@ -17,12 +17,12 @@
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.htp-pick__option i { margin-bottom: 4px; font-size: 1.1rem; color: var(--blue-600, #2563eb); }
+.htp-pick__option i { margin-bottom: 4px; font-size: 1.1rem; color: var(--blue-600, var(--t-600, #2563eb)); }
 .htp-pick__option--orange_money i { color: #ff7900; }
 .htp-pick__option--afrimoney i { color: #7a1fa2; }
 .htp-pick__option small { color: var(--muted, #64748b); font-size: 0.8rem; }
-.htp-pick__option:hover { border-color: var(--blue-300, #93c5fd); }
-.htp-pick__option.is-on { border-color: var(--blue-600, #2563eb); background: var(--blue-50, #eef4ff); }
+.htp-pick__option:hover { border-color: var(--blue-300, var(--t-300, #93c5fd)); }
+.htp-pick__option.is-on { border-color: var(--blue-600, var(--t-600, #2563eb)); background: var(--blue-50, var(--t-50, #eef4ff)); }
 .htp-pick__option--orange_money.is-on { border-color: #ff7900; background: #fff5ec; }
 .htp-pick__option--afrimoney.is-on { border-color: #7a1fa2; background: #f7eefb; }
 
@@ -46,4 +46,4 @@
 .pay-check__dup { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 8px; background: #fef2f2; color: #991b1b; font-size: 0.9rem; }
 .pay-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
 .pay-reasons button { padding: 4px 10px; border: 1px solid var(--line, #dfe5ef); border-radius: 999px; background: var(--white, #fff); color: var(--text, #1f2937); font: inherit; font-size: 0.82rem; cursor: pointer; }
-.pay-reasons button:hover { border-color: var(--blue-300, #93c5fd); }
+.pay-reasons button:hover { border-color: var(--blue-300, var(--t-300, #93c5fd)); }

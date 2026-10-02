@@ -34,6 +34,8 @@ from .media import MAX_RESOURCE_MB, VIDEO_EXTENSIONS, embed_url, looks_like_vide
 from .models import Certificate, Choice, Lesson, Progress, Question, QuestionCategory, QuizAttempt, QuizRule, Resource, Section, Submission
 from .notify import notify
 from . import assignments
+from .peer import peer_reviews_for
+from .similarity import similarity_data
 from .question_bank import banks_for
 from .questions import clean_question, for_author
 from .views import BLOCKED_EXTENSIONS, quiz_ready, submission_data
@@ -80,6 +82,9 @@ def lesson_admin_data(lesson, user_id):
         'late_penalty_percent': lesson.late_penalty_percent,
         'max_files': lesson.max_files,
         'rubric': lesson.rubric or [],
+        'peer_reviews': lesson.peer_reviews,
+        'captions': [{'id': c.id, 'language': c.language, 'label': c.label,
+                      'url': f'/api/v1/lms/media/caption/{c.id}/?t={sign("caption", c.id, user_id)}'} for c in lesson.captions.all()],
         'resources': [
             {'id': r.id, 'title': r.title, 'filename': r.filename, 'size': r.size,
              'url': f'/api/v1/lms/media/resource/{r.id}/?t={sign("resource", r.id, user_id)}'}
@@ -139,6 +144,7 @@ class LessonInput(serializers.Serializer):
     late_penalty_percent = serializers.IntegerField(min_value=0, max_value=100, required=False)
     max_files = serializers.IntegerField(min_value=1, max_value=assignments.MAX_FILES, required=False)
     rubric = serializers.JSONField(required=False)
+    peer_reviews = serializers.IntegerField(min_value=0, max_value=3, required=False)
 
     def validate_rubric(self, value):
         try:
@@ -166,7 +172,7 @@ class LessonInput(serializers.Serializer):
 
 SIMPLE_FIELDS = ('title', 'kind', 'summary', 'body', 'duration_seconds', 'is_preview', 'is_published', 'is_required', 'pass_mark',
                  'time_limit_minutes', 'max_attempts', 'questions_per_attempt', 'shuffle_questions', 'shuffle_choices', 'show_answers',
-                 'max_points', 'allow_resubmit', 'due_at', 'due_days', 'late_policy', 'late_penalty_percent', 'max_files', 'rubric')
+                 'max_points', 'allow_resubmit', 'due_at', 'due_days', 'late_policy', 'late_penalty_percent', 'max_files', 'rubric', 'peer_reviews')
 
 
 def apply_lesson(lesson, data):
@@ -517,7 +523,8 @@ class StudentsView(Manage):
 class CourseSubmissionsView(Manage):
     def get(self, request, slug):
         course = course_for(request, slug)
-        subs = Submission.objects.filter(lesson__section__course=course).select_related('lesson', 'enrollment__student').prefetch_related('files')
+        subs = (Submission.objects.filter(lesson__section__course=course)
+                .select_related('lesson', 'enrollment__student', 'similar_to__enrollment__student').prefetch_related('files'))
         wanted = request.query_params.get('status')
         if wanted in dict(Submission.STATUSES):
             subs = subs.filter(status=wanted)
@@ -527,6 +534,8 @@ class CourseSubmissionsView(Manage):
             'submissions': [{**submission_data(s, request.user.id),
                              'lesson': {'id': s.lesson_id, 'title': s.lesson.title, 'rubric': s.lesson.rubric or [],
                                         'due_at': assignments.due_for(s.lesson, s.enrollment)},
+                             'peer_reviews': peer_reviews_for(s),
+                             'similarity': similarity_data(s),
                              'student': {'id': s.enrollment.student_id, 'name': s.enrollment.student.get_full_name() or s.enrollment.student.email}}
                             for s in subs[:300]],
         })

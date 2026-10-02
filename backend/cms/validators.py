@@ -1,5 +1,6 @@
 """Checks on what the admin portal sends, so a page's JSON cannot carry unsafe or oversized content."""
 import json
+import re
 
 from rest_framework import serializers
 
@@ -8,6 +9,8 @@ MAX_DEPTH = 8
 MAX_STRING = 8_000
 MAX_LIST = 500
 UNSAFE_SCHEMES = ('javascript:', 'data:', 'vbscript:')
+HEX_COLOUR = re.compile(r'^#[0-9a-fA-F]{6}$')
+THEME_COLOURS = ('primary', 'accent', 'dark')
 
 
 def _check(value, depth=0):
@@ -37,6 +40,14 @@ def validate_page_data(data):
     if not isinstance(data, dict):
         raise serializers.ValidationError('Page content must be an object.')
     _check(data)
+    theme = data.get('theme')
+    if theme is not None:
+        # The site colour scheme is written into the page's CSS, so only plain #rrggbb colours are accepted.
+        if not isinstance(theme, dict) or not isinstance(theme.get('preset', ''), str):
+            raise serializers.ValidationError('Invalid colour scheme.')
+        for key in THEME_COLOURS:
+            if key in theme and not (isinstance(theme[key], str) and HEX_COLOUR.match(theme[key])):
+                raise serializers.ValidationError('Colours must look like #1454e8.')
     if len(json.dumps(data)) > MAX_BYTES:
         raise serializers.ValidationError('This page has too much content.')
     return data

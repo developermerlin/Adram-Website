@@ -2,7 +2,7 @@
 //
 // A section groups fields. A field is { type, path, label, hint?, ... }, where `path` says where its value is
 // kept in the page's content (e.g. 'hero.title'); it must match content/defaults.js.
-//   type: 'text' | 'textarea' | 'link' | 'image' | 'icon' | 'number' | 'select' | 'weekdays'
+//   type: 'text' | 'textarea' | 'link' | 'image' | 'icon' | 'number' | 'select' | 'weekdays' | 'theme'
 //       | 'strings' (a list of short lines)
 //       | 'list' (a list of cards: `fields` describe each card, `titleField` is the path shown as its heading)
 // Add a page here (and to CONTENT_PAGES in backend/cms/models.py and to content/defaults.js) to make it editable.
@@ -67,7 +67,7 @@ export const contentPages = [
     slug: 'site',
     label: 'Contact details & footer',
     icon: 'fa-address-card',
-    description: 'Company name, phone numbers, email, address, opening hours and social links. Shown in the header, footer, contact page and buttons across the whole website.',
+    description: 'Company name, colours, phone numbers, email, address, opening hours and social links. Shown in the header, footer, contact page and buttons across the whole website.',
     publicPath: '/contact',
     sections: [
       {
@@ -83,6 +83,12 @@ export const contentPages = [
           image('heroLogo', 'Logo on the home banner', { hint: 'The larger logo shown in the round badge on the home page banner and About page.' }),
           area('footerBlurb', 'Footer description', { hint: `The short paragraph under the logo in the footer. ${TOKENS}` }),
         ],
+      },
+      {
+        id: 'colours',
+        title: 'Colours',
+        description: 'The colour scheme of the whole website and portal: buttons, links, banners, the footer and the drawings. Pick a ready-made scheme or your own three colours. Each portal user can still choose their own accent colour for their dashboard.',
+        fields: [{ type: 'theme', path: 'theme', label: 'Colour scheme' }],
       },
       {
         id: 'icons',

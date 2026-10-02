@@ -514,6 +514,15 @@ const Settings = () => {
         <TextField label="Saved lessons work offline for (days)" type="number" min="1" name="offline_days" value={form.offline_days} error={errors.offline_days} onChange={(e) => set('offline_days')(e.target.value)} />
         <TextField label="Devices per student for saved lessons" type="number" min="1" name="offline_devices" value={form.offline_devices} error={errors.offline_devices} onChange={(e) => set('offline_devices')(e.target.value)} />
       </div>
+      <h3 className="h4">Account sharing</h3>
+      <div className="form-row">
+        <TextField label="Devices that may play videos at once (0 = no limit)" type="number" min="0" name="max_streams" value={form.max_streams} error={errors.max_streams} onChange={(e) => set('max_streams')(e.target.value)} />
+      </div>
+      <label className="checkbox lb-inline-check">
+        <input type="checkbox" checked={Boolean(form.watermark_videos)} onChange={(e) => set('watermark_videos')(e.target.checked)} />
+        <span className="checkbox__box" aria-hidden="true"><i className="fas fa-check" /></span>
+        <span>Watermark videos<small>The student’s email shows faintly over the video, so a recording can be traced to the account.</small></span>
+      </label>
       <h3 className="h4">Certificate signature</h3>
       <div className="form-row">
         <TextField label="Signed by" placeholder="e.g. Ibrahim Kamara" name="certificate_signer_name" value={form.certificate_signer_name} onChange={(e) => set('certificate_signer_name')(e.target.value)} />

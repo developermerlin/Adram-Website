@@ -16,6 +16,7 @@ The student side of the course portal.
   GET  /lms/me/certificates/                every certificate the student earned
   GET  /lms/media/<kind>/<id>/?t=<token>    a video, document, resource or handed-in file, with a signed link
 """
+import logging
 import os
 import random
 from datetime import timedelta
@@ -42,10 +43,11 @@ from . import access, assignments, certificates, premium, questions as quiz_ques
 from .briefs import instructor_info, public_name
 from .media import MAX_RESOURCE_MB, embed_url, file_response, read_token, sign
 from .models import (
-    Certificate, Lesson, LmsSettings, Note, Order, OrderItem, Progress, Question, QuizAttempt, Resource, Review, Submission, SubmissionFile,
+    Certificate, Lesson, LmsSettings, Note, Order, OrderItem, LessonCaption, Progress, Question, QuizAttempt, Resource, Review, Submission, SubmissionFile,
 )
 from .notify import notify, notify_admins
 
+logger = logging.getLogger(__name__)
 BLOCKED_EXTENSIONS = {'.exe', '.bat', '.cmd', '.sh', '.js', '.html', '.htm', '.svg', '.php', '.msi', '.com', '.scr', '.ps1'}
 
 
@@ -254,7 +256,9 @@ class LessonView(APIView):
             if lesson.video_source == Lesson.EMBED and embed_url(lesson.video_url):
                 video = {'type': 'embed', 'url': embed_url(lesson.video_url)}
             elif lesson.video_source == Lesson.UPLOAD and lesson.video_file:
-                video = {'type': 'upload', 'url': media_link('video', lesson.id, user_id)}
+                video = {'type': 'upload', 'url': media_link('video', lesson.id, user_id),
+                         'captions': [{'id': c.id, 'language': c.language, 'label': c.label, 'url': media_link('caption', c.id, user_id)}
+                                      for c in lesson.captions.all()]}
 
         progress = None
         peek = request.query_params.get('peek') == '1'  # the course page's player: don't move the student's place
@@ -286,6 +290,9 @@ class LessonView(APIView):
             'position_seconds': progress.position_seconds if progress else 0,
             'watch_percent': progress.watch_percent if progress else 0,
             'can_track': enrollment is not None,
+            # the student's email shown faintly over videos (so recordings can be traced back to the account)
+            'watermark': (request.user.email if lesson.kind == Lesson.VIDEO and enrollment is not None
+                          and LmsSettings.load().watermark_videos and not access.can_manage(request.user, course) else None),
             'can_manage': request.user.is_authenticated and access.can_manage(request.user, course),
         }
         if lesson.kind == Lesson.QUIZ:
@@ -306,7 +313,7 @@ class LessonView(APIView):
             latest = subs[0] if subs else None
             info = assignments.assignment_info(lesson, enrollment)
             data['assignment'] = {
-                **info, 'max_points': lesson.max_points, 'allow_resubmit': lesson.allow_resubmit,
+                **info, 'max_points': lesson.max_points, 'allow_resubmit': lesson.allow_resubmit, 'peer_reviews': lesson.peer_reviews,
                 'latest': submission_data(latest, user_id) if latest else None,
                 'history': [submission_data(s, user_id) for s in subs[1:10]],
                 'can_submit': bool(enrollment) and not info['closed'] and (not latest or (latest.status != Submission.APPROVED and lesson.allow_resubmit)),
@@ -372,7 +379,12 @@ class LessonProgressView(APIView):
                 progress.completed_at = None
                 progress.save(update_fields=['completed_at', 'updated_at'])
         progress.refresh_from_db()
-        return Response({'completed': bool(progress.completed_at), 'watch_percent': progress.watch_percent, **_completion(enrollment)})
+        stream = None
+        if lesson.kind == Lesson.VIDEO and ('playing' in request.data or request.data.get('take_over')):
+            from .streams import beat
+            stream = beat(request, bool(request.data.get('playing')), take_over=bool(request.data.get('take_over')))
+        return Response({'completed': bool(progress.completed_at), 'watch_percent': progress.watch_percent, 'stream': stream,
+                         **_completion(enrollment)})
 
 
 # ---------------------------------------------------------------- quizzes
@@ -551,6 +563,11 @@ class SubmissionsView(APIView):
             for order, upload in enumerate(uploads):
                 SubmissionFile.objects.create(submission=sub, file=upload, filename=os.path.basename(upload.name)[:200],
                                               size=upload.size, sort_order=order)
+        from .similarity import check
+        try:
+            check(sub)  # how much it shares with classmates' work (a hint for the grader)
+        except Exception:
+            logger.exception('Similarity check failed for submission %s', sub.pk)
         course = lesson.course
         message = (f'{request.user.get_full_name() or "A student"} handed in “{lesson.title}”.', f'/instructor/courses/{course.slug}/submissions')
         if course.instructor:
@@ -705,6 +722,9 @@ class MediaView(APIView):
         elif kind == 'resource':
             resource = get_object_or_404(Resource.objects.select_related('lesson__section__course'), pk=pk)
             lesson, field, name, inline = resource.lesson, resource.file, resource.filename or 'file', False
+        elif kind == 'caption':
+            caption = get_object_or_404(LessonCaption.objects.select_related('lesson__section__course'), pk=pk)
+            lesson, field, name, inline = caption.lesson, caption.file, f'{caption.language}.vtt', True
         elif kind == 'submission':
             submission = get_object_or_404(Submission.objects.select_related('lesson__section__course', 'enrollment'), pk=pk)
             lesson, field, name, inline = submission.lesson, submission.file, submission.filename or 'file', False
@@ -721,7 +741,9 @@ class MediaView(APIView):
         # The link proves who asked; they must still be allowed to see it today (an enrolment may have been cancelled)
         user = User.objects.filter(pk=user_id, is_active=True).first() if user_id else None
         if submission is not None:
-            allowed = user is not None and (submission.enrollment.student_id == user.id or access.can_manage(user, lesson.course))
+            from .peer import can_see_submission
+            allowed = user is not None and (submission.enrollment.student_id == user.id or access.can_manage(user, lesson.course)
+                                            or can_see_submission(user, submission))
         else:
             enrollment = access.enrollment_for(user, lesson.course) if user else None
             allowed = access.can_open(user, lesson, enrollment)

@@ -220,6 +220,17 @@ class RelatedView(APIView):
         return Response([course_brief(c, stats[c.id]) for c in recommend.similar(course, courses, stats, 6)])
 
 
+class AlsoTakenView(APIView):
+    """GET /lms/courses/<slug>/also-taken/  what this course's students also take (each with how many share it)."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        course = get_object_or_404(Course, slug=slug)
+        rows = recommend.also_taken(course)
+        stats = stats_for([c for c, _ in rows])
+        return Response([{**course_brief(c, stats[c.id]), 'shared_students': n} for c, n in rows])
+
+
 class CourseViewedView(APIView):
     permission_classes = [AllowAny]
 

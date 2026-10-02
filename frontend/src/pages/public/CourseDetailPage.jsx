@@ -239,6 +239,7 @@ const Detail = ({ slug }) => {
   const [state, setState] = useState({ outline: null, error: false });
   const [reviews, setReviews] = useState(null);
   const [related, setRelated] = useState([]);
+  const [alsoTaken, setAlsoTaken] = useState([]);
   const [inCart, setInCart] = useState(false);
   const [busy, setBusy] = useState('');
   const [expandAll, setExpandAll] = useState(false);
@@ -252,6 +253,7 @@ const Detail = ({ slug }) => {
     loadReviews();
     let live = true;
     lmsAPI.related(slug).then(({ data }) => live && setRelated(data)).catch(() => {});
+    lmsAPI.alsoTaken(slug).then(({ data }) => live && setAlsoTaken(data)).catch(() => {});
     lmsAPI.viewed(slug).catch(() => {});  // counts the visit, and feeds "recommended for you"
     return () => {
       live = false;
@@ -616,11 +618,20 @@ const Detail = ({ slug }) => {
         </div>
       </div>
 
-      {related.length > 0 && (
+      {alsoTaken.length > 0 && (
         <section className="container cd-related">
-          <h2>Students also looked at</h2>
+          <h2>Students also took</h2>
+          <p className="muted">Courses popular with people who learn this one.</p>
           <div className="cc-grid">
-            {related.slice(0, 4).map((c) => <CourseCard key={c.slug} course={c} wish={wish} />)}
+            {alsoTaken.map((c) => <CourseCard key={c.slug} course={c} wish={wish} />)}
+          </div>
+        </section>
+      )}
+      {related.filter((c) => !alsoTaken.some((a) => a.slug === c.slug)).length > 0 && (
+        <section className="container cd-related">
+          <h2>Similar courses</h2>
+          <div className="cc-grid">
+            {related.filter((c) => !alsoTaken.some((a) => a.slug === c.slug)).slice(0, 4).map((c) => <CourseCard key={c.slug} course={c} wish={wish} />)}
           </div>
         </section>
       )}

@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from catalog.models import Course
 
-from .models import CartItem, CourseViewDay, Lesson, Order, OrderItem, Resource, Submission, SubmissionFile, Wishlist
+from .models import CartItem, CourseViewDay, Lesson, LessonCaption, Order, OrderItem, Resource, Submission, SubmissionFile, Wishlist
 
 
 def _remove(field):
@@ -32,6 +32,11 @@ def delete_receipt(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=Submission)
 def delete_submission_file(sender, instance, **kwargs):
+    _remove(instance.file)
+
+
+@receiver(post_delete, sender=LessonCaption)
+def delete_caption_file(sender, instance, **kwargs):
     _remove(instance.file)
 
 

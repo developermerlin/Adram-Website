@@ -49,6 +49,7 @@ export const defaults = {
     phones: site.phones,
     location: site.location,
     favicon: '',
+    theme: { preset: 'adram', primary: '#1454e8', accent: '#16c8f5', dark: '#06123d' },
     share: { title: '', description: '', image: '' },
     brandName: 'ADRAM',
     brandSub: 'Technologies',

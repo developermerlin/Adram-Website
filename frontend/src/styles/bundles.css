@@ -5,7 +5,7 @@
 .bd-page h1 { margin: 6px 0 8px; }
 .bd-crumbs { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.88rem; }
 .bd-crumbs i { font-size: 0.65rem; }
-.bd-kicker { margin: 0; color: var(--blue-700, #1d4ed8); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.bd-kicker { margin: 0; color: var(--blue-700, var(--t-700, #1d4ed8)); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .bd-summary { max-width: 70ch; color: var(--muted); font-size: 1.05rem; }
 .bd-desc { max-width: 70ch; }
 .bd-head { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; margin: 18px 0 32px; }
@@ -74,7 +74,7 @@
 .bp-form__label { display: block; margin-bottom: 6px; font-size: 0.9rem; }
 .bp-form__courses { display: grid; gap: 4px; max-height: 240px; overflow: auto; padding: 8px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; }
 .bp-form__courses label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 0.9rem; }
-.bp-form__courses input, .bp-form__check input { width: 16px; height: 16px; accent-color: #2563eb; }
+.bp-form__courses input, .bp-form__check input { width: 16px; height: 16px; accent-color: var(--t-600, #2563eb); }
 .bp-form__check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
 .bp-form__actions { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -91,7 +91,7 @@
 .rf-steps i { color: #db2777; font-size: 1.3rem; }
 .rf-link { display: grid; gap: 8px; }
 .rf-link label { font-weight: 600; }
-.rf-code { padding: 2px 8px; border: 1px dashed #93c5fd; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font: inherit; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; }
+.rf-code { padding: 2px 8px; border: 1px dashed var(--t-300, #93c5fd); border-radius: 6px; background: var(--t-50, #eff6ff); color: var(--t-700, #1d4ed8); font: inherit; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; }
 .rf-reward { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .rf-grid { margin-top: 18px; }
 .rf-claim { display: grid; gap: 8px; }
