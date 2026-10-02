@@ -3,16 +3,46 @@
 // and `dark` (the navy of the header banners and footer). styles/theme.css works out every other shade from them.
 // ADRAM blue is the original design and sets nothing, so the site looks exactly as it was built.
 
+export const THEME_GROUPS = [
+  ['blue', 'Blues'],
+  ['green', 'Greens & teals'],
+  ['purple', 'Purples & pinks'],
+  ['warm', 'Reds, oranges & golds'],
+  ['neutral', 'Greys & dark'],
+];
+
 export const THEME_PRESETS = [
-  { id: 'adram', label: 'ADRAM blue', primary: '#1454e8', accent: '#16c8f5', dark: '#06123d' },
-  { id: 'ocean', label: 'Ocean', primary: '#0369a1', accent: '#22d3ee', dark: '#082f49' },
-  { id: 'teal', label: 'Teal', primary: '#0d9488', accent: '#5eead4', dark: '#042f2e' },
-  { id: 'emerald', label: 'Emerald', primary: '#059669', accent: '#a3e635', dark: '#052e1c' },
-  { id: 'indigo', label: 'Indigo', primary: '#4f46e5', accent: '#38bdf8', dark: '#1e1b4b' },
-  { id: 'purple', label: 'Purple', primary: '#7c3aed', accent: '#e879f9', dark: '#1e0b3d' },
-  { id: 'crimson', label: 'Crimson', primary: '#dc2626', accent: '#fb923c', dark: '#2a0a0f' },
-  { id: 'sunset', label: 'Sunset', primary: '#ea580c', accent: '#facc15', dark: '#2b1206' },
-  { id: 'graphite', label: 'Graphite', primary: '#334155', accent: '#38bdf8', dark: '#0f172a' },
+  { id: 'adram', group: 'blue', label: 'ADRAM blue', primary: '#1454e8', accent: '#16c8f5', dark: '#06123d' },
+  { id: 'ocean', group: 'blue', label: 'Ocean', primary: '#0369a1', accent: '#22d3ee', dark: '#082f49' },
+  { id: 'sky', group: 'blue', label: 'Sky', primary: '#0284c7', accent: '#7dd3fc', dark: '#0c1f33' },
+  { id: 'royal', group: 'blue', label: 'Royal gold', primary: '#1d4ed8', accent: '#f59e0b', dark: '#0b1437' },
+  { id: 'midnight', group: 'blue', label: 'Midnight', primary: '#1e40af', accent: '#a78bfa', dark: '#020617' },
+  { id: 'steel', group: 'blue', label: 'Steel blue', primary: '#3f5a7a', accent: '#7dd3fc', dark: '#111827' },
+  { id: 'teal', group: 'green', label: 'Teal', primary: '#0d9488', accent: '#5eead4', dark: '#042f2e' },
+  { id: 'emerald', group: 'green', label: 'Emerald', primary: '#059669', accent: '#a3e635', dark: '#052e1c' },
+  { id: 'forest', group: 'green', label: 'Forest', primary: '#166534', accent: '#facc15', dark: '#052e16' },
+  { id: 'mint', group: 'green', label: 'Mint', primary: '#0f766e', accent: '#86efac', dark: '#022c22' },
+  { id: 'lime', group: 'green', label: 'Lime', primary: '#4d7c0f', accent: '#bef264', dark: '#1a2e05' },
+  { id: 'turquoise', group: 'green', label: 'Turquoise', primary: '#0891b2', accent: '#2dd4bf', dark: '#083344' },
+  { id: 'olive', group: 'green', label: 'Olive', primary: '#556b2f', accent: '#d9f99d', dark: '#1a1f0d' },
+  { id: 'indigo', group: 'purple', label: 'Indigo', primary: '#4f46e5', accent: '#38bdf8', dark: '#1e1b4b' },
+  { id: 'purple', group: 'purple', label: 'Purple', primary: '#7c3aed', accent: '#e879f9', dark: '#1e0b3d' },
+  { id: 'violet', group: 'purple', label: 'Violet & pink', primary: '#6d28d9', accent: '#f472b6', dark: '#2e1065' },
+  { id: 'fuchsia', group: 'purple', label: 'Fuchsia', primary: '#c026d3', accent: '#f9a8d4', dark: '#3b0a3f' },
+  { id: 'rose', group: 'purple', label: 'Rose', primary: '#e11d48', accent: '#fda4af', dark: '#2a0710' },
+  { id: 'berry', group: 'purple', label: 'Berry', primary: '#9d174d', accent: '#f59e0b', dark: '#2a0716' },
+  { id: 'crimson', group: 'warm', label: 'Crimson', primary: '#dc2626', accent: '#fb923c', dark: '#2a0a0f' },
+  { id: 'sunset', group: 'warm', label: 'Sunset', primary: '#ea580c', accent: '#facc15', dark: '#2b1206' },
+  { id: 'coral', group: 'warm', label: 'Coral', primary: '#e04f39', accent: '#ffb199', dark: '#2b0f0a' },
+  { id: 'terracotta', group: 'warm', label: 'Terracotta', primary: '#c2410c', accent: '#fdba74', dark: '#2c1208' },
+  { id: 'amber', group: 'warm', label: 'Amber', primary: '#b45309', accent: '#fbbf24', dark: '#2a1503' },
+  { id: 'gold', group: 'warm', label: 'Gold', primary: '#a16207', accent: '#fde047', dark: '#1f1503' },
+  { id: 'chocolate', group: 'warm', label: 'Chocolate', primary: '#7c2d12', accent: '#f59e0b', dark: '#1c0a04' },
+  { id: 'graphite', group: 'neutral', label: 'Graphite', primary: '#334155', accent: '#38bdf8', dark: '#0f172a' },
+  { id: 'slate', group: 'neutral', label: 'Slate & lime', primary: '#475569', accent: '#a3e635', dark: '#0f172a' },
+  { id: 'charcoal', group: 'neutral', label: 'Charcoal red', primary: '#27272a', accent: '#ef4444', dark: '#09090b' },
+  { id: 'mono', group: 'neutral', label: 'Monochrome', primary: '#27272a', accent: '#a1a1aa', dark: '#09090b' },
+  { id: 'night-gold', group: 'neutral', label: 'Black & gold', primary: '#1c1917', accent: '#eab308', dark: '#0c0a09' },
 ];
 
 export const DEFAULT_THEME = THEME_PRESETS[0];

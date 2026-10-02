@@ -3,9 +3,11 @@
    colours other than ADRAM blue: <html data-site-theme> with --t-primary,
    --t-accent and --t-dark set inline. Every shade comes from those three.
    Stylesheets use var(--t-600, #2563eb) and the like, so with no scheme set
-   the original colours apply unchanged.
+   the original colours apply unchanged. A portal viewer's own scheme
+   (theme menu) uses the same rules on .portal[data-own-scheme].
    ===================================================================== */
-:root[data-site-theme] {
+:root[data-site-theme],
+.portal[data-own-scheme] {
   /* main colour, light to dark */
   --t-50: color-mix(in srgb, var(--t-primary) 7%, white);
   --t-100: color-mix(in srgb, var(--t-primary) 15%, white);

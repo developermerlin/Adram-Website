@@ -1,23 +1,19 @@
 import { useEffect, useState } from 'react';
+import { THEME_PRESETS } from '../../content/theme';
 
 // Each viewer's portal look: light/dark/system, accent colour, sidebar colour and a collapsed sidebar.
 // Kept in this browser only (localStorage); nothing is sent to the server.
 const KEY = 'adram-portal-prefs';
 export const DEFAULT_PREFS = { mode: 'light', accent: 'blue', sidebar: 'light', collapsed: false };
 
-// Each accent's shades live in dashboard-skin.css / portal.css under .portal[data-accent='<id>'].
-export const ACCENTS = [
-  { id: 'blue', label: 'Website colours', color: 'var(--t-600, #1454e8)' }, // follows the site colour scheme
-  { id: 'indigo', label: 'Indigo', color: '#4f46e5' },
-  { id: 'violet', label: 'Violet', color: '#6d4aff' },
-  { id: 'fuchsia', label: 'Fuchsia', color: '#c026d3' },
-  { id: 'rose', label: 'Rose', color: '#e11d48' },
-  { id: 'orange', label: 'Orange', color: '#ea580c' },
-  { id: 'emerald', label: 'Emerald', color: '#0f9d58' },
-  { id: 'teal', label: 'Teal', color: '#0d9488' },
-  { id: 'sky', label: 'Sky', color: '#0284c7' },
-  { id: 'graphite', label: 'Graphite', color: '#334155' },
-];
+// Accent: 'blue' follows the website's colour scheme (set by the admin); any other value is the id of one of the
+// site colour schemes (content/theme.js), applied to the portal only for this viewer (see `portalScheme`).
+export const WEBSITE_ACCENT = { id: 'blue', label: 'Website colours' };
+// Accent ids saved before the schemes existed
+const OLD_ACCENTS = { orange: 'sunset' };
+
+/** The scheme to paint the portal in, or null to follow the website colours. */
+export const portalScheme = (accent) => THEME_PRESETS.find((p) => p.id === accent) || null;
 
 // Sidebar backgrounds. `dark` marks the ones that need the light logo and light text.
 export const SIDEBARS = [
@@ -31,7 +27,9 @@ export const SIDEBARS = [
 
 const read = () => {
   try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    const saved = { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    const accent = OLD_ACCENTS[saved.accent] || saved.accent;
+    return { ...saved, accent: accent === 'blue' || portalScheme(accent) ? accent : 'blue' };
   } catch {
     return DEFAULT_PREFS;
   }

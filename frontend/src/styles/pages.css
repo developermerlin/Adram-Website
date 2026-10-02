@@ -2381,12 +2381,13 @@
   overflow: hidden;
 }
 
-.section--dark .statement::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--brand-gradient);
+.section--dark .statement {
+  box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.section--dark .statement:hover {
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .section--dark .statement .icon-tile {

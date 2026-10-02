@@ -2533,7 +2533,7 @@
   background: var(--white);
 }
 
-/* The two form cards: an icon header, an accent line, and calmer spacing */
+/* The two form cards: an icon header and calmer spacing (no coloured top strip) */
 .portal .grid-2.align-start {
   gap: 22px;
 }
@@ -2541,7 +2541,9 @@
 .portal .grid-2 > .form-grid {
   gap: 20px;
   padding: 26px 28px;
-  border-top: 3px solid var(--blue-600);
+  border: 1px solid var(--card-line, var(--line));
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -18px rgba(15, 23, 42, 0.18);
 }
 
 .portal .grid-2 > .form-grid > div:first-child {
@@ -2550,7 +2552,7 @@
   column-gap: 14px;
   align-items: center;
   padding-bottom: 18px;
-  border-bottom: 1px dashed var(--card-line);
+  border-bottom: 1px solid var(--card-line, var(--line));
 }
 
 .portal .grid-2 > .form-grid > div:first-child::before {
@@ -2572,10 +2574,6 @@
   content: '\f3ed'; /* shield */
   background: var(--success-bg);
   color: var(--success);
-}
-
-.portal .grid-2 > .form-grid:has([name='old_password']) {
-  border-top-color: var(--success);
 }
 
 .portal .grid-2 > .form-grid > div:first-child h2 {
@@ -2648,18 +2646,14 @@
    Scoped with :has(#terms) so the scholarship and course editors, which share .editor, are untouched.
    ===================================================================== */
 .portal .editor:has(#terms) {
-  --afrimoney: #7b2cbf;
-  --orange-money: #ff7900;
   gap: 22px;
 }
 
 .portal .editor:has(#terms) .editor__section {
   padding: 26px 28px;
-  border-top: 3px solid var(--blue-600);
-}
-
-.portal .editor:has(#terms) .editor__section:has(#terms) {
-  border-top-color: #7c4dff;
+  border: 1px solid var(--card-line, var(--line));
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -18px rgba(15, 23, 42, 0.18);
 }
 
 /* Section header: icon + title, description underneath */
@@ -2695,47 +2689,15 @@
 .portal .editor:has(#terms) .editor__section > h2 + p {
   margin: 0 0 20px 58px;
   padding-bottom: 18px;
-  border-bottom: 1px dashed var(--card-line);
+  border-bottom: 1px solid var(--card-line, var(--line));
 }
 
-/* Each mobile-money provider as its own labelled block */
+/* Each method's number + account name as a quiet inset panel (the section heading names the provider) */
 .portal .editor:has(#terms) .form-grid > .form-row {
-  position: relative;
-  padding: 40px 16px 16px;
-  border: 1px solid var(--card-line);
-  border-left: 4px solid var(--provider, var(--blue-600));
+  padding: 16px;
+  border: 1px solid var(--card-line, var(--line));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--provider, var(--blue-600)) 5%, var(--white));
-}
-
-.portal .editor:has(#terms) .form-grid > .form-row:nth-child(1) {
-  --provider: var(--afrimoney);
-}
-
-.portal .editor:has(#terms) .form-grid > .form-row:nth-child(2) {
-  --provider: var(--orange-money);
-}
-
-.portal .editor:has(#terms) .form-grid > .form-row::before {
-  position: absolute;
-  top: 12px;
-  left: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--provider);
-}
-
-.portal .editor:has(#terms) .form-grid > .form-row:nth-child(1)::before {
-  content: '● Afrimoney';
-}
-
-.portal .editor:has(#terms) .form-grid > .form-row:nth-child(2)::before {
-  content: '● Orange Money';
+  background: var(--surface);
 }
 
 .portal .editor:has(#terms) .field label {
@@ -2765,7 +2727,6 @@
   min-height: 380px;
   padding: 22px 24px;
   border-radius: 12px;
-  border-left: 4px solid #7c4dff;
   background: var(--white);
   font-size: 0.92rem;
   line-height: 1.75;
@@ -2794,7 +2755,9 @@
 .portal .editor:has(#terms) .editor__publish {
   gap: 14px;
   padding: 22px;
-  border-top: 3px solid var(--success);
+  border: 1px solid var(--card-line, var(--line));
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -18px rgba(15, 23, 42, 0.18);
 }
 
 .portal .editor:has(#terms) .editor__publish::before {
@@ -2814,10 +2777,6 @@
   background: var(--warning-bg);
   color: var(--warning);
   content: '●  Unsaved changes';
-}
-
-.portal .editor:has(#terms) .editor__publish:has(button:not(:disabled)) {
-  border-top-color: var(--warning);
 }
 
 .portal .editor:has(#terms) .editor__publish .btn--primary {
@@ -3032,7 +2991,6 @@
   margin-bottom: 26px;
   padding: 24px 26px;
   border: 1px solid var(--card-line);
-  border-left: 4px solid var(--blue-600);
   border-radius: 12px;
   background: var(--white);
   box-shadow: 0 12px 28px -24px rgba(15, 23, 42, 0.4);
@@ -4638,4 +4596,24 @@
 .portal .app-card.is-focused {
   border-color: var(--blue-600);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue-600) 18%, transparent);
+}
+
+/* ---------- Theme menu: every site colour scheme, grouped ---------- */
+.portal .theme-menu__panel { max-height: min(78vh, 680px); overflow-y: auto; overscroll-behavior: contain; }
+.theme-menu__current { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.theme-menu__website {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 0.86rem; font-weight: 600; text-align: left; cursor: pointer;
+}
+.theme-menu__website small { display: block; font-size: 0.74rem; font-weight: 400; color: var(--muted); }
+.theme-menu__website.is-active { border-color: var(--blue-600); box-shadow: inset 0 0 0 1px var(--blue-600); }
+.theme-menu__website .theme-menu__swatch { flex: none; }
+.theme-menu__schemes { display: grid; gap: 10px; }
+.theme-menu__group > p { margin: 0 0 6px; font-size: 0.76rem; font-weight: 600; color: var(--muted); }
+.portal .theme-menu__group .theme-menu__accents { grid-template-columns: repeat(7, 30px); justify-content: start; gap: 8px; }
+.theme-menu__swatch--scheme { width: 30px; height: 30px; }
+.theme-menu__swatch--scheme i { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+@media (max-width: 560px) {
+  /* the palette button isn't at the screen edge, so pin the panel to the screen instead of the button */
+  .portal .theme-menu__panel { position: fixed; top: 64px; right: 12px; left: 12px; width: auto; max-height: calc(100vh - 80px); }
 }

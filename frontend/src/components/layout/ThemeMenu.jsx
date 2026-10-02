@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ACCENTS, DEFAULT_PREFS, SIDEBARS } from './portalPrefs';
+import { DEFAULT_THEME, THEME_GROUPS, THEME_PRESETS, resolveTheme } from '../../content/theme';
+import { usePageContent } from '../../content/useContent';
+import { DEFAULT_PREFS, SIDEBARS, WEBSITE_ACCENT, portalScheme } from './portalPrefs';
 
 const MODES = [
   { id: 'light', label: 'Light', icon: 'fa-sun' },
@@ -10,6 +12,8 @@ const MODES = [
 /** Palette button in the portal top bar: light/dark/system, an accent colour and the sidebar colour. */
 export const ThemeMenu = ({ prefs, onChange }) => {
   const [open, setOpen] = useState(false);
+  const chosen = portalScheme(prefs.accent);
+  const website = resolveTheme(usePageContent('site').theme) || DEFAULT_THEME; // the admin's colours, whatever this viewer picked
   const box = useRef(null);
 
   useEffect(() => {
@@ -43,22 +47,34 @@ export const ThemeMenu = ({ prefs, onChange }) => {
             </div>
           </div>
           <div>
-            <p className="theme-menu__label">Accent colour</p>
-            <div className="theme-menu__accents" role="radiogroup" aria-label="Accent colour">
-              {ACCENTS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={prefs.accent === a.id}
-                  aria-label={a.label}
-                  title={a.label}
-                  className={`theme-menu__swatch${prefs.accent === a.id ? ' is-active' : ''}`}
-                  style={{ background: a.color }}
-                  onClick={() => onChange({ accent: a.id })}
-                >
-                  {prefs.accent === a.id && <i className="fas fa-check" aria-hidden="true" />}
-                </button>
+            <p className="theme-menu__label">Colours <span className="theme-menu__current">{chosen ? chosen.label : WEBSITE_ACCENT.label}</span></p>
+            <button type="button" role="radio" aria-checked={!chosen}
+              className={`theme-menu__website${chosen ? '' : ' is-active'}`} onClick={() => onChange({ accent: WEBSITE_ACCENT.id })}>
+              <span className="theme-menu__swatch" style={{ background: `radial-gradient(circle, transparent 0 57%, ${website.dark} 60%), linear-gradient(135deg, ${website.primary} 0 55%, ${website.accent} 55% 100%)` }} aria-hidden="true">{!chosen && <i className="fas fa-check" />}</span>
+              <span>Website colours<small>The colours your organisation chose</small></span>
+            </button>
+            <div className="theme-menu__schemes">
+              {THEME_GROUPS.map(([group, label]) => (
+                <div key={group} className="theme-menu__group" role="radiogroup" aria-label={label}>
+                  <p>{label}</p>
+                  <div className="theme-menu__accents">
+                    {THEME_PRESETS.filter((t) => t.group === group).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={prefs.accent === t.id}
+                        aria-label={t.label}
+                        title={t.label}
+                        className={`theme-menu__swatch theme-menu__swatch--scheme${prefs.accent === t.id ? ' is-active' : ''}`}
+                        style={{ background: `radial-gradient(circle, transparent 0 57%, ${t.dark} 60%), linear-gradient(135deg, ${t.primary} 0 55%, ${t.accent} 55% 100%)` }}
+                        onClick={() => onChange({ accent: t.id })}
+                      >
+                        {prefs.accent === t.id && <i className="fas fa-check" aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

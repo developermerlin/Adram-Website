@@ -59,7 +59,7 @@
 .pr-box { display: grid; gap: 10px; }
 .pr-box h2 { display: flex; align-items: center; gap: 8px; }
 .pr-form { display: grid; gap: 10px; }
-.pr-work { padding: 12px 14px; border-left: 4px solid #a5b4fc; border-radius: 8px; background: var(--surface, #f8fafc); }
+.pr-work { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, #f8fafc); }
 .pr-work p { margin: 6px 0 0; }
 .pr-done { margin: 0; color: #15803d; font-weight: 600; }
 .pr-received { display: grid; gap: 8px; }

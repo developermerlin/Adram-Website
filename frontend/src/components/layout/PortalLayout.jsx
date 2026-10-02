@@ -13,7 +13,7 @@ import CallOverlay from '../chat/CallOverlay';
 import '../../styles/student-sides.css';
 import NotificationBell from '../lms/NotificationBell';
 import { watchIncomingCalls } from '../chat/callStore';
-import { SIDEBARS, usePortalPrefs } from './portalPrefs';
+import { SIDEBARS, portalScheme, usePortalPrefs } from './portalPrefs';
 import '../../styles/portal.css';
 import '../../styles/dashboard-skin.css';
 
@@ -401,6 +401,7 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
   const setMessageCount = useCallback((n) => setCounts((c) => (c.messages_unread === n ? c : { ...c, messages_unread: n })), []);
 
   const sidebarStyle = SIDEBARS.find((s) => s.id === prefs.sidebar) || SIDEBARS[0];
+  const scheme = portalScheme(prefs.accent); // the viewer's own colour scheme, or null for the website colours
   const collapsed = prefs.collapsed;
   // Collapsed, the links show icons only, so the name goes in a tooltip.
   const tip = (label) => (collapsed ? label : undefined);
@@ -409,8 +410,10 @@ export const PortalLayout = ({ title, subtitle, actions, children }) => {
     <div
       className={`portal${drawerOpen ? ' drawer-open' : ''}${collapsed ? ' sidebar-collapsed' : ''}`}
       data-mode={mode}
-      data-accent={prefs.accent}
+      data-accent={scheme ? 'scheme' : 'blue'}
+      data-own-scheme={scheme ? scheme.id : undefined}
       data-sidebar={sidebarStyle.id}
+      style={scheme ? { '--t-primary': scheme.primary, '--t-accent': scheme.accent, '--t-dark': scheme.dark } : undefined}
     >
       <aside className="sidebar" id="portal-sidebar" aria-label="Portal navigation">
         <div className="sidebar__brand">

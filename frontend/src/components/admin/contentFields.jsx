@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { contentAPI, parseApiErrors } from '../../services/api';
 import { getPath, setPath } from '../../content/merge';
 import { SITE_LIBRARY, TECH_LOGOS } from '../../content/schema';
-import { DEFAULT_THEME, THEME_PRESETS, isHex } from '../../content/theme';
+import { DEFAULT_THEME, THEME_GROUPS, THEME_PRESETS, isHex } from '../../content/theme';
 import { assetUrl } from '../../utils/assets';
 import BrandIcon, { ICON_NAMES } from '../brand/BrandIcon';
 import { ListEditor } from './catalog';
@@ -169,42 +169,111 @@ const ColourInput = ({ id, label, hint, value, onChange }) => {
   );
 };
 
-/** Ready-made colour schemes plus the admin's own three colours, with a small preview. */
+// The three colours as CSS variables, for the thumbnails and the preview
+const mockVars = (c) => ({ '--m-p': c.primary, '--m-a': c.accent, '--m-d': c.dark });
+
+/** A tiny picture of a web page in a scheme's colours. */
+const ThemeThumb = ({ colours }) => (
+  <span className="cf-thumb" style={mockVars(colours)} aria-hidden="true">
+    <span className="cf-thumb__top" />
+    <span className="cf-thumb__body">
+      <span className="cf-thumb__title" />
+      <span className="cf-thumb__line" />
+      <span className="cf-thumb__row"><span className="cf-thumb__btn" /><span className="cf-thumb__dot" /></span>
+    </span>
+    <span className="cf-thumb__foot" />
+  </span>
+);
+
+/** A small version of the website (top bar, menu, banner, cards, footer) in the chosen colours. */
+const ThemePreview = ({ colours, name }) => (
+  <div className="cf-mock" style={mockVars(colours)} aria-label={`Preview of ${name}`} role="img">
+    <div className="cf-mock__top"><span /><span /><span /></div>
+    <div className="cf-mock__nav">
+      <span className="cf-mock__logo"><i />ADRAM</span>
+      <span className="cf-mock__links"><b>Home</b><span>Services</span><span>Training</span></span>
+      <span className="cf-mock__cta">Sign up</span>
+    </div>
+    <div className="cf-mock__hero">
+      <span className="cf-mock__eyebrow"><i className="fas fa-location-dot" /> IT company</span>
+      <strong>Building solutions for a <em>better future</em></strong>
+      <p>We design, build and support the systems organisations run on.</p>
+      <div className="cf-mock__buttons"><span className="cf-mock__btn">Start a project</span><span className="cf-mock__btn cf-mock__btn--ghost">Our services</span></div>
+    </div>
+    <div className="cf-mock__cards">
+      {['fa-code', 'fa-network-wired', 'fa-graduation-cap'].map((icon) => (
+        <span key={icon} className="cf-mock__card"><i className={`fas ${icon}`} /><span /><span /></span>
+      ))}
+    </div>
+    <div className="cf-mock__foot"><span className="cf-mock__foot-head" /><span /><span /></div>
+  </div>
+);
+
+/** Ready-made colour schemes (by colour family) plus the admin's own three colours, with a live preview. */
 export const ThemeField = ({ field, value, onChange, id }) => {
   const current = { ...DEFAULT_THEME, preset: 'adram', ...(value || {}) };
   const preset = THEME_PRESETS.find((p) => p.id === current.preset);
   const colours = preset || current;
+  const [group, setGroup] = useState(preset ? preset.group : 'all');
   const pick = (p) => onChange({ preset: p.id, primary: p.primary, accent: p.accent, dark: p.dark });
   const setColour = (role) => (hex) => onChange({ ...colours, preset: 'custom', [role]: hex });
   const unreadable = contrast(colours.primary, '#ffffff') < 3;
+  const shown = group === 'all' ? THEME_PRESETS : THEME_PRESETS.filter((p) => p.group === group);
+  const name = preset ? preset.label : 'Your own colours';
   return (
     <div className="cf-theme">
-      <p className="cf-theme__label">{field.label}</p>
-      <div className="cf-theme__presets" role="radiogroup" aria-label={field.label}>
-        {[...THEME_PRESETS, { primary: colours.primary, accent: colours.accent, dark: colours.dark, id: 'custom', label: 'Your own' }].map((p) => (
-          <button key={p.id} type="button" role="radio" aria-checked={current.preset === p.id}
-            className={`cf-theme__preset${current.preset === p.id ? ' is-active' : ''}`}
-            onClick={() => (p.id === 'custom' ? onChange({ ...colours, preset: 'custom' }) : pick(p))}>
-            <span className="cf-theme__swatch" style={{ background: p.dark }} aria-hidden="true">
-              <i style={{ background: p.primary }} />
-              <i style={{ background: p.accent }} />
-            </span>
-            {p.id === 'custom' && <i className="fas fa-palette" aria-hidden="true" />} {p.label}
+      <div className="cf-theme__head">
+        <div>
+          <p className="cf-theme__label">{field.label}</p>
+          <p className="hint">Now using: <strong>{name}</strong></p>
+        </div>
+        {current.preset !== 'adram' && (
+          <button type="button" className="btn btn--outline btn--sm" onClick={() => pick(DEFAULT_THEME)}>
+            <i className="fas fa-rotate-left" aria-hidden="true" /> Back to ADRAM blue
+          </button>
+        )}
+      </div>
+
+      <div className="cf-theme__filters" role="tablist" aria-label="Colour families">
+        {[['all', `All (${THEME_PRESETS.length})`], ...THEME_GROUPS].map(([gid, label]) => (
+          <button key={gid} type="button" role="tab" aria-selected={group === gid} className={`cf-theme__filter${group === gid ? ' is-active' : ''}`} onClick={() => setGroup(gid)}>
+            {gid !== 'all' && <span className="cf-theme__filter-dots" aria-hidden="true">
+              {THEME_PRESETS.filter((p) => p.group === gid).slice(0, 3).map((p) => <i key={p.id} style={{ background: p.primary }} />)}
+            </span>}
+            {label}
           </button>
         ))}
       </div>
-      <div className="cf-theme__colours">
-        {COLOUR_ROLES.map(([role, label, hint]) => (
-          <ColourInput key={role} id={`${id}-${role}`} label={label} hint={hint} value={colours[role]} onChange={setColour(role)} />
+
+      <div className="cf-theme__presets" role="radiogroup" aria-label={field.label}>
+        {shown.map((p) => (
+          <button key={p.id} type="button" role="radio" aria-checked={current.preset === p.id}
+            className={`cf-theme__preset${current.preset === p.id ? ' is-active' : ''}`} onClick={() => pick(p)}>
+            <ThemeThumb colours={p} />
+            <span className="cf-theme__name">
+              {p.label}
+              {current.preset === p.id && <i className="fas fa-circle-check" aria-hidden="true" />}
+            </span>
+            <span className="cf-theme__chips" aria-hidden="true"><i style={{ background: p.primary }} /><i style={{ background: p.accent }} /><i style={{ background: p.dark }} /></span>
+          </button>
         ))}
       </div>
-      {unreadable && <p className="cf-theme__warn"><i className="fas fa-triangle-exclamation" aria-hidden="true" /> White text on this main colour is hard to read. A darker main colour works better for buttons.</p>}
-      <div className="cf-theme__preview" style={{ background: colours.dark }} aria-label="Preview">
-        <strong style={{ backgroundImage: `linear-gradient(120deg, ${colours.primary}, ${colours.accent})` }}>Building solutions</strong>
-        <span className="cf-theme__btn" style={{ background: colours.primary }}>Get started</span>
-        <span className="cf-theme__chip" style={{ color: colours.accent, borderColor: colours.accent }}>New</span>
+
+      <div className="cf-theme__studio">
+        <div className="cf-theme__custom">
+          <p className="cf-theme__sub"><i className="fas fa-palette" aria-hidden="true" /> Your own colours</p>
+          <p className="hint">Change any colour to make your own scheme, starting from the one above.</p>
+          {COLOUR_ROLES.map(([role, label, hint]) => (
+            <ColourInput key={role} id={`${id}-${role}`} label={label} hint={hint} value={colours[role]} onChange={setColour(role)} />
+          ))}
+          {unreadable && <p className="cf-theme__warn"><i className="fas fa-triangle-exclamation" aria-hidden="true" /> White text on this main colour is hard to read. A darker main colour works better for buttons.</p>}
+        </div>
+        <div className="cf-theme__preview-wrap">
+          <p className="cf-theme__sub"><i className="fas fa-eye" aria-hidden="true" /> Preview</p>
+          <ThemePreview colours={colours} name={name} />
+          <p className="hint">The whole website and portal change once you save.</p>
+        </div>
       </div>
-      <p className="hint">Changes show across the website and portal once you save.</p>
     </div>
   );
 };
