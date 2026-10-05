@@ -1,3 +1,4 @@
+import { usePageContent } from '../../content/useContent';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
@@ -9,6 +10,7 @@ import '../../styles/bundles.css';
 
 /** /bundles: every published course bundle. */
 export const BundlesPage = () => {
+  const copy = usePageContent('store').bundles;
   const [bundles, setBundles] = useState(null);
   useEffect(() => {
     lmsAPI.bundles().then(({ data }) => setBundles(data)).catch(() => setBundles([]));
@@ -16,9 +18,9 @@ export const BundlesPage = () => {
   if (!bundles) return <Spinner label="Loading bundles…" />;
   return (
     <div className="container bd-page">
-      <h1>Course bundles</h1>
-      <p className="bd-summary">Courses that go well together, for less than buying them one by one.</p>
-      {bundles.length === 0 && <p className="muted">No bundles yet. <Link to="/courses">Browse all courses</Link>.</p>}
+      <h1>{copy.title}</h1>
+      <p className="bd-summary">{copy.lead}</p>
+      {bundles.length === 0 && <p className="muted">{copy.empty} <Link to="/courses">Browse all courses</Link>.</p>}
       <div className="bd-grid">
         {bundles.map((b) => (
           <Link key={b.slug} to={`/bundles/${b.slug}`} className="card bd-tile">

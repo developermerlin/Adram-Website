@@ -255,7 +255,11 @@ class OrderReceiptView(APIView):
         order = _own_order(request, pk)
         if not order.receipt:
             raise Http404
-        return FileResponse(order.receipt.open('rb'), filename=order.receipt_name or 'receipt')
+        try:
+            handle = order.receipt.open('rb')
+        except OSError:  # the file is gone from the disk
+            raise Http404
+        return FileResponse(handle, filename=order.receipt_name or 'receipt')
 
 
 # ---------------------------------------------------------------- administrators

@@ -1311,7 +1311,10 @@
 }
 
 .table-scroll {
+  position: relative;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -7668,3 +7671,5 @@ body.text-edit-mode #root :is(h1, h2, h3, h4, h5, p, span, a, button, label, li,
 /* Site content editor on phones: let the column shrink to the screen instead of to its widest field */
 .editor__main { grid-template-columns: minmax(0, 1fr); }
 .editor__main > * { min-width: 0; }
+
+.otp-step__paste { justify-self: center; margin-top: -4px; }

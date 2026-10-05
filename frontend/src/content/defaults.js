@@ -266,6 +266,11 @@ export const defaults = {
       secondaryLabel: 'About the company',
     },
     members: team,
+    intro: {
+      eyebrow: 'Meet the team',
+      title: 'The people behind your projects',
+      text: 'Engineers, trainers and advisers who plan, build and support technology for organisations across Sierra Leone, and help people grow their skills. Open a profile to see their experience and CV, or send them a message.',
+    },
     cta: {
       title: 'Let’s work together',
       text: 'Tell us about your project or the skills you want to learn, and the right person on the team will get back to you.',
@@ -530,6 +535,8 @@ export const defaults = {
       { label: 'Mission & vision', link: '/about#mission', icon: 'innovation' },
       { label: 'Our values', link: '/about#values', icon: 'quality' },
       { label: 'Our team', link: '/about/team', icon: 'people' },
+      { label: 'Our projects', link: '/projects', icon: 'briefcase' },
+      { label: 'Our partners', link: '/partners', icon: 'partnership' },
     ],
     scholarshipsMenu: [
       { label: 'Find a scholarship', link: '/scholarships#finder', icon: 'award' },
@@ -546,9 +553,12 @@ export const defaults = {
         { label: 'About us', link: '/about' },
         { label: 'Mission & vision', link: '/about#mission' },
         { label: 'Our team', link: '/about/team' },
+        { label: 'Our projects', link: '/projects' },
         { label: 'Our services', link: '/services' },
         { label: 'Contact us', link: '/contact' },
         { label: 'Our values', link: '/about#values' },
+        { label: 'Partners', link: '/partners' },
+        { label: 'Blog', link: '/blog' },
       ],
       studentsTitle: 'Students',
       students: [
@@ -566,6 +576,157 @@ export const defaults = {
         { label: 'Contact', link: '/contact' },
       ],
       backToTop: 'Back to top',
+    },
+  },
+
+  // ---------------------------------------------------------------- Premium, bundles and certificate check
+  // (the plans, prices and bundles themselves are set in the admin dashboard)
+  store: {
+    premium: {
+      title: 'ADRAM Premium',
+      lead: 'One plan, {count} Premium courses: learn as much as you like while it’s active. You can still buy single courses to keep for good.',
+      benefits: [
+        'Every Premium course, as long as it’s active',
+        'Certificates for the courses you finish',
+        'Pay by Orange Money, Afrimoney or card',
+        'No automatic charges: you choose when to renew',
+      ],
+      button: 'Get Premium',
+      buttonRenew: 'Add time',
+      unavailable: 'Premium isn’t available at the moment.',
+      more: 'Browse the courses: Premium ones show a crown.',
+    },
+    bundles: {
+      title: 'Course bundles',
+      lead: 'Courses that go well together, for less than buying them one by one.',
+      empty: 'No bundles yet.',
+    },
+    verify: {
+      eyebrow: 'Certificates',
+      title: 'Verify a certificate',
+      lead: 'Enter the certificate ID printed at the bottom of an ADRAM certificate, for example ADR-1A2B-3C4D-5E6F.',
+    },
+  },
+
+  // ---------------------------------------------------------------- Partners (the partners themselves are added in Admin → Partners)
+  partners: {
+    seo: {
+      title: 'Partners | ADRAM Technologies',
+      description: 'The technology companies, universities, NGOs and businesses ADRAM Technologies works with, and how to become a partner.',
+    },
+    showInMenu: false,
+    hero: {
+      eyebrow: 'Partners',
+      title: 'Building Sierra Leone’s digital future, together',
+      lead: 'We work with technology companies, universities, NGOs and businesses to deliver better systems and train the next generation of tech talent.',
+      primaryLabel: 'Become a partner',
+      secondaryLabel: 'Meet our partners',
+    },
+    stats: [
+      { value: '25+', label: 'Partner organisations' },
+      { value: '500+', label: 'People trained with partners' },
+      { value: '8', label: 'Years of collaboration' },
+    ],
+    logosTitle: 'Organisations we work with',
+    logosLead: 'From global technology companies to local schools and community groups.',
+    spotlightTitle: 'What our partners say',
+    benefitsTitle: 'Why partner with ADRAM',
+    benefitsLead: 'A partnership with us is built around clear goals and results you can measure.',
+    benefits: [
+      { icon: 'graduate', title: 'Access to trained talent', text: 'Meet graduates of our training programmes for internships and jobs.' },
+      { icon: 'growth', title: 'Reach new customers', text: 'Bring your products and services to the organisations we support every day.' },
+      { icon: 'community', title: 'Lasting local impact', text: 'Fund scholarships and training that change careers in Sierra Leone.' },
+      { icon: 'support', title: 'A dedicated contact', text: 'One person at ADRAM who knows your goals and keeps the work on track.' },
+    ],
+    stepsTitle: 'How partnership works',
+    steps: [
+      { title: 'Tell us about you', text: 'Send the short form below with your goals and ideas.' },
+      { title: 'Meet our team', text: 'We arrange a call within two working days to explore the fit.' },
+      { title: 'Agree a plan', text: 'Together we set clear goals, responsibilities and timelines.' },
+      { title: 'Launch and grow', text: 'We start working together and review the results regularly.' },
+    ],
+    apply: {
+      enabled: true,
+      title: 'Become a partner',
+      lead: 'Tell us about your organisation and the partnership you have in mind. Our partnerships team replies within two working days.',
+      types: ['Technology partner', 'Education partner', 'Hiring partner', 'NGO or community partner', 'Sponsor', 'Other'],
+      button: 'Send application',
+    },
+  },
+
+  // ---------------------------------------------------------------- Blog (the posts themselves are written in Admin → Blog)
+  blog: {
+    seo: {
+      title: 'Blog | ADRAM Technologies',
+      description: 'News, insights and practical guides from ADRAM Technologies on software, networks, tech careers, training and scholarships.',
+    },
+    showInMenu: true,
+    hero: {
+      eyebrow: 'Blog',
+      title: 'Insights, news and practical guides',
+      lead: 'Ideas from our engineers and trainers on software, networks, tech careers and studying abroad.',
+    },
+    labels: {
+      menu: 'Blog',
+      allPosts: 'All posts',
+      search: 'Search articles',
+      featured: 'Featured',
+      loadMore: 'Load more articles',
+      empty: 'No articles yet. Check back soon.',
+      noResults: 'No articles match your search.',
+      onThisPage: 'On this page',
+      share: 'Share this article',
+      related: 'Keep reading',
+      writtenBy: 'Written by',
+      newsletterTitle: 'Get new articles in your inbox',
+      newsletterText: 'One email when we publish something new. No spam, unsubscribe at any time.',
+    },
+  },
+
+  // ---------------------------------------------------------------- Projects (the projects themselves are added in Admin → Projects)
+  projects: {
+    seo: {
+      title: 'Our projects | ADRAM Technologies',
+      description: 'Websites, software, networks and digital systems ADRAM Technologies has delivered for businesses, schools, NGOs and public institutions.',
+    },
+    hero: {
+      eyebrow: 'Our projects',
+      title: 'Work we’re proud to have delivered',
+      lead: 'A selection of the websites, software, networks and digital systems we have built for organisations across Sierra Leone and beyond.',
+      primaryLabel: 'Start a project',
+      secondaryLabel: 'Our services',
+    },
+    labels: {
+      all: 'All projects',
+      search: 'Search projects',
+      featured: 'Featured project',
+      viewCase: 'View case study',
+      empty: 'Our project showcase is being prepared. In the meantime, ask us about our work.',
+      noResults: 'No projects match your search.',
+      statProjects: 'Projects delivered',
+      statClients: 'Organisations served',
+      statSectors: 'Sectors',
+      statServices: 'Services involved',
+      client: 'Client',
+      sector: 'Sector',
+      location: 'Location',
+      completed: 'Completed',
+      duration: 'Duration',
+      service: 'Service',
+      visit: 'Visit the live project',
+      results: 'Results',
+      challenge: 'The challenge',
+      solution: 'What we did',
+      outcome: 'The outcome',
+      technologies: 'Technologies used',
+      gallery: 'Gallery',
+      related: 'More projects',
+      back: 'All projects',
+    },
+    cta: {
+      title: 'Have a project in mind?',
+      text: 'Tell us what you need and we’ll come back with ideas, a plan and a clear quote.',
+      button: 'Start a project',
     },
   },
 

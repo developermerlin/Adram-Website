@@ -4617,3 +4617,9 @@
   /* the palette button isn't at the screen edge, so pin the panel to the screen instead of the button */
   .portal .theme-menu__panel { position: fixed; top: 64px; right: 12px; left: 12px; width: auto; max-height: calc(100vh - 80px); }
 }
+
+/* Statistic cards at the top of the Enquiries and Notifications pages */
+.portal .stats-block { margin-bottom: 8px; }
+.portal .stats-block .kpi-grid { gap: 20px; margin-bottom: 20px; }
+.portal .stats-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.portal .stats-block .kpi .hbars { margin: 0; }

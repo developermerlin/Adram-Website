@@ -188,13 +188,15 @@ class ApplicationSerializer(serializers.ModelSerializer):
     updated_by_name = serializers.SerializerMethodField()
     scholarship_info = serializers.SerializerMethodField()
     service = serializers.SerializerMethodField()
+    intake = serializers.SerializerMethodField()
+    agreement = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
         fields = [
             'id', 'scholarship_slug', 'scholarship_name', 'country', 'country_name', 'stage', 'stage_display',
             'deadline', 'next_step', 'counsellor_note', 'advice_stage', 'counsellor_message', 'current_next_step', 'result_message', 'result_expected_on', 'interview_at', 'interview_link',
-            'interview_note', 'result_files', 'service_requested_at', 'service', 'documents', 'milestones',
+            'interview_note', 'result_files', 'service_requested_at', 'service', 'intake', 'agreement', 'documents', 'milestones',
             'scholarship_info',
             'created_at', 'updated_at', 'updated_by_name',
         ]
@@ -226,6 +228,16 @@ class ApplicationSerializer(serializers.ModelSerializer):
     def get_service(self, obj):
         service = getattr(obj, 'service', None)
         return ServiceSerializer(service, context=self.context).data if service else None
+
+    def get_agreement(self, obj):
+        """The service agreement, once ADRAM has sent it (portal/agreements.py)."""
+        from .agreements import summary
+        return summary(obj)
+
+    def get_intake(self, obj):
+        """The application form's status, once the payment is confirmed (portal/intake.py)."""
+        from .intake import summary
+        return summary(obj)
 
     def get_scholarship_info(self, obj):
         """The scholarship's official deadline, key dates and the admin's "ADRAM applies for you" settings."""

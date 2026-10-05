@@ -15,7 +15,7 @@ import { useCartCount } from '../lms/cartStore';
 import '../../styles/marketplace.css';
 
 // The menu labels, dropdown links and how many items each dropdown lists come from the editable "navigation" content.
-const buildNav = (n, services, courses) => {
+const buildNav = (n, services, courses, blog, partners) => {
   const limit = n.limits.dropdown;
   const mf = n.menuFooters;
   const count = (list, few, many) => (list && list.length > limit ? fill(many, { count: list.length }) : few);
@@ -40,6 +40,8 @@ const buildNav = (n, services, courses) => {
       children: n.scholarshipsMenu.map((m) => ({ to: m.link, label: m.label, icon: m.icon })),
       footer: { to: '/scholarships', label: mf.scholarships },
     },
+    ...(partners?.showInMenu ? [{ to: '/partners', label: partners.hero.eyebrow || 'Partners' }] : []),
+    ...(blog?.showInMenu ? [{ to: '/blog', label: blog.labels.menu }] : []),
     { to: '/contact', label: n.labels.contact },
   ];
 };
@@ -156,7 +158,9 @@ export const SiteHeader = () => {
   const { data: courses } = useCourses();
   const { services } = useServices();
   const navContent = usePageContent('navigation');
-  const nav = buildNav(navContent, services, courses);
+  const blogContent = usePageContent('blog'); // "Blog" in the menu: Site content → Blog page → Menu
+  const partnersContent = usePageContent('partners');
+  const nav = buildNav(navContent, services, courses, blogContent, partnersContent);
   const [expanded, setExpanded] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const cartCount = useCartCount();
@@ -176,10 +180,26 @@ export const SiteHeader = () => {
     setOpenItem(null);
   }
 
+  const toggleRef = useRef(null);
+  const panelRef = useRef(null);
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : '';
+    document.body.classList.toggle('menu-open', menuOpen);
+    if (!menuOpen) return undefined;
+    // Keyboard: focus the first link once the panel has slid in; Escape closes and returns focus to the button.
+    const focusTimer = setTimeout(() => panelRef.current?.querySelector('a, button')?.focus({ preventScroll: true }), 120);
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        toggleRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
     return () => {
+      clearTimeout(focusTimer);
+      window.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
+      document.body.classList.remove('menu-open');
     };
   }, [menuOpen]);
 
@@ -238,23 +258,26 @@ export const SiteHeader = () => {
           <div className="header-actions">{accountActions}</div>
 
           <button
+            ref={toggleRef}
             type="button"
-            className="menu-toggle"
+            className={`menu-toggle${menuOpen ? ' is-open' : ''}`}
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <i className={menuOpen ? 'fas fa-xmark' : 'fas fa-bars'} />
+            {/* three lines that turn into a cross */}
+            <span className="menu-toggle__bars" aria-hidden="true"><span /><span /><span /></span>
           </button>
         </div>
 
       </header>
 
       {/* Outside <header>: its backdrop-filter would trap this fixed panel inside the header box. */}
-      <nav id="mobile-nav" className={`mobile-nav${menuOpen ? ' is-open' : ''}`} aria-label="Mobile">
-        {nav.map((item) => (
-          <div key={item.to} className="mobile-nav__group">
+      <div className={`mobile-nav__backdrop${menuOpen ? ' is-open' : ''}`} aria-hidden="true" onClick={() => setMenuOpen(false)} />
+      <nav id="mobile-nav" ref={panelRef} className={`mobile-nav${menuOpen ? ' is-open' : ''}`} aria-label="Mobile" inert={!menuOpen}>
+        {nav.map((item, index) => (
+          <div key={item.to} className="mobile-nav__group" style={{ '--i': index }}>
             <div className="mobile-nav__row">
               <NavLink to={item.to} end={item.end} className="mobile-nav__link" onClick={() => setMenuOpen(false)}>
                 {item.label}
@@ -271,26 +294,31 @@ export const SiteHeader = () => {
                 </button>
               )}
             </div>
-            {item.children && expanded === item.to && (
-              <div className="mobile-nav__sub">
-                {item.children.map((child) => (
-                  <Link key={child.to} to={child.to} onClick={() => setMenuOpen(false)}>
-                    <BrandIcon name={child.icon} size={18} /> {child.label}
-                  </Link>
-                ))}
-                {item.footer && (
-                  <Link to={item.footer.to} className="mobile-nav__all" onClick={() => setMenuOpen(false)}>
-                    {item.footer.label} <i className="fas fa-arrow-right" aria-hidden="true" />
-                  </Link>
-                )}
+            {item.children && (
+              <div className={`mobile-nav__sub${expanded === item.to ? ' is-open' : ''}`} inert={expanded !== item.to}>
+                <div className="mobile-nav__sub-inner">
+                  {item.children.map((child) => (
+                    <Link key={child.to} to={child.to} onClick={() => setMenuOpen(false)}>
+                      <span className="mobile-nav__icon"><BrandIcon name={child.icon} size={17} /></span>
+                      <span>{child.label}</span>
+                    </Link>
+                  ))}
+                  {item.footer && (
+                    <Link to={item.footer.to} className="mobile-nav__all" onClick={() => setMenuOpen(false)}>
+                      {item.footer.label} <i className="fas fa-arrow-right" aria-hidden="true" />
+                    </Link>
+                  )}
+                </div>
               </div>
             )}
           </div>
         ))}
-        <div className="mobile-nav__actions">{accountActions}</div>
-        <div className="mobile-nav__contact">
-          <a href={telHref(site.phones[0])}><i className="fas fa-phone" /> {site.phones[0]}</a>
-          <a href={`mailto:${site.email}`}><i className="fas fa-envelope" /> {site.email}</a>
+        <div className="mobile-nav__foot" style={{ '--i': nav.length }}>
+          <div className="mobile-nav__actions">{accountActions}</div>
+          <div className="mobile-nav__contact">
+            <a href={telHref(site.phones[0])}><i className="fas fa-phone" aria-hidden="true" /> {site.phones[0]}</a>
+            <a href={`mailto:${site.email}`}><i className="fas fa-envelope" aria-hidden="true" /> {site.email}</a>
+          </div>
         </div>
       </nav>
     </>

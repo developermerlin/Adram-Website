@@ -35,6 +35,7 @@ from .serializers import (
     StaffNoteSerializer, StudentApplicationSerializer, StudyGoalsSerializer,
 )
 from .services import recommended_for, start_application, track
+from .intake import forms_to_review
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -106,7 +107,9 @@ class MySummaryView(APIView):
             'applications': user.applications.count(),
             'saved': user.saved_scholarships.count(),
             'actions': len(student_actions(user)),
-            'messages_unread': Message.objects.filter(conversation__user=user, from_staff=True, read_at__isnull=True).count(),
+            'messages_unread': (Message.objects.filter(conversation__member=user, from_staff=False, read_at__isnull=True).count()
+                                if user.role == User.TEAM_MEMBER else
+                                Message.objects.filter(conversation__user=user, from_staff=True, read_at__isnull=True).count()),
         })
 
 
@@ -205,6 +208,9 @@ class ApplicationUpdateMixin:
         who = f' by {self.request.user.get_full_name()}' if by_staff else ''
         track(application.student, PortalEvent.STAGE, application.scholarship, label=application.scholarship_name,
               detail=f'{dict(Application.STAGE_CHOICES)[old_stage]} → {application.get_stage_display()}{who}')
+        if by_staff and application.stage == Application.ACCEPTED:
+            from .agreements import on_accepted
+            on_accepted(application, self.request.user)  # the service agreement for the student to sign
         if by_staff and application.stage in RESULT_STAGES:
             if application.stage in FINAL_RESULTS:
                 # The work is finished either way, so the progress timeline is complete.
@@ -414,17 +420,31 @@ class PrivateFileView(APIView):
         elif kind == 'results':
             obj = get_object_or_404(ResultFile.objects.select_related('application'), pk=pk)
             owner, field, name = obj.application.student_id, obj.file, obj.file_name
+        elif kind == 'forms':
+            # A page of a paper application form the student filled in and uploaded (portal/intake.py)
+            from .intake import intake_file
+            owner, field, name = intake_file(request, pk)
+        elif kind == 'agreements':
+            # A page of a service agreement the student signed on paper and uploaded (portal/agreements.py)
+            from .agreements import agreement_file
+            owner, field, name = agreement_file(request, pk)
         elif kind == 'messages':
             # A chat attachment: the person in the conversation and administrators can open it.
             obj = get_object_or_404(Message.objects.select_related('conversation'), pk=pk)
             owner, field, name = obj.conversation.user_id, obj.attachment, obj.attachment_name
+            if obj.conversation.member_id == request.user.pk:
+                owner = request.user.pk  # the team member in a direct conversation can open its files too
         else:
             raise Http404
         if request.user.pk != owner and request.user.role != User.ADMIN:
             raise Http404  # don't reveal that the file exists
         if not field:
             raise Http404
-        return FileResponse(field.open('rb'), filename=name or field.name.rsplit('/', 1)[-1])
+        try:
+            handle = field.open('rb')
+        except OSError:  # the record exists but its file is gone from the disk
+            raise Http404
+        return FileResponse(handle, filename=name or field.name.rsplit('/', 1)[-1])
 
 
 # ---------------------------------------------------------------- Staff: a student's portal
@@ -563,6 +583,9 @@ class StaffServiceDecisionView(APIView):
             message, send = 'Payment not confirmed: student asked to upload again', emails.send_payment_rejected
         with transaction.atomic():
             service.save()
+            if action == 'confirm_payment':
+                from .agreements import on_paid
+                on_paid(application, request.user)  # the service agreement opens together with the application form
             application.updated_by = request.user
             application.save(update_fields=['updated_by', 'updated_at'])
             track(application.student, PortalEvent.SERVICE_DECISION, application.scholarship, label=application.scholarship_name,
@@ -614,6 +637,7 @@ class StaffSummaryView(APIView):
             'training_requests': TrainingEnrollment.objects.filter(status=TrainingEnrollment.REQUESTED).count(),
             'to_review': sum(counts.get(s, 0) for s in TO_REVIEW) + ApplicationDocument.objects.filter(DOCS_TO_CHECK).count(),
             'messages_unread': Message.objects.filter(from_staff=False, read_at__isnull=True).count(),
+            'forms_to_review': forms_to_review(),
         })
 
 

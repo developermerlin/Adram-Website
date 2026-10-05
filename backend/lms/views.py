@@ -33,6 +33,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.throttling import AnonRate, CodeRate
+
 from accounts.models import User
 from catalog.models import Course
 from catalog.serializers import CourseSerializer
@@ -655,6 +657,7 @@ class CertificateView(APIView):
 class VerifyCertificateView(APIView):
     """Public: confirms that a certificate code is real (and says so if it was revoked)."""
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRate, CodeRate]
 
     def get(self, request, code):
         certificate = get_object_or_404(Certificate.objects.select_related('enrollment__student', 'enrollment__course'), code=code.strip().upper())
@@ -752,6 +755,8 @@ class MediaView(APIView):
         try:
             path = field.path
         except (ValueError, NotImplementedError):
+            raise Http404
+        if not os.path.isfile(path):  # the record exists but its file is gone from the disk
             raise Http404
         if request.query_params.get('download') == '1':
             if kind == 'video' and not (lesson.course.allow_video_downloads or access.can_manage(user, lesson.course)):

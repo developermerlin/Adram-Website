@@ -7,6 +7,7 @@ import PortalLayout from '../../components/layout/PortalLayout';
 import Avatar from '../../components/ui/Avatar';
 import { Alert } from '../../components/ui/Form';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
+import { EnquiryStats } from '../../components/admin/EngagementStats';
 
 const FILTERS = [
   { id: 'all', label: 'All', isRead: undefined },
@@ -134,6 +135,7 @@ export const MessagesPage = () => {
 
   return (
     <PortalLayout title="Enquiries" subtitle="Enquiries sent through the website contact form.">
+      <EnquiryStats refreshKey={state} />
       <div className={`card inbox${selected ? ' has-selection' : ''}`}>
         <div className="inbox__list">
           <div className="inbox__toolbar">

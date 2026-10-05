@@ -210,8 +210,9 @@ const icons = {
   ),
   innovation: (
     <>
-      <path d="M15 4c.8 6.5 3.5 9.2 10 10-6.5.8-9.2 3.5-10 10-.8-6.5-3.5-9.2-10-10 6.5-.8 9.2-3.5 10-10z" stroke="none" style={{ fill: A }} />
-      <path d="M26 21v6M23 24h6" />
+      {/* a lightbulb: ideas put to work */}
+      <path d="M16 3.5a8.5 8.5 0 0 0-5 15.4c1 .7 1.6 1.9 1.6 3.1v1h6.8v-1c0-1.2.6-2.4 1.6-3.1A8.5 8.5 0 0 0 16 3.5z" stroke="none" style={{ fill: A }} />
+      <path d="M12.8 26.5h6.4M14 29.5h4" />
     </>
   ),
   people: (

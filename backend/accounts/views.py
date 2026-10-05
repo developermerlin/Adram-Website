@@ -1,6 +1,10 @@
+import hashlib
 import logging
+import time
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -12,6 +16,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+
+from api.throttling import AnonRate, AuthRate, EmailRate, SignupRate
 
 from . import mfa
 from .emails import notify_admins_new_account
@@ -158,6 +164,7 @@ class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRate, SignupRate]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -171,14 +178,37 @@ class UserRegistrationView(generics.CreateAPIView):
         )
 
 
+def _login_key(email, request):
+    ip = request.META.get('REMOTE_ADDR', '')
+    return 'login-fail:' + hashlib.sha256(f'{email.strip().lower()}|{ip}'.encode()).hexdigest()[:32]
+
+
+def login_locked(email, request):
+    """Seconds left if this email has had too many wrong passwords from this address, else 0."""
+    until = cache.get(_login_key(email, request) + ':until')
+    return max(0, int(until - time.time())) if until else 0
+
+
+def login_failed(email, request):
+    key = _login_key(email, request)
+    window = settings.LOGIN_LOCKOUT_MINUTES * 60
+    count = cache.get(key, 0) + 1
+    cache.set(key, count, window)
+    if count >= settings.LOGIN_MAX_FAILURES:
+        cache.set(key + ':until', time.time() + window, window)
+        cache.delete(key)
+
+
 class LoginView(generics.GenericAPIView):
     """
     POST /api/v1/auth/login/  {email, password, remember}
     Checks the password, then emails a sign-in code. Tokens are issued by /otp/verify/.
+    After LOGIN_MAX_FAILURES wrong passwords for one email from one address, sign-in pauses for a while.
     """
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [AnonRate, AuthRate]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -186,11 +216,19 @@ class LoginView(generics.GenericAPIView):
         email, password = serializer.validated_data['email'], serializer.validated_data['password']
         remember = serializer.validated_data['remember']
 
+        wait = login_locked(email, request)
+        if wait:
+            minutes = max(1, round(wait / 60))
+            return Response({'detail': f'Too many wrong passwords. Please wait {minutes} minute{"s" if minutes > 1 else ""} and try again, '
+                                       'or reset your password.', 'code': 'locked', 'retry_after': wait},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS, headers={'Retry-After': str(wait)})
         user = User.objects.filter(email__iexact=email).first()
         if not user or not user.check_password(password):
+            login_failed(email, request)
             if user:
                 log_activity(user, ActivityLog.FAILED_LOGIN, 'Failed login attempt', request)
             return Response({'detail': 'No active account found with the given credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        cache.delete(_login_key(email, request))
 
         if not user.is_active:
             return blocked_response('suspended')
@@ -219,6 +257,7 @@ class OTPVerifyView(generics.GenericAPIView):
     serializer_class = OTPVerifySerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [AnonRate, AuthRate]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -260,6 +299,7 @@ class OTPResendView(generics.GenericAPIView):
     serializer_class = OTPResendSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [AnonRate, EmailRate]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -290,6 +330,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
     serializer_class = PasswordResetRequestSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [AnonRate, EmailRate]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -316,6 +357,7 @@ class PasswordResetConfirmView(generics.GenericAPIView):
     serializer_class = PasswordResetConfirmSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [AnonRate, AuthRate]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)

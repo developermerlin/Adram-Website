@@ -1,10 +1,12 @@
 from django.urls import path
 
-from . import views
+from . import lock, views
 
 app_name = 'cms'
 
 urlpatterns = [
+    path('lock/', lock.SiteLockView.as_view(), name='lock'),
+    path('lock/manage/', lock.ManageSiteLockView.as_view(), name='lock-manage'),
     path('media/', views.MediaListCreate.as_view(), name='media'),
     path('media/<int:pk>/', views.MediaDelete.as_view(), name='media-delete'),
     path('manage/<slug:slug>/history/', views.PageHistory.as_view(), name='history'),

@@ -5,11 +5,12 @@ import { usePageContent, useSite } from '../../content/useContent';
 import { useServices } from '../../content/useServices';
 import Brand from '../ui/Brand';
 import SocialLinks from '../ui/SocialLinks';
+import NewsletterSignup from './NewsletterSignup';
 
 // The footer lists only the first few services, then a plain link to the full list.
-// `more` (optional): { to, label } adds a "view all" link after the list.
-const FooterLinks = ({ title, links, more }) => (
-  <div className="footer-col">
+// `more` (optional): { to, label } adds a "view all" link after the list. `name` places the column on tablets and phones.
+const FooterLinks = ({ title, links, more, name }) => (
+  <div className={`footer-col footer-col--${name}`}>
     <h4>{title}</h4>
     <ul>
       {links.map((l) => (
@@ -37,6 +38,7 @@ export const SiteFooter = () => {
   return (
   <footer className="site-footer">
     <div className="container">
+      <NewsletterSignup />
       <div className="site-footer__grid">
         <div className="site-footer__about">
           <Brand light />
@@ -45,12 +47,13 @@ export const SiteFooter = () => {
         </div>
 
         <FooterLinks
+          name="services"
           title={f.servicesTitle}
           links={services.slice(0, limits.footerServices).map((s) => ({ to: `/services/${s.id}`, label: s.title }))}
           more={{ to: '/services', label: f.servicesMore }}
         />
-        <FooterLinks title={f.companyTitle} links={toLinks(f.company)} />
-        <FooterLinks title={f.studentsTitle} links={toLinks(f.students)} />
+        <FooterLinks name="company" title={f.companyTitle} links={toLinks(f.company)} />
+        <FooterLinks name="students" title={f.studentsTitle} links={toLinks(f.students)} />
 
         <div className="footer-col footer-col--contact">
           <h4>{f.contactTitle}</h4>

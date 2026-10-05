@@ -23,6 +23,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.throttling import AnonRate, CodeRate
+
 from catalog.models import Course
 
 from . import access
@@ -168,6 +170,7 @@ class JoinView(APIView):
 
 class JoinByCodeView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AnonRate, CodeRate]
 
     def post(self, request):
         group = StudyGroup.objects.select_related('course').filter(invite_code=str(request.data.get('code', '')).strip().upper()).first()

@@ -1,0 +1,249 @@
+/*
+ * Responsive safety layer, loaded after every other stylesheet.
+ * From a 320px phone to a 2560px monitor: nothing may make the page scroll sideways, and wide content
+ * (tables, tab bars, button rows) scrolls or wraps inside its own box instead.
+ * Rules are prefixed with `html body` so they win over the page stylesheets without !important.
+ */
+
+/* Grid tracks may shrink below their content (CSS grid's default "auto" minimum otherwise
+   lets one long word, chart or nowrap row widen the whole page). */
+html body .detail-layout > *,
+html body .app-list > *,
+html body .nl-overview > *,
+html body .form-grid > *,
+html body .la-page > *,
+html body .closing-list > *,
+html body .dash-grid > *,
+html body .kpi-grid > *,
+html body .grid-2 > *,
+html body .grid-3 > *,
+html body .agt > *,
+html body .agt-main > *,
+html body .agt-side > *,
+html body .af-layout > * {
+  min-width: 0;
+}
+
+/* The same, everywhere content lives: layout boxes may shrink to the screen. Zero specificity (:where),
+   so any component that sets its own min-width keeps it. */
+:where(.portal__main, main, .afp, .site-footer) :where(div, section, article, aside, form, details, fieldset, header, footer, nav, ul, ol, li, label) {
+  min-width: 0;
+}
+
+/* Page-header button rows wrap onto a second line on small screens. */
+html body .portal__actions {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Tab bars scroll sideways inside their own strip when they don't fit. */
+html body .lms-tabs,
+html body .tabs,
+html body .metric-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+html body .lms-tabs::-webkit-scrollbar,
+html body .tabs::-webkit-scrollbar,
+html body .metric-tabs::-webkit-scrollbar { display: none; }
+html body .lms-tabs > *,
+html body .tabs > * { flex: none; white-space: nowrap; }
+
+/* Media never escapes its container. */
+html body img,
+html body video,
+html body iframe,
+html body svg:not([width]) { max-width: 100%; }
+
+/* Long unbroken strings (emails, links, references) wrap instead of pushing the layout. */
+html body .portal__main,
+html body main {
+  overflow-wrap: break-word;
+}
+
+/* Very large screens: keep reading widths comfortable and centre the portal content. */
+@media (min-width: 1600px) {
+  :root { --container: 1280px; }
+}
+@media (min-width: 1800px) {
+  :root { --container: 1360px; }
+  html body .portal__main { max-width: 1480px; margin-inline: auto; }
+}
+@media (min-width: 2200px) {
+  /* Big monitors and TVs: everything scales up a little so it reads at a distance */
+  :root { --container: 1440px; }
+  html { font-size: 112.5%; }
+  html body .portal__main { max-width: 1600px; }
+}
+
+/* Small phones (320–374px): tighter gutters so content gets the room. */
+@media (max-width: 374px) {
+  html body .portal__main { padding-inline: 14px; }
+  html body .container { padding-inline: 14px; }
+}
+
+/* Phones: long button labels wrap onto two lines instead of pushing past the edge. */
+@media (max-width: 480px) {
+  html body .btn { white-space: normal; text-align: center; }
+}
+
+/* The printable documents (application form, agreement) on a phone screen; printing is unchanged. */
+@media screen and (max-width: 600px) {
+  html body .afp__paper { padding: 22px 16px; }
+  html body .afd__facts,
+  html body .afd__facts tbody { display: block; width: 100%; }
+  html body .afd__facts tr { display: grid; grid-template-columns: minmax(84px, auto) minmax(0, 1fr); }
+  html body .afd__facts th,
+  html body .afd__facts td { display: block; white-space: normal; overflow-wrap: anywhere; }
+  html body .afd__sheet { width: 100%; table-layout: fixed; }
+  html body .afd__head,
+  html body .agd__letterhead { flex-wrap: wrap; }
+  html body .afd__refs { flex-wrap: wrap; }
+  html body .afd__contact { padding-left: 0; border-left: 0; overflow-wrap: anywhere; }
+}
+
+/* Dashboard stat tiles: two per row on phones (icon above the figure) instead of one long column. */
+@media (max-width: 520px) {
+  html body .ov-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  html body .ov-kpis .ov-kpi * { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  html body .ov-kpis .ov-kpi { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'icon' 'label' 'value' 'note'; row-gap: 4px; padding: 14px; justify-items: start; }
+}
+@media (max-width: 339px) {
+  html body .ov-kpis { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Card grids: at most 3 (or 4) columns that always fill the row, fewer on smaller screens. */
+html body .grid-3 { grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 300px), calc((100% - 2 * 24px) / 3)), 1fr)); }
+html body .grid-4 { grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 230px), calc((100% - 3 * 24px) / 4)), 1fr)); }
+
+/* ---------------------------------------------------------------- Placement per device (public site) */
+
+/* Phones: call-to-action buttons sit full width, one under the other, centred, easy to tap. */
+@media (max-width: 600px) {
+  html body .home-hero__actions,
+  html body .page-hero__actions,
+  html body .cta-band__actions,
+  html body .talent-card__actions,
+  html body .sch-process__actions,
+  html body .join-card__actions,
+  html body .contact-sent__actions,
+  html body .locked-panel__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+  html body .home-hero__actions > .btn,
+  html body .page-hero__actions > .btn,
+  html body .cta-band__actions > .btn,
+  html body .talent-card__actions > .btn,
+  html body .sch-process__actions > .btn,
+  html body .join-card__actions > .btn,
+  html body .contact-sent__actions > .btn,
+  html body .locked-panel__actions > .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 46px;
+  }
+
+  /* The logo panel is decoration: smaller on phones so the content comes sooner */
+  html body .hero-brand-scene { max-width: 240px; margin-inline: auto; }
+
+  /* Home "Services": the "View all services" button already sits under the cards on phones */
+  html body #services .section-head > .btn { display: none; }
+
+  /* Figures (11 service areas · 14 tracks · 1 day) in one even row */
+  html body .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  html body .facts > div { flex-direction: column; justify-content: flex-start; }
+  html body .facts dd { order: 1; margin: 0; }
+  html body .facts dt { order: 2; }
+}
+
+/* Tablets: two-up button rows stay side by side but share the width evenly. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  html body .cta-band { grid-template-columns: minmax(0, 1fr); }
+  html body .cta-band__actions { justify-content: flex-start; }
+}
+
+/* ---------------------------------------------------------------- Placement per device (touch & portal) */
+
+/* Touch screens: every control is at least 44px in the direction you tap (the standard comfortable size). */
+@media (max-width: 900px), (pointer: coarse) {
+  html body .icon-btn,
+  html body .portal .icon-btn,
+  html body .btn--sm.btn--text:has(> i:only-child),
+  html body .btn--text:has(> i:only-child) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  html body .tabs__tab,
+  html body .lms-tabs button,
+  html body .segmented button,
+  html body [role="tablist"] > button {
+    min-height: 44px;
+  }
+  html body .link-button,
+  html body .cd-report__link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  html body label.checkbox,
+  html body .inbox__toolbar label { min-height: 44px; align-items: center; }
+  html body .period-switch button { min-height: 40px; padding-inline: 12px; }
+  html body .inbox__check { min-height: 44px; display: inline-flex; align-items: center; gap: 10px; }
+}
+
+/* Site-content editor on phones: the item name gets its own line, the tools sit under it. */
+@media (max-width: 560px) {
+  html body .cf-item summary { flex-wrap: wrap; row-gap: 6px; }
+  html body .cf-item__title { flex: 1 1 calc(100% - 90px); white-space: normal; }
+  html body .cf-item__tools { order: 3; margin-left: 38px; }
+}
+
+/* The course filter drawer covers the floating "back to top" button while it is open. */
+@media (max-width: 980px) {
+  html body .cf-side.is-open { z-index: 120; }
+  html body .cf-side.is-open + .cf-backdrop { z-index: 110; }
+}
+
+/* iPhones: fixed bottom bars clear the home indicator. */
+html body .cd-buybar { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+/* Working pages (Enquiries, Notifications) on phones: the statistics shrink to a compact 2x2 summary so the
+   list itself starts on the first screen. Dashboards keep their full charts. */
+@media (max-width: 600px) {
+  html body .stats-block .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  html body .stats-block .kpi { padding: 12px; gap: 8px; }
+  html body .stats-block .kpi__chart,
+  html body .stats-block .kpi__link,
+  html body .stats-block .kpi__head .stat__icon { display: none; }
+  html body .stats-block .kpi__panel { padding: 8px 10px; min-height: 0; }
+  html body .stats-block .kpi__value { font-size: 1.35rem; }
+  html body .stats-block .kpi__label { font-size: 0.82rem; }
+  html body .stats-block .kpi__note { font-size: 0.74rem; line-height: 1.35; }
+  html body .stats-head { margin-bottom: 10px; }
+  html body .stats-head .period-switch { width: 100%; justify-content: space-between; }
+}
+
+/* Admin "Edit text" button: a small round icon on phones so it never covers a form field
+   (the words stay for screen readers). */
+@media (max-width: 600px) {
+  html body .text-edit-toggle:not(.is-on) {
+    width: 44px; height: 44px; padding: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0; gap: 0;
+  }
+  html body .text-edit-toggle:not(.is-on) i { font-size: 1rem; }
+}
+
+/* Small phones: a panel heading with a filter switch (e.g. activity "All / Failed", chart "Views / Applications")
+   puts the switch on its own line; if its options still don't fit, they scroll sideways inside the switch. */
+@media (max-width: 480px) {
+  html body .panel__head:has(> .period-switch, > * > .period-switch) { flex-wrap: wrap; row-gap: 10px; }
+  html body .panel__head .period-switch { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  html body .panel__head .period-switch button { flex: none; white-space: nowrap; }
+}

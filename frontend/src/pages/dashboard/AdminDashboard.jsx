@@ -13,6 +13,7 @@ import { ColumnChart, Donut, Funnel, HBars, Heatmap, Meter, MiniBars, SeriesTabl
 import DashboardArt from '../../components/brand/DashboardArt';
 import { Delta, StatTile } from '../../components/admin/StatTile';
 import CommsSecurityOverview from '../../components/admin/CommsSecurityOverview';
+import EnquiriesNotificationsOverview from '../../components/admin/EnquiriesNotificationsOverview';
 import '../../styles/security.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -433,7 +434,7 @@ export const AdminDashboard = () => {
             <Panel title="Top scholarships" note="By applications, then saves" link="/admin/scholarships" linkLabel="Manage" ready={Boolean(b)}>
               {b?.top_scholarships.length === 0 && <p className="muted small">No applications or saves yet.</p>}
               {b && b.top_scholarships.length > 0 && (
-                <table className="rank-table">
+                <div className="table-scroll"><table className="rank-table">
                   <thead>
                     <tr>
                       <th scope="col">Scholarship</th>
@@ -456,13 +457,15 @@ export const AdminDashboard = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </Panel>
           </div>
         </div>
 
         {/* Work to do + what's coming */}
+        <EnquiriesNotificationsOverview days={days} />
+
         <CommsSecurityOverview days={days} />
 
         <SectionLabel icon="fa-list-check">Work queue</SectionLabel>

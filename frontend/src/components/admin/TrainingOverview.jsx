@@ -125,7 +125,7 @@ export const TrainingOverview = ({ refreshKey = '' }) => {
               {!d && <div className="skeleton skeleton--block" />}
               {d?.programmes.length === 0 && <p className="muted small">No programmes yet.</p>}
               {d && d.programmes.length > 0 && (
-                <table className="rank-table programme-table">
+                <div className="table-scroll"><table className="rank-table programme-table">
                   <thead>
                     <tr>
                       <th scope="col">Programme</th>
@@ -157,7 +157,7 @@ export const TrainingOverview = ({ refreshKey = '' }) => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </Panel>
 

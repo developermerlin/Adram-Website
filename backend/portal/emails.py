@@ -46,14 +46,31 @@ def send_service_declined(service):
     )
 
 
+def _agreement_waiting(app):
+    from .models import StudentAgreement
+    return StudentAgreement.objects.filter(application=app, status=StudentAgreement.PENDING).exists()
+
+
 def send_payment_confirmed(service):
+    """Payment confirmed, and the application form is now ready to fill in (portal/intake.py)."""
+    from .models import IntakeForm
     app = service.application
+    form = IntakeForm.load()
+    ways = [w for ok, w in ((form.allow_online, 'fill it in online in your portal'),
+                            (form.allow_upload, 'download it, fill it in by hand and upload a scan')) if ok]
     _notify(
-        app.student, subject=f'Payment confirmed: {app.scholarship_name}', label='Payment confirmed', tone='success',
+        app.student, subject=f'Payment confirmed – your application form is ready: {app.scholarship_name}', label='Payment confirmed', tone='success',
         title='Thank you, your payment is confirmed',
         paragraphs=[f'We’ve confirmed your payment of {_money(service.amount)} (reference {service.reference}).',
-                    'Our team is now working on your application. Follow its progress and next steps in your portal.'],
-        cta=('Open my portal', _frontend('/student/applications')),
+                    'Your next step: complete your scholarship application form. It gives our team everything needed to prepare '
+                    f'and submit your application. You can {" or ".join(ways)}.'],
+        extra_html=notice('Please complete the form as soon as you can: we start working on your application once we have it.', 'info', 'Your application form is ready')
+        + (notice('Please also read and sign your Scholarship Application and Success-Based Service Agreement in your portal. '
+                  'No win, no fee: the service fee only becomes due if your scholarship is awarded.', 'success', 'Your service agreement is ready too')
+           if _agreement_waiting(app) else ''),
+        extra_text='Your application form is ready. Please complete it as soon as you can.'
+        + (' Your service agreement is also ready to sign in your portal.' if _agreement_waiting(app) else ''),
+        cta=('Fill in my application form', _frontend(f'/student/applications/{app.pk}/form')),
     )
 
 
@@ -208,17 +225,37 @@ def _quote(body, limit=600):
 
 
 def send_new_message(message):
-    """The ADRAM team replied: tell the person, in case they aren't signed in."""
-    user = message.conversation.user
-    sender = message.sender.first_name if message.sender else ''
-    who = f'{sender} from the ADRAM team' if sender else 'The ADRAM team'
+    """ADRAM replied (the team, or the team member the person wrote to): tell the person, in case they aren't signed in."""
+    conversation = message.conversation
+    user = conversation.user
+    if conversation.member_id:
+        who, link = f'{conversation.member.get_full_name()} from ADRAM Technologies', f'/messages?member={conversation.member_id}'
+    else:
+        sender = message.sender.first_name if message.sender else ''
+        who, link = (f'{sender} from the ADRAM team' if sender else 'The ADRAM team'), '/messages'
     _notify(
         user, subject='New message from ADRAM', label='Message', tone='info',
         title='You have a new message',
         paragraphs=[escape(f'{who} sent you a message in your ADRAM portal:')],
         extra_html=notice(_quote(message.preview)), extra_text=message.preview,
-        cta=('Read and reply', _frontend('/messages')),
+        cta=('Read and reply', _frontend(link)),
     )
+
+
+def notify_member_message(message):
+    """Someone wrote to a team member from their portfolio page (sent once per unread run)."""
+    try:
+        conversation = message.conversation
+        user, member = conversation.user, conversation.member
+        _notify(
+            member, subject=f'New message from {user.get_full_name()}', label='Message', tone='info',
+            title=f'{user.get_full_name()} sent you a message',
+            paragraphs=[escape(f'{user.get_full_name()} ({user.email}) wrote to you from your team profile:')],
+            extra_html=notice(_quote(message.preview)), extra_text=message.preview,
+            cta=('Read and reply', _frontend(f'/messages?user={user.pk}')),
+        )
+    except Exception:
+        logger.exception('Could not tell team member about message %s', message.pk)
 
 
 def notify_team_message(message):

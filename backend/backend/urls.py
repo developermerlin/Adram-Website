@@ -18,8 +18,9 @@ schema_view = get_schema_view(
       contact=openapi.Contact(email="letscodewithmerlin@gmail.com"),
       license=openapi.License(name="BSD License"),
    ),
-   public=True,
-   permission_classes=(permissions.AllowAny,),
+   public=settings.API_DOCS_PUBLIC,
+   # in production the API docs are for staff only (signed in to the Django admin)
+   permission_classes=(permissions.AllowAny if settings.API_DOCS_PUBLIC else permissions.IsAdminUser,),
 )
 
 # The website's own admin portal lives under /admin/..., so when Django serves the website its built-in

@@ -537,7 +537,7 @@ export const contentPages = [
     slug: 'team',
     label: 'Team page',
     icon: 'fa-people-group',
-    description: 'The team header and the member cards: names, roles, photos and social handles.',
+    description: 'The Team page header and closing panel. The members themselves are managed in Admin → Team.',
     publicPath: '/about/team',
     sections: [
       {
@@ -554,33 +554,12 @@ export const contentPages = [
       },
       {
         id: 'members',
-        title: 'Team members',
-        description: 'Cards are shown in this order. Only social links you fill in are shown on a card.',
+        title: 'Heading above the team',
+        description: 'The heading over the member cards. The members themselves (and their portfolio pages) are managed in Admin → Team; the figures beside the heading come from their profiles.',
         fields: [
-          {
-            type: 'list',
-            path: 'members',
-            label: 'Members',
-            itemName: 'member',
-            titleField: 'name',
-            max: 60,
-            blank: { name: '', role: '', bio: '', skills: [], photo: '', socials: {} },
-            fields: [
-              text('name', 'Full name'),
-              text('role', 'Job title'),
-              area('bio', 'Short introduction'),
-              strings('skills', 'Skills', { itemLabel: 'Skill', max: 4, placeholder: 'e.g. Networking' }),
-              image('photo', 'Photo', { hint: 'A square or portrait photo. Without one, the card shows their initials.' }),
-              link('socials.linkedin', 'LinkedIn', { hint: 'Full profile link.' }),
-              link('socials.x', 'X (Twitter)', { hint: 'Full profile link.' }),
-              link('socials.facebook', 'Facebook', { hint: 'Full profile link.' }),
-              link('socials.instagram', 'Instagram', { hint: 'Full profile link.' }),
-              link('socials.github', 'GitHub', { hint: 'Full profile link.' }),
-              link('socials.whatsapp', 'WhatsApp', { hint: 'https://wa.me/ followed by the number with the country code.' }),
-              link('socials.website', 'Website', { hint: 'Full web address.' }),
-              text('socials.email', 'Email address', { inputType: 'email' }),
-            ],
-          },
+          text('intro.eyebrow', 'Small label'),
+          text('intro.title', 'Heading'),
+          area('intro.text', 'Introduction'),
         ],
       },
       cta(),
@@ -1107,6 +1086,209 @@ export const contentPages = [
     ],
   },
 
+  // ------------------------------------------------------------------ Premium, bundles, certificate check
+  {
+    slug: 'store',
+    label: 'Premium, bundles & certificates',
+    icon: 'fa-crown',
+    description: 'The wording on the Premium page, the Course bundles page and the Verify a certificate page. Plans, prices and bundles are set under Learning in the admin menu.',
+    publicPath: '/premium',
+    sections: [
+      {
+        id: 'premium',
+        title: 'Premium page',
+        fields: [
+          text('premium.title', 'Heading'),
+          area('premium.lead', 'Introduction', { hint: '{count} is replaced with the number of Premium courses.' }),
+          strings('premium.benefits', 'What every plan includes', { max: 8 }),
+          text('premium.button', 'Button'),
+          text('premium.buttonRenew', 'Button for people who already have Premium'),
+          text('premium.unavailable', 'Message when Premium is switched off'),
+          text('premium.more', 'Line under the plans'),
+        ],
+      },
+      {
+        id: 'bundles',
+        title: 'Course bundles page',
+        fields: [text('bundles.title', 'Heading'), area('bundles.lead', 'Introduction'), text('bundles.empty', 'Message when there are no bundles')],
+      },
+      {
+        id: 'verify',
+        title: 'Verify a certificate page',
+        fields: [text('verify.eyebrow', 'Small label above the heading'), text('verify.title', 'Heading'), area('verify.lead', 'Introduction')],
+      },
+    ],
+  },
+
+  // ------------------------------------------------------------------ Partners
+  {
+    slug: 'partners',
+    label: 'Partners page',
+    icon: 'fa-handshake',
+    description: 'The wording, numbers, benefits and application form on the Partners page. The partners and their logos are added under Partners in the admin menu.',
+    publicPath: '/partners',
+    sections: [
+      {
+        id: 'hero',
+        title: 'Page heading',
+        fields: [
+          text('hero.eyebrow', 'Small label above the heading'),
+          text('hero.title', 'Heading'),
+          area('hero.lead', 'Introduction'),
+          text('hero.primaryLabel', 'Main button'),
+          text('hero.secondaryLabel', 'Second button'),
+          {
+            type: 'list', path: 'stats', label: 'Key numbers', itemName: 'number', titleField: 'label', max: 4,
+            blank: { value: '', label: '' }, fields: [text('value', 'Number', { placeholder: '25+' }), text('label', 'Label')],
+          },
+        ],
+      },
+      {
+        id: 'logos',
+        title: 'Partner logos & quotes',
+        fields: [text('logosTitle', 'Logos heading'), area('logosLead', 'Logos introduction'), text('spotlightTitle', 'Quotes heading')],
+      },
+      {
+        id: 'benefits',
+        title: 'Why partner with us',
+        fields: [
+          text('benefitsTitle', 'Heading'),
+          area('benefitsLead', 'Introduction'),
+          {
+            type: 'list', path: 'benefits', label: 'Benefits', itemName: 'benefit', titleField: 'title', max: 6,
+            blank: { icon: 'partnership', title: '', text: '' }, fields: [icon(), text('title', 'Title'), area('text', 'Text')],
+          },
+        ],
+      },
+      {
+        id: 'steps',
+        title: 'How it works',
+        fields: [
+          text('stepsTitle', 'Heading'),
+          {
+            type: 'list', path: 'steps', label: 'Steps', itemName: 'step', titleField: 'title', max: 6,
+            blank: { title: '', text: '' }, fields: [text('title', 'Title'), area('text', 'Text')],
+          },
+        ],
+      },
+      {
+        id: 'apply',
+        title: 'Application form',
+        description: 'Applications arrive in Admin → Partners → Applications, and the team gets an email for each one.',
+        fields: [
+          toggle('apply.enabled', 'Show the “Become a partner” form'),
+          text('apply.title', 'Heading'),
+          area('apply.lead', 'Introduction'),
+          strings('apply.types', 'Types of partnership to choose from', { max: 10 }),
+          text('apply.button', 'Button'),
+        ],
+      },
+      {
+        id: 'menu',
+        title: 'Menu',
+        description: '“Our partners” is also listed under About in the main menu and in the footer, which are edited with the other menus.',
+        fields: [toggle('showInMenu', 'Also show “Partners” as its own item in the main menu')],
+      },
+    ],
+  },
+
+  // ------------------------------------------------------------------ Projects
+  {
+    slug: 'projects',
+    label: 'Projects page',
+    icon: 'fa-briefcase',
+    description: 'The wording on the Projects page and each project’s case study. The projects themselves are added under Projects in the admin menu.',
+    publicPath: '/projects',
+    sections: [
+      {
+        id: 'hero',
+        title: 'Page heading',
+        fields: [
+          text('hero.eyebrow', 'Small label above the heading'),
+          text('hero.title', 'Heading'),
+          area('hero.lead', 'Introduction'),
+          text('hero.primaryLabel', 'Main button'),
+          text('hero.secondaryLabel', 'Second button'),
+        ],
+      },
+      {
+        id: 'labels',
+        title: 'Labels and messages',
+        fields: [
+          text('labels.all', 'Filter: all projects'),
+          text('labels.search', 'Search box'),
+          text('labels.featured', 'Featured project label'),
+          text('labels.viewCase', 'Link on each project'),
+          area('labels.empty', 'Shown before any project is published'),
+          text('labels.noResults', 'Shown when a search finds nothing'),
+          text('labels.statProjects', 'Number: projects'),
+          text('labels.statClients', 'Number: organisations'),
+          text('labels.statSectors', 'Number: sectors'),
+          text('labels.statServices', 'Number: services'),
+          text('labels.challenge', 'Case study: first section'),
+          text('labels.solution', 'Case study: second section'),
+          text('labels.outcome', 'Case study: third section'),
+          text('labels.results', 'Case study: results heading'),
+          text('labels.technologies', 'Case study: technologies heading'),
+          text('labels.related', 'Case study: more projects heading'),
+          text('labels.visit', 'Case study: live project button'),
+        ],
+      },
+      {
+        id: 'cta',
+        title: 'Closing call to action',
+        fields: [text('cta.title', 'Heading'), area('cta.text', 'Text'), text('cta.button', 'Button')],
+      },
+    ],
+  },
+
+  // ------------------------------------------------------------------ Blog
+  {
+    slug: 'blog',
+    label: 'Blog page',
+    icon: 'fa-pen-nib',
+    description: 'The heading and wording around the blog. The articles and categories themselves are written under Blog in the admin menu.',
+    publicPath: '/blog',
+    sections: [
+      {
+        id: 'hero',
+        title: 'Page heading',
+        fields: [
+          text('hero.eyebrow', 'Small label above the heading'),
+          text('hero.title', 'Heading'),
+          area('hero.lead', 'Introduction'),
+        ],
+      },
+      {
+        id: 'menu',
+        title: 'Menu',
+        fields: [
+          toggle('showInMenu', 'Show “Blog” in the website’s main menu'),
+          text('labels.menu', 'Menu label'),
+        ],
+      },
+      {
+        id: 'labels',
+        title: 'Wording',
+        description: 'Buttons and small headings on the blog and article pages.',
+        fields: [
+          text('labels.allPosts', '“All posts” filter'),
+          text('labels.search', 'Search box placeholder'),
+          text('labels.featured', 'Featured article label'),
+          text('labels.loadMore', '“Load more” button'),
+          text('labels.empty', 'Message when there are no articles'),
+          text('labels.noResults', 'Message when a search finds nothing'),
+          text('labels.onThisPage', 'Article contents heading'),
+          text('labels.share', 'Share heading'),
+          text('labels.related', 'Related articles heading'),
+          text('labels.writtenBy', 'Author box label'),
+          text('labels.newsletterTitle', 'Newsletter box heading'),
+          area('labels.newsletterText', 'Newsletter box text'),
+        ],
+      },
+    ],
+  },
+
   // ------------------------------------------------------------------ Join and error pages
   {
     slug: 'other',
@@ -1289,7 +1471,7 @@ export const contentPages = [
 ];
 
 // Every public page also gets a "search and browser title" section (the tab title and the description search engines show).
-const SEO_PAGES = ['home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'other'];
+const SEO_PAGES = ['home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'other', 'blog', 'partners', 'projects'];
 contentPages.forEach((p) => {
   if (!SEO_PAGES.includes(p.slug)) return;
   p.sections.push({

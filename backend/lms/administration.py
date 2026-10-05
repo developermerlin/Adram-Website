@@ -537,7 +537,15 @@ class CreateUserView(APIView):
         user = User.objects.create_user(email=email, password=password, first_name=first, last_name=last, role=role,
                                         is_verified=True, approval_status=User.APPROVED, approved_at=timezone.now(), approved_by=request.user)
         audit.record(request, 'user_created', user, label=f'{user.get_full_name()} ({user.email})', role=role)
-        return Response({'id': user.id, 'email': user.email, 'role': user.role}, status=status.HTTP_201_CREATED)
+        body = {'id': user.id, 'email': user.email, 'role': user.role}
+        if role == User.TEAM_MEMBER:  # their team profile was created with the account (team/signals.py)
+            profile = user.team_profile
+            job_title = str(data.get('job_title', '')).strip()[:120]
+            if job_title:
+                profile.job_title = job_title
+                profile.save(update_fields=['job_title', 'updated_at'])
+            body['team_profile_id'] = profile.id
+        return Response(body, status=status.HTTP_201_CREATED)
 
 
 class EditUserView(APIView):

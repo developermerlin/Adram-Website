@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PageContent, PageRevision, SiteImage
+from .models import PageContent, PageRevision, SiteImage, SiteLock
 
 
 @admin.register(PageContent)
@@ -20,3 +20,8 @@ class PageRevisionAdmin(admin.ModelAdmin):
     list_display = ('slug', 'action', 'created_at', 'user')
     list_filter = ('slug', 'action')
     readonly_fields = ('slug', 'data', 'action', 'created_at', 'user')
+
+
+@admin.register(SiteLock)
+class SiteLockAdmin(admin.ModelAdmin):
+    list_display = ('locked', 'message', 'updated_at', 'updated_by')

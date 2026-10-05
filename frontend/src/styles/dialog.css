@@ -1,0 +1,142 @@
+/* The "Create a user" / "New team member" dialog: a fixed header and footer around a scrolling form, so the
+   buttons are always on screen. A full-height sheet on phones. */
+
+.cu.modal { padding: 16px; }
+.cu-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  border-radius: 16px;
+  background: var(--white, #fff);
+  box-shadow: 0 24px 60px -24px rgba(15, 23, 42, 0.45), 0 2px 6px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.cu-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.cu-head__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--tint-blue);
+  color: var(--blue-600);
+  font-size: 1.1rem;
+}
+.cu-head h2 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; line-height: 1.25; color: var(--ink); }
+.cu-head p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+.cu-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: -6px -6px 0 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.cu-close:hover { background: var(--surface, #f3f4f6); color: var(--ink); }
+
+.cu-body {
+  display: grid;
+  gap: 20px;
+  padding: 20px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cu-group { display: grid; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.cu-group legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.cu-field { display: grid; gap: 6px; min-width: 0; }
+.cu-field--wide { grid-column: 1 / -1; }
+.cu-field label { color: var(--ink); font-size: 0.88rem; font-weight: 600; }
+.cu-field .input { width: 100%; min-height: 46px; }
+.cu-field .field-error { margin: 0; }
+.cu-hint { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+.cu-note {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--tint-blue);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.cu-note i { margin-top: 3px; color: var(--blue-600); }
+
+.cu-password { position: relative; display: flex; align-items: center; }
+.cu-password .input { padding-right: 92px; font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.02em; }
+.cu-password .cu-icon-btn:first-of-type { right: 46px; }
+.cu-password .cu-icon-btn:only-of-type { right: 4px; }
+.cu-icon-btn {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cu-icon-btn:hover { background: var(--surface, #f3f4f6); color: var(--ink); }
+.cu-generate { justify-self: start; }
+
+.cu-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  background: var(--surface, #f8fafc);
+}
+.cu-foot .btn { min-height: 44px; }
+
+/* Phones: a full-height sheet; one column; buttons share the width */
+@media (max-width: 560px) {
+  .cu.modal { padding: 0; place-items: end stretch; }
+  .cu-card {
+    width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .cu-head { padding: 16px 16px 14px; }
+  .cu-body { padding: 16px; }
+  .cu-grid { grid-template-columns: minmax(0, 1fr); }
+  .cu-field--wide { grid-column: auto; }
+  .cu-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .cu-foot .btn { flex: 1; justify-content: center; }
+  .cu-generate { justify-self: stretch; justify-content: center; }
+}
+
+/* Short screens (small laptops in landscape): a little tighter */
+@media (max-height: 720px) and (min-width: 561px) {
+  .cu-head { padding-block: 16px 14px; }
+  .cu-body { padding-block: 16px; gap: 16px; }
+}
+@media (max-width: 400px) { .cu-long { display: none; } }

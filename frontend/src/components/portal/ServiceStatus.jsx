@@ -6,6 +6,7 @@ import { formatDate, formatDateTime, formatMoney } from '../../utils/format';
 import { ProgressSummary, ProgressTimeline } from './Progress';
 import { ResultBanner } from './Result';
 import { resultState } from '../../utils/applicationStages';
+import '../../styles/application-form.css';
 
 // Steps of the "ADRAM applies for you" service, as the student sees them.
 const STEPS = [
@@ -162,6 +163,12 @@ export const StudentServicePanel = ({ application: a, onAcceptTerms, onRequestAg
         {returned > 0 && (
           <p className="service-panel__alert">
             <i className="fas fa-rotate-left" /> {returned} document{returned === 1 ? ' was' : 's were'} returned for changes. Please re-upload {returned === 1 ? 'it' : 'them'}.
+          </p>
+        )}
+        {a.intake && ['draft', 'returned'].includes(a.intake.status) && (
+          <p className="service-panel__alert service-panel__alert--form">
+            <i className="fas fa-file-signature" /> {a.intake.status === 'returned' ? 'ADRAM asked you to update your application form.' : 'Next step: fill in your application form.'}{' '}
+            <Link to={`/student/applications/${a.id}/form`}>{a.intake.status === 'returned' ? 'Update it' : 'Start now'}</Link>
           </p>
         )}
         <div className="service-panel__actions">
@@ -321,6 +328,14 @@ export const StaffServicePanel = ({ application: a, onDecide }) => {
           </div>
           {mode === 'reject' && reasonBox('What’s wrong with the payment?', 'reject_payment', 'Ask the student to upload again')}
           {s.status === 'paid' && <p className="muted small">Confirmed {formatDateTime(s.verified_at)}.</p>}
+          {s.status === 'paid' && a.intake && (
+            <div className="service-form-status">
+              <span><i className="fas fa-file-signature" aria-hidden="true" /> Application form: <strong>{a.intake.status_display}</strong>
+                {a.intake.status === 'draft' && <> ({a.intake.progress.answered}/{a.intake.progress.required} required answers)</>}
+                {a.intake.submitted_at && <> · submitted {formatDateTime(a.intake.submitted_at)}</>}</span>
+              <Link to={`/admin/applications/${a.id}/form`} target="_blank" className="btn btn--outline btn--sm"><i className="fas fa-up-right-from-square" /> Open the form</Link>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import Flag from '../ui/Flag';
 import { KeyDatesTimeline } from '../ui/KeyDates';
 import ServiceOffer from './ServiceOffer';
 import { StaffServicePanel, StudentServicePanel } from './ServiceStatus';
+import { AgreementCard } from './AgreementCard';
 import { DocumentReview, MilestoneEditor, ReturnReason, ReviewBadge } from './Progress';
 import { ResultBanner, ResultEditor } from './Result';
 import { openPrivateFile } from '../../services/api';
@@ -102,6 +103,7 @@ export const ApplicationCard = ({ application: a, actions, staff = false, defaul
       </header>
 
       <StageTrack stage={a.stage} />
+      <AgreementCard application={a} staff={staff} />
 
       {/* "ADRAM applies for you": the offer while the student is deciding, then each step of the request. */}
       {a.service ? (

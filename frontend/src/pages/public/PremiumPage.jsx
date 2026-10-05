@@ -1,3 +1,5 @@
+import { usePageContent } from '../../content/useContent';
+import { fill } from '../../content/merge';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -10,6 +12,7 @@ import '../../styles/premium.css';
 
 /** /premium: the plans, and subscribing. Single courses can still be bought on their own. */
 export const PremiumPage = () => {
+  const copy = usePageContent('store').premium;
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [data, setData] = useState(null);
@@ -40,12 +43,12 @@ export const PremiumPage = () => {
       <div className="container">
         <header className="pm-hero">
           <span className="pm-hero__icon" aria-hidden="true"><i className="fas fa-crown" /></span>
-          <h1>ADRAM Premium</h1>
-          <p>One plan, {data.course_count} Premium {data.course_count === 1 ? 'course' : 'courses'}: learn as much as you like while it’s active. You can still buy single courses to keep for good.</p>
+          <h1>{copy.title}</h1>
+          <p>{fill(copy.lead, { count: data.course_count })}</p>
           {data.active_until && <p className="pm-active"><i className="fas fa-circle-check" aria-hidden="true" /> Your Premium is active until <strong>{formatDate(data.active_until)}</strong>. Paying again adds time.</p>}
         </header>
         {!data.enabled || data.plans.length === 0 ? (
-          <p className="muted pm-none">Premium isn’t available at the moment. <Link to="/courses">Browse courses</Link></p>
+          <p className="muted pm-none">{copy.unavailable} <Link to="/courses">Browse courses</Link></p>
         ) : (
           <div className="pm-plans">
             {data.plans.map((plan) => {
@@ -57,20 +60,17 @@ export const PremiumPage = () => {
                   <p className="pm-plan__price"><strong>{money(plan.price)}</strong> / {plan.interval === 'year' ? 'year' : 'month'}</p>
                   {plan.description && <p className="muted">{plan.description}</p>}
                   <ul>
-                    <li><i className="fas fa-check" aria-hidden="true" /> Every Premium course, as long as it’s active</li>
-                    <li><i className="fas fa-check" aria-hidden="true" /> Certificates for the courses you finish</li>
-                    <li><i className="fas fa-check" aria-hidden="true" /> Pay by Orange Money, Afrimoney or card</li>
-                    <li><i className="fas fa-check" aria-hidden="true" /> No automatic charges: you choose when to renew</li>
+                    {(copy.benefits || []).filter(Boolean).map((b) => <li key={b}><i className="fas fa-check" aria-hidden="true" /> {b}</li>)}
                   </ul>
                   <button type="button" className="btn btn--premium btn--block" onClick={() => subscribe(plan)} disabled={busy !== null || (isAuthenticated && user?.role !== 'STUDENT')}>
-                    {busy === plan.id && <span className="btn-spinner" />} {data.active_until ? 'Add time' : 'Get Premium'}
+                    {busy === plan.id && <span className="btn-spinner" />} {data.active_until ? copy.buttonRenew : copy.button}
                   </button>
                 </article>
               );
             })}
           </div>
         )}
-        <p className="pm-more"><Link to="/courses">Browse the courses</Link>: Premium ones show a crown.</p>
+        <p className="pm-more"><Link to="/courses">{copy.more}</Link></p>
       </div>
     </section>
   );

@@ -2,7 +2,7 @@ from django.urls import path
 
 from lms.enrolment import MyEnrollmentsView
 
-from . import calls, messaging, views
+from . import agreements, calls, intake, messaging, views
 
 app_name = 'portal'
 
@@ -23,6 +23,10 @@ urlpatterns = [
     path('me/applications/<int:pk>/request-service/', views.MyServiceRequestView.as_view(), name='request_service'),
     path('me/applications/<int:pk>/service/accept-terms/', views.MyServiceTermsView.as_view(), name='accept_terms'),
     path('me/applications/<int:pk>/service/payment/', views.MyServicePaymentView.as_view(), name='payment'),
+    path('me/applications/<int:pk>/form/', intake.MyIntakeView.as_view(), name='intake'),
+    path('me/applications/<int:pk>/form/upload/', intake.MyIntakeUploadView.as_view(), name='intake_upload'),
+    path('me/applications/<int:pk>/agreement/', agreements.MyAgreementView.as_view(), name='agreement'),
+    path('me/applications/<int:pk>/agreement/upload/', agreements.MyAgreementUploadView.as_view(), name='my_agreement_upload'),
     path('me/documents/<int:pk>/file/', views.MyDocumentFileView.as_view(), name='document_file'),
     path('files/<str:kind>/<int:pk>/', views.PrivateFileView.as_view(), name='private_file'),
     path('me/documents/<int:pk>/', views.MyDocumentDetailView.as_view(), name='document_detail'),
@@ -38,6 +42,13 @@ urlpatterns = [
     path('staff/applications/<int:pk>/', views.StaffApplicationDetailView.as_view(), name='staff_application'),
     path('staff/applications/<int:pk>/documents/', views.StaffDocumentsView.as_view(), name='staff_documents'),
     path('staff/applications/<int:pk>/service/', views.StaffServiceDecisionView.as_view(), name='staff_service'),
+    path('staff/applications/<int:pk>/form/', intake.StaffIntakeView.as_view(), name='staff_intake'),
+    path('staff/intake-form/', intake.IntakeFormAdminView.as_view(), name='staff_intake_form'),
+    path('staff/application-forms/', intake.StaffIntakeListView.as_view(), name='staff_intake_list'),
+    path('staff/my-signature/', intake.MySignatureView.as_view(), name='staff_signature'),
+    path('staff/agreement-template/', agreements.AgreementTemplateAdminView.as_view(), name='staff_agreement_template'),
+    path('staff/agreements/', agreements.StaffAgreementListView.as_view(), name='staff_agreements'),
+    path('staff/applications/<int:pk>/agreement/', agreements.StaffAgreementView.as_view(), name='staff_agreement'),
     path('staff/applications/<int:pk>/milestones/', views.StaffMilestonesView.as_view(), name='staff_milestones'),
     path('staff/applications/<int:pk>/milestones/reorder/', views.StaffMilestoneReorderView.as_view(), name='staff_milestone_reorder'),
     path('staff/milestones/<int:pk>/', views.StaffMilestoneDetailView.as_view(), name='staff_milestone'),
@@ -46,6 +57,9 @@ urlpatterns = [
     path('staff/result-files/<int:pk>/', views.StaffResultFileDetailView.as_view(), name='staff_result_file'),
     path('staff/summary/', views.StaffSummaryView.as_view(), name='staff_summary'),
     # Messages between people and the ADRAM team
+    path('me/threads/', messaging.MyThreadsView.as_view(), name='my_threads'),
+    path('team/inbox/', messaging.MemberInboxView.as_view(), name='member_inbox'),
+    path('team/inbox/<int:user_id>/', messaging.MemberThreadView.as_view(), name='member_thread'),
     path('me/messages/', messaging.MyMessagesView.as_view(), name='my_messages'),
     path('messages/unread/', messaging.UnreadMessagesView.as_view(), name='messages_unread'),
     path('messages/stats/', messaging.MessageStatsView.as_view(), name='messages_stats'),

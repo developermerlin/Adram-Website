@@ -40,6 +40,14 @@ def result_upload_to(instance, filename):
 def message_upload_to(instance, filename):
     return _private_name('messages', filename)
 
+
+def intake_upload_to(instance, filename):
+    return _private_name('forms', filename)
+
+
+def agreement_upload_to(instance, filename):
+    return _private_name('agreements', filename)
+
 # Checklist every new application starts with (staff and students can add or remove items).
 DEFAULT_DOCUMENTS = [
     'Valid international passport',
@@ -378,18 +386,27 @@ class TrainingEnrollment(models.Model):
 
 class Conversation(models.Model):
     """
-    One message thread per person with the ADRAM team. Every administrator can read and reply,
-    so a student never has to know who is on duty.
+    A message thread between a person and ADRAM.
+    - member empty: the thread with "the ADRAM team". Every administrator can read and reply, so a student never has
+      to know who is on duty. One per person.
+    - member set: a direct thread with one team member (started from their portfolio page). That member replies from
+      their own inbox. One per person and member.
     """
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conversation')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conversations')
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE,
+                               related_name='member_conversations', help_text='Empty = the whole ADRAM team.')
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-last_message_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'member'], name='one_thread_per_member'),
+            models.UniqueConstraint(fields=['user'], condition=models.Q(member__isnull=True), name='one_team_thread_per_person'),
+        ]
 
     def __str__(self):
-        return f'Conversation with {self.user.email}'
+        return f'Conversation with {self.user.email}' + (f' and {self.member.email}' if self.member_id else '')
 
 
 class Message(models.Model):
@@ -484,3 +501,203 @@ def call_summary(call):
     if call.status in (Call.MISSED, Call.CANCELLED):
         return f'Missed {kind}'
     return kind.capitalize()
+
+
+class IntakeForm(models.Model):
+    """
+    One row: the application form students fill in once ADRAM has confirmed their payment (portal/intake.py).
+    `sections` is a list of {id, title, description, fields: [{id, type, label, help, required, options, width, prefill}]}.
+    Edited from Admin → Application form.
+    """
+    title = models.CharField(max_length=150, default='Scholarship application form')
+    intro = models.TextField(blank=True, max_length=2000)
+    sections = models.JSONField(default=list, blank=True)
+    declaration = models.TextField(blank=True, max_length=1000)
+    # How students may complete it: online in the portal, and/or download, fill in by hand and upload a scan
+    allow_online = models.BooleanField(default=True)
+    allow_upload = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'application form'
+
+    @classmethod
+    def load(cls):
+        form = cls.objects.first()
+        if form is None:
+            from .intake import DEFAULT_FORM
+            form = cls.objects.create(**DEFAULT_FORM)
+        return form
+
+
+class IntakeSubmission(models.Model):
+    """A student's answers to the application form, for one paid application."""
+    DRAFT, SUBMITTED, RETURNED, REVIEWED = 'draft', 'submitted', 'returned', 'reviewed'
+    STATUS_CHOICES = [(DRAFT, 'Not submitted yet'), (SUBMITTED, 'Submitted'), (RETURNED, 'Returned for changes'), (REVIEWED, 'Approved by ADRAM')]
+
+    ONLINE, UPLOAD = 'online', 'upload'
+    METHOD_CHOICES = [(ONLINE, 'Filled in online'), (UPLOAD, 'Scanned paper form')]
+
+    application = models.OneToOneField(Application, on_delete=models.CASCADE, related_name='intake')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=DRAFT)
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default=ONLINE)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    answers = models.JSONField(default=dict, blank=True)
+    # The form as it was when the student last saved: later edits to the form don't scramble a submitted copy
+    form = models.JSONField(default=dict, blank=True)
+    declared = models.BooleanField(default=False)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    return_note = models.TextField(blank=True, max_length=2000, help_text='What the student should change.')
+    flagged_fields = models.JSONField(default=list, blank=True, help_text='Questions ADRAM asked the student to check.')
+    # The approval: who signed it, as what, and their signature (a small PNG as a data: URL)
+    approved_name = models.CharField(max_length=120, blank=True)
+    approved_title = models.CharField(max_length=120, blank=True)
+    approved_signature = models.TextField(blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'Form for {self.application} ({self.get_status_display()})'
+
+
+class IntakeFile(models.Model):
+    """A page (or the whole PDF) of a paper application form the student filled in by hand and uploaded."""
+    submission = models.ForeignKey(IntakeSubmission, on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to=intake_upload_to, storage=private_storage)
+    file_name = models.CharField(max_length=200)
+    size = models.PositiveIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+
+class StaffSignature(models.Model):
+    """An administrator's saved signature and job title, reused when they approve application forms."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='staff_signature')
+    image = models.TextField()  # a PNG as a data: URL
+    title = models.CharField(max_length=120, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+
+class AgreementTemplate(models.Model):
+    """
+    One row: the "Scholarship Application and Success-Based Service Agreement" students sign once a scholarship is
+    awarded (portal/agreements.py). Edited in Admin → Service agreements. `clauses` is [{id, title, body}];
+    {fee}, {student_name}, {reference} and {company_name} in a clause are filled in for each student.
+    """
+    title = models.CharField(max_length=200, default='Scholarship Application and Success-Based Service Agreement')
+    subtitle = models.CharField(max_length=200, blank=True, default='International Scholarship Consultancy & Student Placement Services')
+    company_name = models.CharField(max_length=150, default='ADRAM TECHNOLOGIES')
+    company_description = models.TextField(blank=True, max_length=600)
+    company_address = models.CharField(max_length=300, blank=True)
+    representative_name = models.CharField(max_length=120, blank=True)
+    representative_position = models.CharField(max_length=120, blank=True)
+    company_signature = models.TextField(blank=True)  # a PNG as a data: URL
+    company_stamp = models.TextField(blank=True)      # a PNG/JPEG as a data: URL
+    clauses = models.JSONField(default=list, blank=True)
+    # The service fee: the admin fills in the amount for each student (this default is used when one is sent);
+    # the first instalment is first_percent of it and the second the rest.
+    currency = models.CharField(max_length=12, default='NLe')
+    default_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    first_percent = models.PositiveSmallIntegerField(default=60)
+    admin_fields = models.JSONField(default=list, blank=True)  # [{id, label, type, required}] ADRAM fills in for each student
+    auto_issue = models.BooleanField(default=True, help_text='Send the agreement automatically with the application form (when the payment is confirmed).')
+    # [{id, label, type, required, prefill}]: the "Student information" the student confirms, and what they fill in
+    # beside their signature (e.g. Full name, Date). Empty = the defaults in agreements.py.
+    student_fields = models.JSONField(default=list, blank=True)
+    signature_fields = models.JSONField(default=list, blank=True)
+    wording = models.JSONField(default=dict, blank=True)  # {key: text}; missing keys use agreements.DEFAULT_WORDING
+    require_read = models.BooleanField(default=True, help_text='The student must scroll to the end before they can sign.')
+    allow_online = models.BooleanField(default=True, help_text='Students can sign online.')
+    allow_upload = models.BooleanField(default=True, help_text='Students can download it, sign by hand and upload a scan.')
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'service agreement template'
+
+    @classmethod
+    def load(cls):
+        row = cls.objects.first()
+        if row is None:
+            from .agreements import DEFAULT_AGREEMENT
+            row = cls.objects.create(**DEFAULT_AGREEMENT)
+        return row
+
+
+class StudentAgreement(models.Model):
+    """One student's service agreement: a frozen copy of the text, the fee, and both signatures."""
+    PENDING, UPLOADED, SIGNED, VOID = 'pending', 'uploaded', 'signed', 'void'
+    STATUS_CHOICES = [(PENDING, 'Waiting for the student to sign'), (UPLOADED, 'Signed copy to check'), (SIGNED, 'Signed'), (VOID, 'Cancelled')]
+    ONLINE, UPLOAD = 'online', 'upload'
+
+    application = models.OneToOneField(Application, on_delete=models.CASCADE, related_name='agreement')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True)
+    content = models.JSONField(default=dict)  # the template as it was when issued (or last re-issued)
+    fee = models.CharField(max_length=80, blank=True)  # the total as shown, e.g. "NLe 25,000" (kept in step with amount)
+    currency = models.CharField(max_length=12, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    first_percent = models.PositiveSmallIntegerField(default=60)
+    values = models.JSONField(default=dict, blank=True)  # what ADRAM filled in for this student (template admin_fields)
+    effective_date = models.DateField(null=True, blank=True, help_text='Empty = the date the student signs.')
+    # Until the student signs, the agreement follows the template, except what ADRAM set for this student only
+    own_text = models.BooleanField(default=False, help_text='The text was changed for this student.')
+    own_fee = models.BooleanField(default=False, help_text='The fee was set for this student.')
+    # Signed online, or on paper: downloaded, signed by hand and uploaded, then accepted by ADRAM
+    method = models.CharField(max_length=10, default='online')
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+    return_note = models.CharField(max_length=500, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    issued_at = models.DateTimeField(auto_now_add=True)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    # The student's details and signature, as given when signing
+    student_details = models.JSONField(default=dict, blank=True)
+    signature_details = models.JSONField(default=dict, blank=True)  # what the student filled in beside their signature
+    student_signature = models.TextField(blank=True)
+    signed_at = models.DateTimeField(null=True, blank=True)
+    signed_ip = models.GenericIPAddressField(null=True, blank=True)
+    signed_user_agent = models.CharField(max_length=300, blank=True)
+    fingerprint = models.CharField(max_length=64, blank=True, help_text='SHA-256 of exactly what the student signed.')
+    void_reason = models.CharField(max_length=300, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def reference(self):
+        return f'ADR-STU-{self.application_id:05d}'
+
+    def __str__(self):
+        return f'{self.reference} ({self.get_status_display()})'
+
+
+class AgreementFile(models.Model):
+    """A page (or the whole PDF) of the agreement the student printed, signed by hand and uploaded."""
+    agreement = models.ForeignKey(StudentAgreement, on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to=agreement_upload_to, storage=private_storage)
+    file_name = models.CharField(max_length=200)
+    size = models.PositiveIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+
+class AgreementPayment(models.Model):
+    """A payment of the service fee received from the student, recorded by ADRAM."""
+    agreement = models.ForeignKey(StudentAgreement, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    paid_on = models.DateField()
+    method = models.CharField(max_length=60, blank=True)
+    reference = models.CharField(max_length=80, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['paid_on', 'id']

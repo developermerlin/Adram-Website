@@ -116,6 +116,18 @@ export const OtpVerify = ({ challenge, email, onSubmit, onBack, submitLabel = 'V
     if (value.length === LENGTH && !children && value !== submittedFor.current) submit(value);
   };
 
+  // One click to paste the code copied from the email (the boxes also accept Ctrl+V / long-press paste)
+  const canPaste = typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.readText);
+  const pasteCode = async () => {
+    try {
+      const digits = (await navigator.clipboard.readText()).replace(/\D/g, '');
+      if (digits.length === LENGTH) handleChange(digits);
+      else setError('No 6-digit code found. Copy the code from the email first, then press Paste code.');
+    } catch {
+      setError('Your browser didn’t allow pasting. Tap the first box and paste the code there.');
+    }
+  };
+
   const resend = async () => {
     setError('');
     setNotice('');
@@ -150,6 +162,11 @@ export const OtpVerify = ({ challenge, email, onSubmit, onBack, submitLabel = 'V
       {notice && <Alert type="success">{notice}</Alert>}
 
       <OtpInput value={code} onChange={handleChange} disabled={busy} invalid={Boolean(error)} />
+      {canPaste && (
+        <button type="button" className="btn btn--text btn--sm otp-step__paste" onClick={pasteCode} disabled={busy}>
+          <i className="fas fa-paste" aria-hidden="true" /> Paste code
+        </button>
+      )}
 
       {children}
 

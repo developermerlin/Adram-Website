@@ -135,7 +135,7 @@ def build(campaign, user, recipient=None):
     html = layout(preheader=paragraphs[0] if paragraphs else title, label='News from ADRAM', tone='info', title=title, reason=reason,
                   body=''.join(paragraph(escape(p).replace('\n', '<br>')) for p in paragraphs)
                   + (button(campaign.button_label, link) if link else '')
-                  + paragraph(f'<a href="{escape(stop)}" style="color:#64748b;">Unsubscribe from these emails</a>', size=12, margin='24px 0 0'))
+                  + paragraph(f'<a href="{escape(stop)}" style="color:#687385;text-decoration:underline;">Unsubscribe from these emails</a>', size=12, margin='24px 0 0'))
     text = _plain(title, [*paragraphs, f'{campaign.button_label}: {link}' if link else '', f'Unsubscribe: {stop}'], reason)
     return personal(campaign.subject, user), text, html
 

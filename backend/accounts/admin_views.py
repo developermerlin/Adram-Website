@@ -302,7 +302,7 @@ def user_uploads(user):
     fields += [d.file for d in ApplicationDocument.objects.filter(application__student=user).exclude(file='')]
     fields += [r.file for r in ResultFile.objects.filter(application__student=user)]
     fields += [s.receipt for s in ServiceRequest.objects.filter(application__student=user).exclude(receipt='')]
-    fields += [m.attachment for m in Message.objects.filter(conversation__user=user).exclude(attachment='')]
+    fields += [m.attachment for m in Message.objects.filter(Q(conversation__user=user) | Q(conversation__member=user)).exclude(attachment='')]
     return fields
 
 

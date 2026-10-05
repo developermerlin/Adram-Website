@@ -4,6 +4,7 @@ export const ROLES = {
   FINANCE_MANAGER: 'Finance Manager',
   COUNSELLOR: 'Counsellor',
   INSTRUCTOR: 'Instructor',
+  TEAM_MEMBER: 'Team member',
   STUDENT: 'Student',
 };
 
@@ -18,6 +19,8 @@ export const dashboardPathFor = (role) => {
       return '/instructor';
     case 'SCHOLARSHIP_MANAGER':
       return '/admin/scholarships';
+    case 'TEAM_MEMBER':
+      return '/team-profile';
     default:
       return '/profile';
   }
@@ -77,6 +80,12 @@ export const portalNavFor = (role, track = null) => {
       { to: '/admin/messages', label: 'Enquiries', icon: 'fa-inbox' },
       { to: '/notifications', label: 'Notifications', icon: 'fa-bell' },
     ],
+    TEAM_MEMBER: [
+      { to: '/team-profile', label: 'My portfolio', icon: 'fa-id-badge', end: true },
+      { to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' },
+      { to: '/notifications', label: 'Notifications', icon: 'fa-bell' },
+      { to: '/about/team', label: 'Team page', icon: 'fa-users', external: true },
+    ],
     SCHOLARSHIP_MANAGER: [
       { to: '/admin/scholarships', label: 'Scholarships', icon: 'fa-graduation-cap' },
       { to: '/scholarships', label: 'Public page', icon: 'fa-globe', external: true },
@@ -106,6 +115,7 @@ export const portalNavFor = (role, track = null) => {
       { to: '/admin/question-banks', label: 'Question banks', icon: 'fa-box-archive' },
       { to: '/admin/course-sales', label: 'Orders & coupons', icon: 'fa-receipt' },
       { to: '/admin/campaigns', label: 'Email campaigns', icon: 'fa-envelope-open-text' },
+      { to: '/admin/newsletter', label: 'Newsletter', icon: 'fa-newspaper' },
       { to: '/admin/moderation', label: 'Moderation', icon: 'fa-flag' },
       { to: '/admin/certificates', label: 'Certificates', icon: 'fa-certificate' },
       { to: '/admin/audit', label: 'Audit log', icon: 'fa-clipboard-list' },
@@ -116,8 +126,16 @@ export const portalNavFor = (role, track = null) => {
   const website = {
     ADMIN: [
       { to: '/admin/content', label: 'Site content', icon: 'fa-pen-ruler' },
+      { to: '/admin/blog', label: 'Blog', icon: 'fa-pen-nib' },
+      { to: '/admin/team', label: 'Team', icon: 'fa-people-group' },
+      { to: '/admin/chatbot', label: 'Chatbot', icon: 'fa-robot' },
+      { to: '/admin/projects', label: 'Projects', icon: 'fa-briefcase' },
+      { to: '/admin/partners', label: 'Partners', icon: 'fa-handshake' },
       { to: '/admin/scholarships', label: 'Scholarships', icon: 'fa-graduation-cap' },
+      { to: '/admin/settings/application-form', label: 'Application forms', icon: 'fa-file-signature', badge: 'forms_to_review' },
+      { to: '/admin/agreements', label: 'Service agreements', icon: 'fa-file-contract' },
       { to: '/admin/settings/payments', label: 'Payments & terms', icon: 'fa-money-bill-transfer' },
+      { to: '/admin/settings/lockdown', label: 'Lock website', icon: 'fa-lock' },
     ],
   }[role];
 
@@ -129,7 +147,7 @@ export const portalNavFor = (role, track = null) => {
       heading: 'Account',
       items: [
         // Admins, instructors and students have Messages in their workspace; everyone else finds it here.
-        ...(['ADMIN', 'STUDENT', 'INSTRUCTOR'].includes(role) ? [] : [{ to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' }]),
+        ...(['ADMIN', 'STUDENT', 'INSTRUCTOR', 'TEAM_MEMBER'].includes(role) ? [] : [{ to: '/messages', label: 'Messages', icon: 'fa-comments', badge: 'messages_unread' }]),
         { to: '/profile', label: 'Profile & security', icon: 'fa-user-gear' },
         { to: '/activity', label: 'Activity log', icon: 'fa-clock-rotate-left' },
       ],

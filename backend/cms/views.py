@@ -15,6 +15,17 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.permissions import IsAdmin
 from lms.access import IsAdminOrInstructor
+from rest_framework.permissions import BasePermission
+
+
+class CanUseMediaLibrary(BasePermission):
+    """Administrators (whole library); instructors and team members (their own uploads)."""
+    message = 'Only staff can upload pictures.'
+
+    def has_permission(self, request, view):
+        return IsAdminOrInstructor().has_permission(request, view) or (
+            request.user.is_authenticated and request.user.role == User.TEAM_MEMBER)
+
 from .models import CONTENT_PAGES, PageContent, PageRevision, SiteImage
 from .serializers import PageContentSerializer, PageRevisionSerializer, SiteImageSerializer
 
@@ -89,8 +100,8 @@ class RestoreRevision(APIView):
 
 
 class MediaListCreate(generics.ListCreateAPIView):
-    """Administrators see the whole library; instructors upload course pictures and see only their own."""
-    permission_classes = [IsAdminOrInstructor]
+    """Administrators see the whole library; instructors and team members upload pictures and see only their own."""
+    permission_classes = [CanUseMediaLibrary]
     serializer_class = SiteImageSerializer
     queryset = SiteImage.objects.all()
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
@@ -108,7 +119,7 @@ class MediaListCreate(generics.ListCreateAPIView):
 
 
 class MediaDelete(generics.DestroyAPIView):
-    permission_classes = [IsAdminOrInstructor]
+    permission_classes = [CanUseMediaLibrary]
 
     def get_queryset(self):
         if self.request.user.role == User.ADMIN:

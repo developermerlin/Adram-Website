@@ -3,7 +3,7 @@ from django.db import models
 
 # The pages whose content the admin can edit. `site` holds details used across the whole website
 # (contact details, social links, opening hours). Add a slug here when a page becomes editable.
-CONTENT_PAGES = ('site', 'home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'navigation', 'other', 'accounts', 'interface')
+CONTENT_PAGES = ('site', 'home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'navigation', 'other', 'accounts', 'interface', 'blog', 'partners', 'store', 'projects')
 
 
 class PageContent(models.Model):
@@ -63,3 +63,18 @@ class SiteImage(models.Model):
 
     def __str__(self):
         return self.name or self.image.name
+
+
+class SiteLock(models.Model):
+    """One row: when locked, visitors can look at the website but not use it; only administrators can act (cms/lock.py)."""
+    locked = models.BooleanField(default=False)
+    message = models.CharField(max_length=300, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'website lock'
+
+    @classmethod
+    def load(cls):
+        return cls.objects.first() or cls.objects.create()

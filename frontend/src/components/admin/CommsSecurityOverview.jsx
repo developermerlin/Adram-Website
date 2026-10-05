@@ -116,7 +116,7 @@ export const CommsSecurityOverview = ({ days }) => {
             <p className="ov-note"><i className="fas fa-shield-halved" /> No failed sign-ins in this period. Nothing to review.</p>
           )}
           {a && a.failed_ips.length > 0 && (
-            <table className="rank-table">
+            <div className="table-scroll"><table className="rank-table">
               <thead>
                 <tr><th scope="col">IP address</th><th scope="col" className="num">Tries</th><th scope="col" className="num">Accounts</th></tr>
               </thead>
@@ -132,7 +132,7 @@ export const CommsSecurityOverview = ({ days }) => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
           {a && a.failed_accounts.length > 0 && (
             <p className="panel__foot">

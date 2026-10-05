@@ -195,7 +195,7 @@ export const AdminActivity = ({ onOpenUser }) => {
           {!o && <div className="skeleton skeleton--block" />}
           {o?.failed_ips.length === 0 && <p className="muted small"><i className="fas fa-shield-halved" /> No failed sign-ins in this period.</p>}
           {o && o.failed_ips.length > 0 && (
-            <table className="rank-table">
+            <div className="table-scroll"><table className="rank-table">
               <thead>
                 <tr><th scope="col">IP address</th><th scope="col" className="num">Tries</th><th scope="col" className="num">Accounts</th></tr>
               </thead>
@@ -211,7 +211,7 @@ export const AdminActivity = ({ onOpenUser }) => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </Panel>
 

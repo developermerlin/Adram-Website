@@ -50,6 +50,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     FINANCE_MANAGER = 'FINANCE_MANAGER'
     COUNSELLOR = 'COUNSELLOR'
     INSTRUCTOR = 'INSTRUCTOR'
+    TEAM_MEMBER = 'TEAM_MEMBER'
     STUDENT = 'STUDENT'
 
     ROLE_CHOICES = [
@@ -58,6 +59,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         (FINANCE_MANAGER, 'Finance Manager'),
         (COUNSELLOR, 'Counsellor'),
         (INSTRUCTOR, 'Instructor'),
+        (TEAM_MEMBER, 'Team member'),
         (STUDENT, 'Student'),
     ]
 
@@ -179,6 +181,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_instructor(self):
         """Check if user teaches courses."""
         return self.role == self.INSTRUCTOR
+
+    def is_team_member(self):
+        """A member of the ADRAM team with a public portfolio page (see the team app)."""
+        return self.role == self.TEAM_MEMBER
 
     @property
     def tracks(self):

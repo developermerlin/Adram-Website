@@ -162,7 +162,7 @@ export const ScholarshipsOverview = ({ refreshKey = '' }) => {
               {!d && <div className="skeleton skeleton--block" />}
               {d?.top.length === 0 && <p className="muted small">No scholarships yet.</p>}
               {d && d.top.length > 0 && (
-                <table className="rank-table">
+                <div className="table-scroll"><table className="rank-table">
                   <thead>
                     <tr>
                       <th scope="col">Scholarship</th>
@@ -188,7 +188,7 @@ export const ScholarshipsOverview = ({ refreshKey = '' }) => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </Panel>
 

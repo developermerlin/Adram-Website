@@ -1,0 +1,116 @@
+/*
+ * Professional finish, loaded last. Takes out the decorative effects that make a site look template- or
+ * AI-generated (gradient-filled text, blurred colour glows, endlessly floating and pulsing decorations,
+ * 3D tilting panels, faded counter numbers) and keeps the brand: solid colour, clear type, quiet motion.
+ * Only appearance changes here; layout and behaviour stay as they are.
+ */
+
+/* 1. Headline accents: solid brand colour instead of gradient-filled text */
+html body .text-gradient,
+html body .home-hero h1 .accent,
+html body .cf-mock__hero em {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: var(--blue-600);
+}
+html body .section--dark .text-gradient,
+html body .page-hero .text-gradient { color: var(--cyan-300); }
+
+/* 2. Section labels: plain small capitals, without the decorative gradient dash */
+html body .eyebrow::before { content: none; }
+html body .eyebrow { gap: 0; letter-spacing: 0.08em; }
+
+/* 3. Decorative motion: illustrations, badges and dashboard art hold still */
+html body .art-float,
+html body .art-pulse,
+html body .art-blink,
+html body .hero-brand__satellite,
+html body .hero-brand__glow,
+html body .ov-hero__art,
+html body .ov-hero__art *,
+html body .agi__glow {
+  animation: none !important;
+}
+
+/* Soft colour glows behind the illustrations go; the drawings stay */
+html body svg circle[fill="url(#adram-glow)"] { display: none; }
+/* ...and so do the decorative orbits (ellipse + pulsing dot) and dashed rings */
+html body svg ellipse[stroke="url(#adram-orbit)"],
+html body svg circle.art-pulse,
+html body svg circle[stroke-dasharray="4 8"] { display: none; }
+
+/* 4. The logo panel on the home and About pages: a calm, flat card instead of a tilting glossy 3D tile */
+html body .hero-brand,
+html body .hero-brand--interactive,
+html body .hero-brand--interactive:hover {
+  transform: none !important;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff 0%, var(--tint-blue) 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 18px 40px -28px rgba(15, 23, 42, 0.28);
+}
+html body .hero-brand__glow,
+html body .hero-brand__orbit,
+html body .hero-brand__sheen { display: none; }
+html body .hero-brand__ring--outer { border-style: solid; border-color: color-mix(in srgb, var(--blue-600) 14%, transparent); }
+html body .hero-brand__ring--inner { background: none; box-shadow: none; border-color: color-mix(in srgb, var(--blue-600) 10%, transparent); }
+html body .hero-brand__badge { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px -16px rgba(15, 23, 42, 0.35); }
+html body .hero-brand__satellite { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 18px -14px rgba(15, 23, 42, 0.4); }
+html body .hero-brand--interactive:hover .hero-brand__satellite,
+html body .hero-brand--interactive:hover .hero-brand__badge,
+html body .hero-brand--interactive:hover .hero-brand__ring--outer,
+html body .hero-brand--interactive:hover .hero-brand__ring--inner { transform: translate(-50%, -50%); }
+
+/* 5. Values are not steps: no big faded counter numbers on them */
+html body .value-card::before { content: none; }
+
+/* 6. Backgrounds: flat brand colour. No blurred light spots, no dotted-grid patterns. */
+html body .cta-band::before,
+html body .process::after,
+html body .page-hero::before,
+html body .home-hero::before { content: none; }
+html body #mission { background: var(--navy-900); }
+html body .home-hero { background: linear-gradient(180deg, var(--tint-blue) 0%, #ffffff 100%); }
+html body .home-hero__stage,
+html body .about-split__art,
+html body .talent-card__art,
+html body .art-frame,
+html body .aside-card--cta,
+html body .sch-process,
+html body .help-banner { background-image: none; }
+html body .talent-card__art,
+html body .art-frame { background-color: var(--tint-blue); }
+html body .talent-card__art--dark,
+html body .about-split__art,
+html body .home-hero__stage,
+html body .aside-card--cta,
+html body .sch-process,
+html body .help-banner { background-color: var(--navy-900); }
+html body .section--dark .statement {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+html body .team-card__cover { background: var(--c1); }
+
+/* Dashboard welcome banners: flat brand colour, without the large translucent circles */
+html body .portal .ov-hero {
+  background: var(--blue-600);
+}
+html body .portal[data-mode='dark'] .ov-hero { background: color-mix(in srgb, var(--blue-600) 55%, #0b1220); }
+
+/* Course cards use the site's brand colour, not a separate purple */
+:root { --uc-accent: var(--blue-600); --uc-accent-soft: var(--tint-blue); }
+
+/* 7. The service-agreement invitation: same colours, no pulsing light */
+html body .agi__glow { display: none; }
+
+/* 8. Respect people who ask for less motion, everywhere */
+@media (prefers-reduced-motion: reduce) {
+  html body *, html body *::before, html body *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

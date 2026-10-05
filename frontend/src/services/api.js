@@ -90,6 +90,11 @@ api.interceptors.response.use(
       }
     }
 
+    // The website was locked by an administrator while this page was open: show the lock at once
+    if (error.response?.status === 423 && error.response.data?.code === 'site_locked') {
+      window.dispatchEvent(new Event('site:locked'));
+    }
+
     return Promise.reject(error);
   },
 );
@@ -160,6 +165,134 @@ export const catalogAPI = {
     remove: (id) => api.delete(`/v1/catalog/manage/${kind}/${id}/`),
     reorder: (ids) => api.post(`/v1/catalog/manage/${kind}/reorder/`, { ids }),
   }),
+};
+
+// Partners page: partners and applications (public) and Admin → Partners
+// The website assistant (backend/chatbot/views.py)
+export const chatbotAPI = {
+  config: () => api.get('/v1/chatbot/config/'),
+  chat: (data) => api.post('/v1/chatbot/chat/', data),
+  rate: (session, rating) => api.post('/v1/chatbot/rate/', { session, rating }),
+  settings: () => api.get('/v1/chatbot/manage/settings/'),
+  saveSettings: (data) => api.put('/v1/chatbot/manage/settings/', data),
+  conversations: (params) => api.get('/v1/chatbot/manage/conversations/', { params }),
+  conversation: (id) => api.get(`/v1/chatbot/manage/conversations/${id}/`),
+  removeConversation: (id) => api.delete(`/v1/chatbot/manage/conversations/${id}/`),
+  knowledge: () => api.get('/v1/chatbot/manage/knowledge/'),
+  test: (message) => api.post('/v1/chatbot/manage/test/', { message }),
+};
+
+// The ADRAM team: public portfolios, the admin's controls and a team member's own profile (backend/team/views.py)
+export const teamAPI = {
+  members: () => api.get('/v1/team/members/'),
+  member: (slug) => api.get(`/v1/team/members/${slug}/`),
+  // The uploaded CV (PDF), fetched with the sign-in so "signed-in users only" CVs open too
+  openCv: async (slug) => {
+    const tab = window.open('', '_blank'); // open now, while we still have the click (pop-up blockers)
+    try {
+      const { data } = await api.get(`/v1/team/members/${slug}/cv/`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      if (tab) tab.close();
+      throw err;
+    }
+  },
+  manage: () => api.get('/v1/team/manage/'),
+  addToTeam: (userId) => api.post('/v1/team/manage/', { user_id: userId }),
+  reorder: (ids) => api.post('/v1/team/manage/reorder/', { ids }),
+  profile: (id) => api.get(`/v1/team/manage/${id}/`),
+  saveProfile: (id, data) => api.put(`/v1/team/manage/${id}/`, data),
+  removeProfile: (id) => api.delete(`/v1/team/manage/${id}/`),
+  uploadCv: (id, file) => { const body = new FormData(); body.append('file', file); return api.post(`/v1/team/manage/${id}/cv/`, body, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  removeCv: (id) => api.delete(`/v1/team/manage/${id}/cv/`),
+  mine: () => api.get('/v1/team/me/'),
+  saveMine: (data) => api.put('/v1/team/me/', data),
+  uploadMyCv: (file) => { const body = new FormData(); body.append('file', file); return api.post('/v1/team/me/cv/', body, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  removeMyCv: () => api.delete('/v1/team/me/cv/'),
+};
+
+export const partnersAPI = {
+  list: () => api.get('/v1/partners/'),
+  apply: (data) => api.post('/v1/partners/apply/', data),
+  managePartners: () => api.get('/v1/partners/manage/partners/'),
+  createPartner: (data) => api.post('/v1/partners/manage/partners/', data),
+  updatePartner: (id, data) => api.patch(`/v1/partners/manage/partners/${id}/`, data),
+  removePartner: (id) => api.delete(`/v1/partners/manage/partners/${id}/`),
+  reorder: (ids) => api.post('/v1/partners/manage/partners/reorder/', { ids }),
+  groups: () => api.get('/v1/partners/manage/groups/'),
+  createGroup: (data) => api.post('/v1/partners/manage/groups/', data),
+  updateGroup: (id, data) => api.patch(`/v1/partners/manage/groups/${id}/`, data),
+  removeGroup: (id) => api.delete(`/v1/partners/manage/groups/${id}/`),
+  applications: (params) => api.get('/v1/partners/manage/applications/', { params }),
+  updateApplication: (id, data) => api.patch(`/v1/partners/manage/applications/${id}/`, data),
+  removeApplication: (id) => api.delete(`/v1/partners/manage/applications/${id}/`),
+};
+
+// Completed projects: the Projects page (public) and Admin → Projects
+export const projectsAPI = {
+  list: () => api.get('/v1/projects/'),
+  get: (slug) => api.get(`/v1/projects/${slug}/`),
+  manage: () => api.get('/v1/projects/manage/'),
+  manageOne: (id) => api.get(`/v1/projects/manage/${id}/`),
+  create: (data) => api.post('/v1/projects/manage/', data),
+  update: (id, data) => api.patch(`/v1/projects/manage/${id}/`, data),
+  remove: (id) => api.delete(`/v1/projects/manage/${id}/`),
+  reorder: (ids) => api.post('/v1/projects/manage/reorder/', { ids }),
+};
+
+// Website blog: published posts (public) and Admin → Blog
+export const blogAPI = {
+  posts: (params) => api.get('/v1/blog/posts/', { params }),
+  post: (slug) => api.get(`/v1/blog/posts/${slug}/`),
+  feedback: (slug, helpful) => api.post(`/v1/blog/posts/${slug}/feedback/`, { helpful }),
+  categories: () => api.get('/v1/blog/categories/'),
+  managePosts: (params) => api.get('/v1/blog/manage/posts/', { params }),
+  managePost: (id) => api.get(`/v1/blog/manage/posts/${id}/`),
+  createPost: (data) => api.post('/v1/blog/manage/posts/', data),
+  updatePost: (id, data) => api.patch(`/v1/blog/manage/posts/${id}/`, data),
+  removePost: (id) => api.delete(`/v1/blog/manage/posts/${id}/`),
+  manageCategories: () => api.get('/v1/blog/manage/categories/'),
+  createCategory: (data) => api.post('/v1/blog/manage/categories/', data),
+  updateCategory: (id, data) => api.patch(`/v1/blog/manage/categories/${id}/`, data),
+  removeCategory: (id) => api.delete(`/v1/blog/manage/categories/${id}/`),
+  authors: () => api.get('/v1/blog/manage/authors/'),
+};
+
+// Website newsletter: the footer form (public) and Admin → Newsletter
+export const newsletterAPI = {
+  form: () => api.get('/v1/newsletter/form/'),
+  subscribe: (data) => api.post('/v1/newsletter/subscribe/', data),
+  confirm: (token) => api.post(`/v1/newsletter/confirm/${token}/`),
+  unsubscribeInfo: (token) => api.get(`/v1/newsletter/unsubscribe/${token}/`),
+  unsubscribe: (token, delivery) => api.post(`/v1/newsletter/unsubscribe/${token}/${delivery ? `?d=${encodeURIComponent(delivery)}` : ''}`),
+  resubscribe: (token) => api.post(`/v1/newsletter/resubscribe/${token}/`),
+  overview: () => api.get('/v1/newsletter/manage/overview/'),
+  subscribers: (params) => api.get('/v1/newsletter/manage/subscribers/', { params }),
+  addSubscriber: (data) => api.post('/v1/newsletter/manage/subscribers/', data),
+  updateSubscriber: (id, data) => api.patch(`/v1/newsletter/manage/subscribers/${id}/`, data),
+  removeSubscriber: (id) => api.delete(`/v1/newsletter/manage/subscribers/${id}/`),
+  importSubscribers: (text) => api.post('/v1/newsletter/manage/subscribers/import/', { text }),
+  exportSubscribers: (params) => api.get('/v1/newsletter/manage/subscribers/export/', { params, responseType: 'blob' }),
+  settings: () => api.get('/v1/newsletter/manage/settings/'),
+  saveSettings: (data) => api.put('/v1/newsletter/manage/settings/', data),
+  issues: () => api.get('/v1/newsletter/manage/issues/'),
+  issue: (id) => api.get(`/v1/newsletter/manage/issues/${id}/`),
+  createIssue: (data) => api.post('/v1/newsletter/manage/issues/', data),
+  updateIssue: (id, data) => api.patch(`/v1/newsletter/manage/issues/${id}/`, data),
+  removeIssue: (id) => api.delete(`/v1/newsletter/manage/issues/${id}/`),
+  previewIssue: (data) => api.post('/v1/newsletter/manage/issues/preview/', data),
+  testIssue: (id) => api.post(`/v1/newsletter/manage/issues/${id}/test/`),
+  sendIssue: (id) => api.post(`/v1/newsletter/manage/issues/${id}/send/`),
+};
+
+// Website lockdown (Admin → Lock website). `status` is public; `manage`/`save` are for administrators.
+export const siteLockAPI = {
+  status: () => api.get('/v1/content/lock/'),
+  manage: () => api.get('/v1/content/lock/manage/'),
+  save: (data) => api.put('/v1/content/lock/manage/', data),
 };
 
 // Editable website wording and images. `page` is public; the rest are for administrators.
@@ -513,6 +646,29 @@ export const portalAPI = {
   application: (id) => api.get(`/v1/portal/me/applications/${id}/`),
   requestService: (id) => api.post(`/v1/portal/me/applications/${id}/request-service/`),
   acceptTerms: (id) => api.post(`/v1/portal/me/applications/${id}/service/accept-terms/`),
+  // the application form, once the payment is confirmed
+  applicationForm: (id) => api.get(`/v1/portal/me/applications/${id}/form/`),
+  saveApplicationForm: (id, data) => api.put(`/v1/portal/me/applications/${id}/form/`, data),
+  agreement: (id) => api.get(`/v1/portal/me/applications/${id}/agreement/`),
+  signAgreement: (id, data) => api.post(`/v1/portal/me/applications/${id}/agreement/`, data),
+  uploadAgreement: (id, files, declared, onProgress) => {
+    const body = new FormData();
+    files.forEach((f) => body.append('files', f));
+    body.append('declared', declared ? 'true' : '');
+    return api.post(`/v1/portal/me/applications/${id}/agreement/upload/`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
+    });
+  },
+  uploadApplicationForm: (id, files, declared, onProgress) => {
+    const body = new FormData();
+    files.forEach((f) => body.append('files', f));
+    body.append('declared', declared ? 'true' : '');
+    return api.post(`/v1/portal/me/applications/${id}/form/upload/`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
+    });
+  },
   submitPayment: (id, { paymentMethod, transactionId, payer, receipt }) => {
     const body = new FormData();
     body.append('payment_method', paymentMethod);
@@ -545,6 +701,21 @@ export const staffPortalAPI = {
   addNote: (userId, body) => api.post(`/v1/portal/staff/students/${userId}/notes/`, { body }),
   removeNote: (id) => api.delete(`/v1/portal/staff/notes/${id}/`),
   decide: (applicationId, payload) => api.post(`/v1/portal/staff/applications/${applicationId}/service/`, payload),
+  applicationForm: (applicationId) => api.get(`/v1/portal/staff/applications/${applicationId}/form/`),
+  applicationFormAction: (applicationId, payload) => api.post(`/v1/portal/staff/applications/${applicationId}/form/`, payload),
+  applicationForms: (params) => api.get('/v1/portal/staff/application-forms/', { params }),
+  mySignature: () => api.get('/v1/portal/staff/my-signature/'),
+  agreementTemplate: () => api.get('/v1/portal/staff/agreement-template/'),
+  saveAgreementTemplate: (data) => api.put('/v1/portal/staff/agreement-template/', data),
+  resetAgreementTemplate: () => api.delete('/v1/portal/staff/agreement-template/'),
+  agreements: (params) => api.get('/v1/portal/staff/agreements/', { params }),
+  issueAgreement: (data) => api.post('/v1/portal/staff/agreements/', data),
+  agreement: (applicationId) => api.get(`/v1/portal/staff/applications/${applicationId}/agreement/`),
+  agreementAction: (applicationId, payload) => api.post(`/v1/portal/staff/applications/${applicationId}/agreement/`, payload),
+  saveMySignature: (data) => api.put('/v1/portal/staff/my-signature/', data),
+  formTemplate: () => api.get('/v1/portal/staff/intake-form/'),
+  saveFormTemplate: (data) => api.put('/v1/portal/staff/intake-form/', data),
+  resetFormTemplate: () => api.delete('/v1/portal/staff/intake-form/'),
   addMilestone: (applicationId, data) => api.post(`/v1/portal/staff/applications/${applicationId}/milestones/`, data),
   updateMilestone: (id, data) => api.patch(`/v1/portal/staff/milestones/${id}/`, data),
   removeMilestone: (id) => api.delete(`/v1/portal/staff/milestones/${id}/`),
@@ -620,8 +791,16 @@ const messageConfig = (message, onProgress) => ({
 export const messagesAPI = {
   unread: () => api.get('/v1/portal/messages/unread/'),
   stats: () => api.get('/v1/portal/messages/stats/'),
-  mine: () => api.get('/v1/portal/me/messages/'),
-  send: (message, onProgress) => api.post('/v1/portal/me/messages/', messagePayload(message), messageConfig(message, onProgress)),
+  // `member`: a team member's user id for a direct conversation with them; empty = the ADRAM team
+  mine: (member) => api.get('/v1/portal/me/messages/', { params: member ? { member } : {} }),
+  send: (message, onProgress, member) =>
+    api.post(`/v1/portal/me/messages/${member ? `?member=${member}` : ''}`, messagePayload(message), messageConfig(message, onProgress)),
+  threads: () => api.get('/v1/portal/me/threads/'),
+  // A team member's own inbox (people who wrote to them from their team profile)
+  memberInbox: () => api.get('/v1/portal/team/inbox/'),
+  memberThread: (userId) => api.get(`/v1/portal/team/inbox/${userId}/`),
+  memberReply: (userId, message, onProgress) =>
+    api.post(`/v1/portal/team/inbox/${userId}/`, messagePayload(message), messageConfig(message, onProgress)),
   conversations: (params = {}) => api.get('/v1/portal/staff/conversations/', { params }),
   conversation: (userId) => api.get(`/v1/portal/staff/conversations/${userId}/`),
   reply: (userId, message, onProgress) =>
@@ -647,6 +826,7 @@ export const contactAPI = {
   listMessages: ({ page, search, isRead } = {}) =>
     api.get('/contact/messages/', { params: { page, search: search || undefined, is_read: isRead } }),
   setRead: (id, isRead) => api.patch(`/contact/messages/${id}/`, { is_read: isRead }),
+  stats: (days = 30) => api.get('/contact/stats/', { params: { days } }),
   deleteMessage: (id) => api.delete(`/contact/messages/${id}/`),
 };
 

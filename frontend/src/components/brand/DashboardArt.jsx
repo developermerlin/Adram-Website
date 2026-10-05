@@ -30,8 +30,6 @@ export const DashboardArt = ({ className = '' }) => {
         </radialGradient>
       </defs>
 
-      <circle cx="140" cy="80" r="78" style={{ fill: g('glow') }} />
-
       {/* Rising bars */}
       <g opacity="0.9">
         <rect x="46" y="120" width="22" height="44" rx="6" style={{ fill: g('bar') }} />
@@ -52,12 +50,6 @@ export const DashboardArt = ({ className = '' }) => {
         <path d="M200 70 h8 l-2 14 h-4 z" style={{ fill: g('gold') }} />
       </g>
 
-      {/* Sparkles */}
-      <g fill="#ffffff">
-        <path d="M60 40 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z" opacity="0.9" />
-        <path d="M222 110 l1.6 4 4 1.6 -4 1.6 -1.6 4 -1.6 -4 -4 -1.6 4 -1.6z" opacity="0.8" />
-        <circle cx="120" cy="30" r="2.5" opacity="0.7" />
-      </g>
     </svg>
   );
 };

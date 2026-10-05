@@ -121,7 +121,7 @@ class CallsView(APIView):
                 return Response({'detail': 'Calls are between people and the ADRAM team.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             person_user = request.user
-        conversation, _ = Conversation.objects.get_or_create(user=person_user)
+        conversation, _ = Conversation.objects.get_or_create(user=person_user, member=None)
 
         expire_stale(conversation.calls)
         if conversation.calls.filter(status__in=Call.OPEN).exists():

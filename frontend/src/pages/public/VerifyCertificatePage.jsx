@@ -1,3 +1,4 @@
+import { usePageContent } from '../../content/useContent';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { lmsAPI } from '../../services/api';
@@ -6,6 +7,7 @@ import '../../styles/shop.css';
 
 /** Anyone can check that a certificate ID is real. */
 export const VerifyCertificatePage = () => {
+  const copy = usePageContent('store').verify;
   const [params, setParams] = useSearchParams();
   const code = (params.get('code') || '').trim().toUpperCase();
   const [draft, setDraft] = useState(code);
@@ -32,9 +34,9 @@ export const VerifyCertificatePage = () => {
 
   return (
     <section className="container verify">
-      <p className="ip-head__eyebrow">Certificates</p>
-      <h1>Verify a certificate</h1>
-      <p className="muted">Enter the certificate ID printed at the bottom of an ADRAM certificate, for example ADR-1A2B-3C4D-5E6F.</p>
+      <p className="ip-head__eyebrow">{copy.eyebrow}</p>
+      <h1>{copy.title}</h1>
+      <p className="muted">{copy.lead}</p>
       <form className="verify__form" onSubmit={submit} role="search">
         <label htmlFor="cert-code" className="sr-only">Certificate ID</label>
         <input id="cert-code" className="input" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ADR-XXXX-XXXX-XXXX" autoComplete="off" />

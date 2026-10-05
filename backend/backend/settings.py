@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+import sys
 
 from decouple import config, Csv
 
@@ -51,6 +52,12 @@ INSTALLED_APPS = [
     'cms',
     'lms',
     'portal',
+    'newsletter',
+    'blog',
+    'partners',
+    'projects',
+    'team.apps.TeamConfig',
+    'chatbot',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
 ]
@@ -63,6 +70,7 @@ MIDDLEWARE = [
     'django.middleware.http.ConditionalGetMiddleware',  # ETag on GET responses: apps can ask "changed?" and get a quick 304
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'cms.lock.SiteLockMiddleware',  # Admin → Lock website: refuses visitors' changes while locked
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -202,7 +210,26 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
     ],
+    'DEFAULT_THROTTLE_CLASSES': ['api.throttling.AnonRate'],
+    'EXCEPTION_HANDLER': 'api.throttling.exception_handler',
 }
+
+# ========== REQUEST LIMITS (api/throttling.py) ==========
+# Per network address. Generous, because many people share one mobile-network address.
+# Off while the test suite runs (it sends thousands of requests from one address in seconds).
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+API_THROTTLING = config('API_THROTTLING', default=not TESTING, cast=bool)
+API_RATES = {
+    'anon': config('RATE_ANON', default='1500/min'),       # any visitor who isn't signed in
+    'auth': config('RATE_AUTH', default='60/min'),        # sign-in and code checks
+    'signup': config('RATE_SIGNUP', default='40/hour'),   # new accounts
+    'email': config('RATE_EMAIL', default='40/hour'),     # requests that send someone an email
+    'forms': config('RATE_FORMS', default='30/hour'),     # contact, newsletter and partner forms
+    'codes': config('RATE_CODES', default='60/min'),      # gift, certificate and group codes
+}
+# Failed passwords for one email from one address before sign-in pauses for LOGIN_LOCKOUT_MINUTES
+LOGIN_MAX_FAILURES = config('LOGIN_MAX_FAILURES', default=10, cast=int)
+LOGIN_LOCKOUT_MINUTES = config('LOGIN_LOCKOUT_MINUTES', default=15, cast=int)
 
 # Simple JWT settings
 SIMPLE_JWT = {
@@ -236,17 +263,29 @@ SECURE_BROWSER_XSS_FILTER = True  # Enable XSS filter
 SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent MIME type sniffing
 X_FRAME_OPTIONS = 'DENY'  # Prevent clickjacking
 
-# HTTPS Settings (Enable in production)
-# SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
-# SECURE_HSTS_SECONDS = 31536000  # 1 year
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'  # other sites see only the domain, never the page or its ?query
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'  # keeps sign-in pop-ups (OAuth) working
+
+# HTTPS (production). Each can be set in .env; with DEBUG off, HTTP is redirected to HTTPS by default.
+# Behind a proxy that ends HTTPS (nginx, a load balancer, cPanel), also set SECURE_PROXY_SSL_HEADER=true.
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=not DEBUG, cast=bool)
+if config('SECURE_PROXY_SSL_HEADER', default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# HSTS tells browsers to use HTTPS only. Turn it on (e.g. 31536000 = 1 year) once HTTPS works on every subdomain.
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
+# The website's own address(es) for form posts over HTTPS, e.g. https://adramtechnologies.com
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+# The interactive API docs (Swagger/ReDoc) are open in development; in production only staff can see them.
+API_DOCS_PUBLIC = config('API_DOCS_PUBLIC', default=DEBUG, cast=bool)
 
 
 # ========== EMAIL CONFIGURATION ==========
 # Console backend prints emails to the terminal; use smtp.EmailBackend in production.
-# Email codes: no hourly limit unless one is set (e.g. OTP_MAX_CODES_PER_HOUR=10 in .env).
-OTP_MAX_CODES_PER_HOUR = config('OTP_MAX_CODES_PER_HOUR', default=0, cast=int) or None
+# Email codes per person per hour: no limit in development; 10 in production (stops code-guessing with endless
+# new codes, and floods of emails). Set OTP_MAX_CODES_PER_HOUR in .env to change it (0 = no limit).
+OTP_MAX_CODES_PER_HOUR = config('OTP_MAX_CODES_PER_HOUR', default=0 if DEBUG else 10, cast=int) or None
 
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -314,3 +353,7 @@ FACEBOOK_CLIENT_ID = config('FACEBOOK_CLIENT_ID', default='')
 FACEBOOK_CLIENT_SECRET = config('FACEBOOK_CLIENT_SECRET', default='')
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
+
+# ========== WEBSITE ASSISTANT (chatbot) ==========
+# A key from https://console.anthropic.com switches the chat assistant on (see chatbot/ai.py). Empty = it explains it's not set up.
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')

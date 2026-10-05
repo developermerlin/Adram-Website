@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
+import ChatWidget from '../chatbot/ChatWidget';
 
 const BackToTop = () => {
   const [visible, setVisible] = useState(false);
@@ -24,15 +25,23 @@ const BackToTop = () => {
   );
 };
 
+/** Shown for a moment while a page's code downloads. */
+export const PageLoading = () => (
+  <div className="page-loading" role="status" aria-live="polite"><span className="btn-spinner" aria-hidden="true" /><span className="sr-only">Loading…</span></div>
+);
+
 // Header and footer stay mounted while the page content (Outlet) changes.
 export const PublicLayout = () => (
   <>
     <SiteHeader />
     <main>
-      <Outlet />
+      <Suspense fallback={<PageLoading />}>
+        <Outlet />
+      </Suspense>
     </main>
     <SiteFooter />
     <BackToTop />
+    <ChatWidget />
   </>
 );
 

@@ -836,3 +836,34 @@ class StudentTrackTests(TestCase):
         listed = self.client.get('/api/v1/auth/users/?track=scholarships').data
         rows = listed['results'] if isinstance(listed, dict) else listed
         self.assertEqual([u['email'] for u in rows], ['ama@example.com'])
+
+
+class MissingFileTests(TestCase):
+    """A file whose record exists but whose file is gone from the disk answers 'not found', not a server error."""
+
+    def setUp(self):
+        import shutil
+        from unittest import mock
+        from .models import private_storage
+
+        tmp = tempfile.mkdtemp()   # keep test uploads out of private_media/
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        for attr in ('location', 'base_location'):
+            patcher = mock.patch.object(private_storage, attr, tmp)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_missing_attachment_is_not_found(self):
+        from .models import Conversation, Message
+        user = make_user()
+        convo = Conversation.objects.create(user=user)
+        msg = Message.objects.create(conversation=convo, sender=user, body='See attached',
+                                     attachment=SimpleUploadedFile('note.pdf', b'%PDF-1.4 test'), attachment_name='note.pdf')
+        client = APIClient()
+        client.force_authenticate(user)
+        url = f'/api/v1/portal/files/messages/{msg.pk}/'
+        found = client.get(url)
+        self.assertEqual(found.status_code, 200)
+        found.close()  # let go of the file (Windows won't delete an open file)
+        msg.attachment.storage.delete(msg.attachment.name)
+        self.assertEqual(client.get(url).status_code, 404)

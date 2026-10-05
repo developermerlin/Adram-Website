@@ -11,11 +11,13 @@ import {
   ATTACHMENT_ACCEPT, MAX_ATTACHMENT_MB, MAX_VOICE_SECONDS, checkAttachment, fileIcon, formatDuration, formatSize,
 } from '../../utils/chatFiles';
 import PortalLayout from '../../components/layout/PortalLayout';
+import { assetUrl } from '../../utils/assets';
 import Avatar from '../../components/ui/Avatar';
 import Attachment from '../../components/chat/Attachment';
 import MessagesInsights from '../../components/chat/MessagesInsights';
 import { canRecordVoice, useVoiceRecorder } from '../../components/chat/useVoiceRecorder';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
+import '../../styles/team.css';
 import { callsSupported, startCall, useCall } from '../../components/chat/callStore';
 
 const THREAD_POLL_MS = 10000;
@@ -305,16 +307,21 @@ const DropHint = () => (
 
 /* ---------------------------------------------------------------- Everyone except admins */
 
-const MyConversation = () => {
+const MyConversation = ({ member = null, onSent }) => {
   const [messages, setMessages] = useState(null);
+  const [who, setWho] = useState(null); // the team member, when talking to one
 
   const load = useCallback(
     () =>
-      messagesAPI.mine().then(({ data }) => {
+      messagesAPI.mine(member || undefined).then(({ data }) => {
         setMessages((cur) => (cur && cur.length === data.messages.length && cur.every((m, i) => m.read_at === data.messages[i].read_at) ? cur : data.messages));
+        if (data.member) setWho(data.member);
         announceMessagesChanged();
-      }).catch(() => setMessages((cur) => cur || [])),
-    [],
+      }).catch((err) => {
+        setMessages((cur) => cur || []);
+        if (member && err.response?.status === 404) toast.error('This team member can’t be messaged right now.');
+      }),
+    [member],
   );
 
   useEffect(() => {
@@ -327,24 +334,78 @@ const MyConversation = () => {
   const [dragging, drop] = useDropZone(setFile);
 
   const send = async (message, onProgress) => {
-    const { data } = await messagesAPI.send(message, onProgress);
+    const { data } = await messagesAPI.send(message, onProgress, member || undefined);
     setMessages((cur) => [...(cur || []), data]);
+    onSent?.();
   };
 
+  const first = who?.first_name || 'them';
   return (
     <section className={`card chat chat--single${dragging ? ' is-dragging' : ''}`} {...drop}>
       {dragging && <DropHint />}
-      <header className="chat__head">
-        <span className="chat__team" aria-hidden="true"><i className="fas fa-headset" /></span>
-        <div>
-          <strong>ADRAM team</strong>
-          <small>We usually reply within one working day. You’ll also get an email when we do.</small>
-        </div>
-        <CallButtons onCall={(kind) => startCall({ kind, peer: { name: 'ADRAM team' } })} />
-      </header>
-      <Thread messages={messages} ourSide={(m) => !m.from_staff} emptyText="Ask us anything about your applications, documents, payments or training." />
-      <Composer onSend={send} placeholder="Write a message to the ADRAM team…" file={file} setFile={setFile} />
+      {member ? (
+        <header className="chat__head">
+          {who?.photo ? <img className="chat__member-photo" src={assetUrl(who.photo)} alt="" /> : <Avatar person={who || {}} size={42} />}
+          <div>
+            <strong>{who?.full_name || '…'}</strong>
+            <small>{who ? `${who.job_title || 'ADRAM team member'} · ADRAM Technologies` : ''}</small>
+          </div>
+          {who?.slug && <Link to={`/team/${who.slug}`} className="btn btn--outline btn--sm chat__profile"><i className="fas fa-id-badge" /> Profile</Link>}
+        </header>
+      ) : (
+        <header className="chat__head">
+          <span className="chat__team" aria-hidden="true"><i className="fas fa-headset" /></span>
+          <div>
+            <strong>ADRAM team</strong>
+            <small>We usually reply within one working day. You’ll also get an email when we do.</small>
+          </div>
+          <CallButtons onCall={(kind) => startCall({ kind, peer: { name: 'ADRAM team' } })} />
+        </header>
+      )}
+      <Thread messages={messages} ourSide={(m) => !m.from_staff}
+        emptyText={member ? `Say hello to ${first}. They’ll reply here, and you’ll get an email when they do.` : 'Ask us anything about your applications, documents, payments or training.'} />
+      <Composer key={member || 'team'} onSend={send} placeholder={member ? `Write a message to ${first}…` : 'Write a message to the ADRAM team…'} file={file} setFile={setFile} />
     </section>
+  );
+};
+
+/** The person's conversations: the ADRAM team, plus each team member they have written to. */
+const ThreadSwitcher = ({ member, threads, onPick }) => {
+  if (!threads || (threads.length <= 1 && !member)) return null;
+  const shown = member && !threads.some((t) => t.member?.id === member) ? [...threads, { member: { id: member, full_name: 'New conversation' }, unread: 0 }] : threads;
+  return (
+    <nav className="chat-threads" aria-label="Your conversations">
+      {shown.map((t) => {
+        const id = t.member?.id || null;
+        const active = (member || null) === id;
+        return (
+          <button key={id || 'team'} type="button" className={`chat-threads__item${active ? ' is-active' : ''}`} aria-pressed={active} onClick={() => onPick(id)}>
+            {t.member ? (t.member.photo ? <img src={assetUrl(t.member.photo)} alt="" /> : <Avatar person={t.member} size={32} />)
+              : <span className="chat-threads__team" aria-hidden="true"><i className="fas fa-headset" /></span>}
+            <span><strong>{t.member ? t.member.full_name : 'ADRAM team'}</strong><small>{t.member ? t.member.job_title || 'Team member' : 'Support and applications'}</small></span>
+            {t.unread > 0 && <span className="inbox__badge" aria-label={`${t.unread} unread`}>{t.unread}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+};
+
+const PersonMessages = () => {
+  const [params, setParams] = useSearchParams();
+  const member = Number(params.get('member')) || null;
+  const [threads, setThreads] = useState(null);
+  const loadThreads = useCallback(() => messagesAPI.threads().then(({ data }) => setThreads(data)).catch(() => setThreads([])), []);
+  useEffect(() => {
+    loadThreads();
+    const timer = setInterval(loadThreads, LIST_POLL_MS);
+    return () => clearInterval(timer);
+  }, [loadThreads]);
+  return (
+    <>
+      <ThreadSwitcher member={member} threads={threads} onPick={(id) => setParams(id ? { member: String(id) } : {})} />
+      <MyConversation key={member || 'team'} member={member} onSent={loadThreads} />
+    </>
   );
 };
 
@@ -402,7 +463,8 @@ const NewConversation = ({ onPick }) => {
   );
 };
 
-const Inbox = () => {
+// `memberMode`: a team member's own inbox (people who wrote to them). No deleting or calls there.
+const Inbox = ({ memberMode = false }) => {
   const [params, setParams] = useSearchParams();
   const selected = Number(params.get('user')) || null;
   const [filter, setFilter] = useState('all');
@@ -411,9 +473,15 @@ const Inbox = () => {
   const [thread, setThread] = useState(null); // { user, messages }
 
   const loadList = useCallback(
-    () => messagesAPI.conversations({ search: search.trim(), unread: filter === 'unread' ? 1 : undefined })
-      .then(({ data }) => setList(data)).catch(() => setList((cur) => cur || [])),
-    [search, filter],
+    () => (memberMode
+      ? messagesAPI.memberInbox().then(({ data }) => {
+        const q = search.trim().toLowerCase();
+        setList(data.filter((c) => (filter !== 'unread' || c.unread > 0)
+          && (!q || `${c.user.full_name} ${c.user.email} ${c.last?.body || ''}`.toLowerCase().includes(q))));
+      })
+      : messagesAPI.conversations({ search: search.trim(), unread: filter === 'unread' ? 1 : undefined }).then(({ data }) => setList(data)))
+      .catch(() => setList((cur) => cur || [])),
+    [search, filter, memberMode],
   );
 
   useEffect(() => {
@@ -427,14 +495,14 @@ const Inbox = () => {
 
   const loadThread = useCallback(() => {
     if (!selected) return Promise.resolve();
-    return messagesAPI.conversation(selected).then(({ data }) => {
+    return (memberMode ? messagesAPI.memberThread(selected) : messagesAPI.conversation(selected)).then(({ data }) => {
       setThread((cur) => (cur && cur.user.id === data.user.id && cur.messages.length === data.messages.length
         && cur.messages.every((m, i) => m.read_at === data.messages[i].read_at) ? cur : data));
       announceMessagesChanged();
       // Opening a conversation clears its unread count in the list straight away.
       setList((cur) => cur?.map((c) => (c.user.id === data.user.id ? { ...c, unread: 0 } : c)));
     }).catch(() => toast.error('That conversation couldn’t be loaded.'));
-  }, [selected]);
+  }, [selected, memberMode]);
 
   useEffect(() => {
     if (!selected) return undefined;
@@ -452,7 +520,7 @@ const Inbox = () => {
   const [dragging, drop] = useDropZone(setFile);
 
   const send = async (message, onProgress) => {
-    const { data } = await messagesAPI.reply(selected, message, onProgress);
+    const { data } = await (memberMode ? messagesAPI.memberReply(selected, message, onProgress) : messagesAPI.reply(selected, message, onProgress));
     setThread((cur) => ({ ...cur, messages: [...cur.messages, data] }));
     loadList();
   };
@@ -521,7 +589,7 @@ const Inbox = () => {
             </button>
           </div>
         </div>
-        {list?.length > 0 && (
+        {!memberMode && list?.length > 0 && (
           <div className={`inbox__bulk${checked.length ? ' is-active' : ''}`}>
             <label className="inbox__check">
               <input type="checkbox" checked={allChecked} onChange={() => setChecked(allChecked ? [] : listIds)} aria-label="Select all conversations" />
@@ -542,19 +610,21 @@ const Inbox = () => {
         {list?.length === 0 && (
           <div className="inbox__empty">
             <i className="far fa-comments" aria-hidden="true" />
-            <p>{search || filter === 'unread' ? 'No conversations match.' : 'No messages yet. When someone writes to ADRAM, it appears here.'}</p>
+            <p>{search || filter === 'unread' ? 'No conversations match.' : memberMode
+              ? 'No messages yet. When someone writes to you from your team profile, it appears here.'
+              : 'No messages yet. When someone writes to ADRAM, it appears here.'}</p>
           </div>
         )}
         <ul className="inbox__items">
           {list?.map((c) => (
             <li key={c.user.id} className={`inbox__row${checked.includes(c.user.id) ? ' is-checked' : ''}`}>
-              <input
+              {!memberMode && <input
                 type="checkbox"
                 className="inbox__row-check"
                 checked={checked.includes(c.user.id)}
                 onChange={() => toggleCheck(c.user.id)}
                 aria-label={`Select the conversation with ${c.user.full_name}`}
-              />
+              />}
               <button type="button" className={`inbox__item${c.user.id === selected ? ' is-active' : ''}${c.unread ? ' is-unread' : ''}`} onClick={() => open(c.user.id)}>
                 <Avatar person={c.user} size={42} />
                 <span className="inbox__text">
@@ -575,10 +645,12 @@ const Inbox = () => {
                   </span>
                 </span>
               </button>
-              <button type="button" className="icon-btn inbox__row-delete" onClick={() => setDeleting({ users: [c.user.id] })}
-                aria-label={`Delete the conversation with ${c.user.full_name}`} title="Delete conversation">
-                <i className="fas fa-trash-can" />
-              </button>
+              {!memberMode && (
+                <button type="button" className="icon-btn inbox__row-delete" onClick={() => setDeleting({ users: [c.user.id] })}
+                  aria-label={`Delete the conversation with ${c.user.full_name}`} title="Delete conversation">
+                  <i className="fas fa-trash-can" />
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -602,9 +674,9 @@ const Inbox = () => {
                 <strong>{u?.full_name || '…'}</strong>
                 <small>{u ? `${u.email} · ${u.role_display}` : ''}</small>
               </div>
-              {u && <CallButtons onCall={(kind) => startCall({ kind, userId: u.id, peer: { name: u.full_name, person: u } })} />}
-              {u?.role === 'STUDENT' && <Link to={`/admin/students/${u.id}`} className="btn btn--outline btn--sm chat__profile"><i className="fas fa-user-graduate" /> Student portal</Link>}
-              {current?.messages.length > 0 && (
+              {u && !memberMode && <CallButtons onCall={(kind) => startCall({ kind, userId: u.id, peer: { name: u.full_name, person: u } })} />}
+              {u?.role === 'STUDENT' && !memberMode && <Link to={`/admin/students/${u.id}`} className="btn btn--outline btn--sm chat__profile"><i className="fas fa-user-graduate" /> Student portal</Link>}
+              {!memberMode && current?.messages.length > 0 && (
                 <button type="button" className="icon-btn chat__call chat__delete" onClick={() => setDeleting({ users: [u.id] })}
                   aria-label="Delete this conversation" title="Delete conversation">
                   <i className="fas fa-trash-can" />
@@ -616,7 +688,7 @@ const Inbox = () => {
               ourSide={(m) => m.from_staff}
               emptyText={`No messages with ${u?.first_name || 'this person'} yet. Say hello below.`}
               fullDates
-              onDelete={(m) => setDeleting({ message: m })}
+              onDelete={memberMode ? undefined : (m) => setDeleting({ message: m })}
             />
             <Composer key={selected} onSend={send} placeholder={u ? `Reply to ${u.first_name}…` : 'Reply…'} disabled={!current} file={file} setFile={setFile} />
           </>
@@ -637,16 +709,19 @@ const Inbox = () => {
 export const ConversationsPage = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isMember = user?.role === 'TEAM_MEMBER';
   const [, setParams] = useSearchParams();
 
   return (
     <PortalLayout
       title="Messages"
-      subtitle={isAdmin ? 'Every conversation between people and the ADRAM team. Any administrator can reply.' : 'Talk to the ADRAM team about anything in your portal.'}
+      subtitle={isAdmin ? 'Every conversation between people and the ADRAM team. Any administrator can reply.'
+        : isMember ? 'People who messaged you from your team profile. Reply here; they get an email when you do.'
+          : 'Talk to the ADRAM team, or to a team member you messaged from their profile.'}
       actions={isAdmin ? <NewConversation onPick={(id) => setParams({ user: String(id) })} /> : null}
     >
-      <MessagesInsights isAdmin={isAdmin} />
-      {isAdmin ? <Inbox /> : <MyConversation />}
+      <MessagesInsights isAdmin={isAdmin || isMember} />
+      {isAdmin ? <Inbox /> : isMember ? <Inbox memberMode /> : <PersonMessages />}
     </PortalLayout>
   );
 };

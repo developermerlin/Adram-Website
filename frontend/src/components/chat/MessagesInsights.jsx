@@ -29,11 +29,14 @@ const CALLS = [
   { key: 'declined', label: 'Declined', icon: 'fa-ban', color: 'var(--status-warning)' },
 ];
 
+// Collapsed by default on phones (the conversation comes first); otherwise whatever the person chose last.
 const readHidden = () => {
+  const phone = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches;
   try {
-    return localStorage.getItem(HIDE_KEY) === '1';
+    const saved = localStorage.getItem(HIDE_KEY);
+    return saved === null ? Boolean(phone) : saved === '1';
   } catch {
-    return false;
+    return Boolean(phone);
   }
 };
 

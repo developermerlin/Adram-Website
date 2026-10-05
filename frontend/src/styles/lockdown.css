@@ -1,0 +1,44 @@
+/* ---------- Admin → Lock website ---------- */
+.lockdown { display: grid; gap: 20px; }
+
+.lockdown__status {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px 20px;
+  padding: 22px 24px;
+}
+.lockdown__icon {
+  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px;
+  background: var(--success-bg); color: var(--success); font-size: 1.4rem;
+}
+.lockdown__status.is-locked .lockdown__icon { background: var(--danger-bg); color: var(--danger); }
+.lockdown__status-text h2 { margin: 6px 0 2px; }
+.lockdown__status-text p { margin: 0; }
+.lockdown__confirm {
+  grid-column: 1 / -1; display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--border-red); border-radius: 12px; background: var(--tint-red);
+}
+.lockdown__confirm p { margin: 0; font-size: 0.92rem; }
+.lockdown__confirm div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.lockdown__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 20px; align-items: start; }
+.lockdown__message, .lockdown__preview-card { display: grid; gap: 14px; }
+.lockdown__message h2, .lockdown__preview-card h2.h3 { margin: 0; }
+.lockdown__rules-title { margin: 6px 0 0; }
+.lockdown__rules { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 0.9rem; }
+.lockdown__rules li { display: flex; gap: 10px; }
+.lockdown__rules i { margin-top: 3px; }
+.lockdown__rules .is-blocked i { color: var(--danger); }
+.lockdown__rules .is-open i { color: var(--success); }
+
+.lockdown__preview { position: relative; display: grid; place-items: center; min-height: 300px; overflow: hidden; padding: 20px; border-radius: 12px; background: var(--surface); }
+.lockdown__fake-site { position: absolute; inset: 16px; display: grid; align-content: start; gap: 12px; filter: grayscale(1); opacity: 0.45; }
+.lockdown__fake-site span { height: 14px; width: 60%; border-radius: 7px; background: var(--line-strong); }
+.lockdown__fake-site span:first-child { height: 26px; width: 100%; background: var(--navy-900); }
+.lockdown__fake-site .is-wide { height: 90px; width: 100%; }
+.lockdown__mini { position: relative; transform: scale(0.88); }
+
+@media (max-width: 640px) {
+  .lockdown__status { grid-template-columns: auto 1fr; }
+  .lockdown__actions { grid-column: 1 / -1; }
+}

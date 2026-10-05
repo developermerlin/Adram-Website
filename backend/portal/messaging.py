@@ -1,8 +1,13 @@
 """
-Messages between people and the ADRAM team. Each person has one conversation; every administrator
-sees all of them and can reply. Unread counts feed the message icon in the portal's top bar.
+Messages between people and ADRAM. Each person has one conversation with "the ADRAM team" (every administrator
+sees all of them and can reply), plus a direct conversation with each team member they write to from that member's
+portfolio page (the member replies from their own inbox). Unread counts feed the message icon in the portal's top bar.
 
-  GET/POST /portal/me/messages/                   the signed-in person's conversation (GET marks replies read)
+  GET/POST /portal/me/messages/?member=<id>       the signed-in person's conversation (GET marks replies read);
+                                                  without ?member it is the thread with the ADRAM team
+  GET      /portal/me/threads/                    the signed-in person's conversations (ADRAM team + team members)
+  GET      /portal/team/inbox/                    a team member's conversations with people
+  GET/POST /portal/team/inbox/<user_id>/          one of them (GET marks the person's messages read)
   GET      /portal/messages/unread/               unread count + a short preview, for the top-bar icon
   GET      /portal/staff/conversations/           every conversation (?search=, ?unread=1)
   GET/POST /portal/staff/conversations/<user_id>/ one person's conversation (GET marks their messages read)
@@ -33,6 +38,26 @@ User = get_user_model()
 
 def is_staff_user(user):
     return user.role == UserModel.ADMIN
+
+
+def team_thread(user):
+    """The person's conversation with the whole ADRAM team (not with one member)."""
+    return Conversation.objects.filter(user=user, member__isnull=True).first()
+
+
+def member_card(member):
+    """Who a direct conversation is with: their name, title and photo from the team profile."""
+    profile = getattr(member, 'team_profile', None)
+    return {**person(member), 'job_title': profile.job_title if profile else member.get_role_display(),
+            'photo': profile.photo if profile else None, 'slug': profile.slug if profile else None}
+
+
+def chat_member(member_id):
+    """The team member someone may write to, or None. Only published profiles with chat switched on."""
+    from team.models import TeamProfile
+    profile = TeamProfile.objects.select_related('user').filter(user_id=member_id, is_published=True, allow_chat=True,
+                                                                 user__is_active=True).first()
+    return profile.user if profile else None
 
 
 def person(user):
@@ -70,6 +95,7 @@ def message_data(message, viewer):
         'from_staff': message.from_staff,
         'mine': message.sender_id == viewer.pk,
         'sender_name': message.sender.get_full_name() if message.sender else ('ADRAM team' if message.from_staff else ''),
+        'sender_photo': (message.sender.team_profile.photo if message.sender and hasattr(message.sender, 'team_profile') else None),
         'created_at': message.created_at,
         'read_at': message.read_at,
     }
@@ -136,6 +162,8 @@ def post_message(conversation, sender, data, from_staff):
         conversation.save(update_fields=['last_message_at'])
         if from_staff:
             transaction.on_commit(lambda: emails.send_new_message(message))
+        elif first_unread and conversation.member_id:
+            transaction.on_commit(lambda: emails.notify_member_message(message))
         elif first_unread:
             transaction.on_commit(lambda: emails.notify_team_message(message))
     return message
@@ -152,21 +180,101 @@ class MyMessagesView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
+    def member(self, request):
+        """(member user or None, error response or None) from ?member=<id> / {member}."""
+        raw = request.query_params.get('member')
+        if not raw and request.method == 'POST':
+            raw = request.data.get('member')
+        if not raw:
+            return None, None
+        member = chat_member(raw)
+        if not member:
+            return None, Response({'detail': 'This team member can’t be messaged here.'}, status=status.HTTP_404_NOT_FOUND)
+        if member.pk == request.user.pk:
+            return None, Response({'detail': 'You can’t message yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        return member, None
+
     def get(self, request):
-        conversation = Conversation.objects.filter(user=request.user).first()
+        member, error = self.member(request)
+        if error:
+            return error
+        conversation = Conversation.objects.filter(user=request.user, member=member).first() if member else team_thread(request.user)
+        extra = {'member': member_card(member)} if member else {}
         if not conversation:
-            return Response({'messages': []})
+            return Response({'messages': [], **extra})
         mark_read(conversation, from_staff=True)
         messages = conversation.messages.select_related('sender', 'call')
-        return Response({'messages': [message_data(m, request.user) for m in messages]})
+        return Response({'messages': [message_data(m, request.user) for m in messages], **extra})
 
     def post(self, request):
-        if is_staff_user(request.user):
+        member, error = self.member(request)
+        if error:
+            return error
+        if is_staff_user(request.user) and not member:
             return Response({'detail': 'Administrators reply from the Messages inbox.'}, status=status.HTTP_400_BAD_REQUEST)
         data = MessageInput(data=request.data)
         data.is_valid(raise_exception=True)
-        conversation, _ = Conversation.objects.get_or_create(user=request.user)
+        conversation, _ = Conversation.objects.get_or_create(user=request.user, member=member)
         message = post_message(conversation, request.user, data.validated_data, from_staff=False)
+        return Response(message_data(message, request.user), status=status.HTTP_201_CREATED)
+
+
+class MyThreadsView(APIView):
+    """The signed-in person's conversations: the ADRAM team first, then the team members they have written to."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        threads = (Conversation.objects.filter(user=request.user).select_related('member__team_profile')
+                   .annotate(unread=Count('messages', filter=Q(messages__from_staff=True, messages__read_at__isnull=True))))
+        rows = [{'member': member_card(c.member) if c.member_id else None, 'unread': c.unread, 'last_message_at': c.last_message_at}
+                for c in threads]
+        if not any(r['member'] is None for r in rows):
+            rows.append({'member': None, 'unread': 0, 'last_message_at': None})
+        rows.sort(key=lambda r: (r['member'] is not None, -(r['last_message_at'].timestamp() if r['last_message_at'] else 0)))
+        return Response(rows)
+
+
+# ---------------------------------------------------------------- A team member's own inbox
+
+class IsTeamMember(IsAuthenticated):
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.role == UserModel.TEAM_MEMBER
+
+
+class MemberInboxView(APIView):
+    """GET /portal/team/inbox/ -> the people who wrote to this team member, newest first."""
+    permission_classes = [IsTeamMember]
+
+    def get(self, request):
+        conversations = list(Conversation.objects.filter(member=request.user, last_message_at__isnull=False).select_related('user')
+                             .annotate(unread=Count('messages', filter=Q(messages__from_staff=False, messages__read_at__isnull=True)),
+                                       total=Count('messages')).order_by('-last_message_at')[:200])
+        last_ids = (Message.objects.filter(conversation__in=conversations).values('conversation')
+                    .annotate(last=Max('id')).values_list('last', flat=True))
+        last = {m.conversation_id: m for m in Message.objects.filter(id__in=list(last_ids))}
+        return Response([{
+            'user': person(c.user), 'unread': c.unread, 'total': c.total, 'last_message_at': c.last_message_at,
+            'last': {'body': last[c.id].preview[:160], 'from_staff': last[c.id].from_staff, 'kind': last[c.id].attachment_kind} if c.id in last else None,
+        } for c in conversations])
+
+
+class MemberThreadView(APIView):
+    """GET/POST /portal/team/inbox/<user_id>/ -> one person's conversation with this team member."""
+    permission_classes = [IsTeamMember]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get(self, request, user_id):
+        conversation = get_object_or_404(Conversation.objects.select_related('user'), member=request.user, user_id=user_id)
+        mark_read(conversation, from_staff=False)
+        return Response({'user': person(conversation.user),
+                         'messages': [message_data(m, request.user) for m in conversation.messages.select_related('sender', 'call')]})
+
+    def post(self, request, user_id):
+        conversation = get_object_or_404(Conversation, member=request.user, user_id=user_id)  # members reply; people start threads
+        data = MessageInput(data=request.data)
+        data.is_valid(raise_exception=True)
+        mark_read(conversation, from_staff=False)
+        message = post_message(conversation, request.user, data.validated_data, from_staff=True)
         return Response(message_data(message, request.user), status=status.HTTP_201_CREATED)
 
 
@@ -176,9 +284,14 @@ class UnreadMessagesView(APIView):
 
     def get(self, request):
         user = request.user
+        if user.role == UserModel.TEAM_MEMBER:
+            unread = Message.objects.filter(conversation__member=user, from_staff=False, read_at__isnull=True).select_related('conversation__user')
+            recent = [{'body': m.preview[:140], 'sender_name': m.conversation.user.get_full_name(), 'at': m.created_at,
+                       'user_id': m.conversation.user_id} for m in unread.order_by('-created_at')[:3]]
+            return Response({'unread': unread.count(), 'recent': recent, 'inbox': '/messages'})
         if is_staff_user(user):
-            unread = Message.objects.filter(from_staff=False, read_at__isnull=True)
-            conversations = (Conversation.objects.filter(last_message_at__isnull=False).select_related('user')
+            unread = Message.objects.filter(from_staff=False, read_at__isnull=True, conversation__member__isnull=True)
+            conversations = (Conversation.objects.filter(last_message_at__isnull=False, member__isnull=True).select_related('user')
                              .annotate(unread=Count('messages', filter=Q(messages__from_staff=False, messages__read_at__isnull=True)))
                              .order_by('-unread', '-last_message_at')[:5])
             recent = []
@@ -201,7 +314,7 @@ class StaffConversationsView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        conversations = (Conversation.objects.filter(last_message_at__isnull=False).select_related('user')
+        conversations = (Conversation.objects.filter(last_message_at__isnull=False, member__isnull=True).select_related('user')
                          .annotate(unread=Count('messages', filter=Q(messages__from_staff=False, messages__read_at__isnull=True)),
                                    total=Count('messages'))
                          .order_by('-last_message_at'))
@@ -233,7 +346,7 @@ class StaffConversationView(APIView):
 
     def get(self, request, user_id):
         user = get_object_or_404(User, pk=user_id)
-        conversation = Conversation.objects.filter(user=user).first()
+        conversation = team_thread(user)
         messages = []
         if conversation:
             mark_read(conversation, from_staff=False)
@@ -247,13 +360,13 @@ class StaffConversationView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
         data = MessageInput(data=request.data)
         data.is_valid(raise_exception=True)
-        conversation, _ = Conversation.objects.get_or_create(user=user)
+        conversation, _ = Conversation.objects.get_or_create(user=user, member=None)
         mark_read(conversation, from_staff=False)  # replying means the admin has seen what came before
         message = post_message(conversation, request.user, data.validated_data, from_staff=True)
         return Response(message_data(message, request.user), status=status.HTTP_201_CREATED)
 
     def delete(self, request, user_id):
-        conversation = get_object_or_404(Conversation, user_id=user_id)
+        conversation = get_object_or_404(Conversation, user_id=user_id, member__isnull=True)
         if conversation.calls.filter(status__in=Call.OPEN).exists():
             return Response({'detail': 'End the call before deleting this conversation.'}, status=status.HTTP_400_BAD_REQUEST)
         for message in conversation.messages.exclude(attachment=''):
@@ -267,7 +380,7 @@ class StaffMessageView(APIView):
     permission_classes = [IsAdmin]
 
     def delete(self, request, user_id, message_id):
-        message = get_object_or_404(Message, pk=message_id, conversation__user_id=user_id)
+        message = get_object_or_404(Message, pk=message_id, conversation__user_id=user_id, conversation__member__isnull=True)
         conversation = message.conversation
         discard(message.attachment)
         message.delete()
@@ -322,10 +435,15 @@ class MessageStatsView(APIView):
         from .models import Call
 
         user, now, today = request.user, timezone.now(), timezone.localdate()
-        staff = is_staff_user(user)
+        member = user.role == UserModel.TEAM_MEMBER
+        staff = is_staff_user(user) or member
         month_ago = now - timedelta(days=30)
-        messages = Message.objects.all() if staff else Message.objects.filter(conversation__user=user)
-        calls = Call.objects.all() if staff else Call.objects.filter(conversation__user=user)
+        if member:
+            messages, calls = Message.objects.filter(conversation__member=user), Call.objects.none()
+        elif staff:
+            messages, calls = Message.objects.filter(conversation__member__isnull=True), Call.objects.all()
+        else:
+            messages, calls = Message.objects.filter(conversation__user=user), Call.objects.filter(conversation__user=user)
 
         # Messages per day for the last two weeks, from each side (call log entries aren't messages).
         start = today - timedelta(days=self.DAYS - 1)
@@ -363,16 +481,17 @@ class MessageStatsView(APIView):
         }
         text = messages.filter(call__isnull=True)
         if staff:
-            conversations = Conversation.objects.filter(last_message_at__isnull=False)
+            conversations = (Conversation.objects.filter(last_message_at__isnull=False, member=user) if member
+                             else Conversation.objects.filter(last_message_at__isnull=False, member__isnull=True))
             last_from = {}
-            for conv_id, from_staff in (Message.objects.filter(call__isnull=True).order_by('conversation_id', '-created_at')
+            for conv_id, from_staff in (messages.filter(call__isnull=True).order_by('conversation_id', '-created_at')
                                         .values_list('conversation_id', 'from_staff')):
                 last_from.setdefault(conv_id, from_staff)
             data.update({
                 'conversations': conversations.count(),
                 'active_7': conversations.filter(last_message_at__gte=now - timedelta(days=7)).count(),
                 'awaiting_reply': sum(1 for from_staff in last_from.values() if not from_staff),
-                'unread': Message.objects.filter(from_staff=False, read_at__isnull=True).count(),
+                'unread': messages.filter(from_staff=False, read_at__isnull=True).count(),
                 'received_30': text.filter(from_staff=False, created_at__gte=month_ago).count(),
                 'sent_30': text.filter(from_staff=True, created_at__gte=month_ago).count(),
             })

@@ -1,3 +1,5 @@
+import { ApplicationFormCard } from '../../components/portal/ApplicationFormCard';
+import { AgreementCard } from '../../components/portal/AgreementCard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -201,6 +203,22 @@ export const StudentApplyPage = () => {
           )}
         </section>
       )}
+      {(() => {
+        const formToDo = paid && a.intake && ['draft', 'returned'].includes(a.intake.status);
+        const signToDo = a.agreement?.status === 'pending';
+        const todo = (formToDo ? 1 : 0) + (signToDo ? 1 : 0);
+        if (!todo) return <><AgreementCard application={a} />{paid && a.intake && <ApplicationFormCard application={a} />}</>;
+        return (
+          <section className="next-steps" aria-label="Your next steps">
+            <div className="next-steps__head">
+              <h2>Your next steps</h2>
+              <span>{todo === 1 ? 'One thing to do' : 'Two things to do'} so ADRAM can start working on your application</span>
+            </div>
+            {paid && a.intake && <ApplicationFormCard application={a} />}
+            <AgreementCard application={a} vivid />
+          </section>
+        );
+      })()}
       {s.status === 'payment_rejected' && <Alert>We couldn’t confirm your last payment{s.decision_note ? `: ${s.decision_note}` : '.'} Please check the details and upload your receipt again.</Alert>}
 
       {paid && (

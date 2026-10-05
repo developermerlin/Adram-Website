@@ -6,6 +6,8 @@ Those crawlers do not run JavaScript, so they only see what the server sends. Wh
   - the site-wide "Link previews" fields (Site content → Contact details & footer): title, description, picture
   - a page's own "Search & browser title" fields, when the admin has edited them
   - a service page: the service's name and tagline, when the admin has edited the services
+  - a blog post: its own title (or search title), summary and cover picture
+  - a project: its title, summary and cover picture
 Anything not edited keeps the text already in index.html.
 """
 import html
@@ -16,12 +18,16 @@ from .models import PageContent
 # Path prefix -> content page. Same routes as the website (frontend/src/content/PageMeta.jsx).
 ROUTES = [
     ('/about/team', 'team'),
+    ('/team', 'team'),
     ('/about', 'about'),
     ('/services', 'services'),
     ('/courses', 'courses'),
     ('/scholarships', 'scholarships'),
     ('/contact', 'contact'),
     ('/join', 'other'),
+    ('/blog', 'blog'),
+    ('/partners', 'partners'),
+    ('/projects', 'projects'),
 ]
 
 
@@ -73,6 +79,31 @@ def build_meta(path):
                     details = item.get('details') if isinstance(item.get('details'), dict) else {}
                     meta['title'] = f"{_text(item['title'])} | {site_name}"
                     meta['description'] = _text(details.get('tagline')) or _text(item.get('summary')) or meta['description']
+        # /blog/<slug>: the published post's own title, summary and cover
+        if slug == 'blog' and len(parts) == 2:
+            from blog.models import Post
+            post = Post.live.filter(slug=parts[1]).first()
+            if post:
+                meta['title'] = f"{post.seo_title or post.title} | {site_name}"
+                meta['description'] = post.seo_description or post.excerpt or meta['description']
+                meta['image'] = post.cover or meta['image']
+        # /projects/<slug>: the published project's title, summary and cover
+        if slug == 'projects' and len(parts) == 2:
+            from projects.models import Project
+            project = Project.objects.filter(slug=parts[1], status=Project.PUBLISHED).first()
+            if project:
+                meta['title'] = f"{project.title} | {site_name}"
+                meta['description'] = project.summary or meta['description']
+                meta['image'] = project.cover or meta['image']
+        # /team/<slug>: the published team member's name, title, headline and photo
+        if slug == 'team' and parts[0] == 'team' and len(parts) >= 2:
+            from team.models import TeamProfile
+            member = TeamProfile.objects.select_related('user').filter(slug=parts[1], is_published=True, user__is_active=True).first()
+            if member:
+                role = f", {member.job_title}" if member.job_title else ''
+                meta['title'] = f"{member.name}{role} | {site_name}"
+                meta['description'] = member.headline or (member.bio[:180] if member.bio else '') or meta['description']
+                meta['image'] = member.photo or meta['image']
     return {key: value for key, value in meta.items() if value}
 
 

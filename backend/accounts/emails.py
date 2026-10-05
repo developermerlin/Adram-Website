@@ -18,24 +18,41 @@ from django.core.mail import EmailMultiAlternatives
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------- Brand
+# A plain, transactional look (like the receipts and codes big companies send): white panel, one accent colour,
+# neutral greys, no coloured strips or pills. The accent follows the website colour scheme the admin chose.
 
+BLUE = '#1454e8'      # ADRAM blue, used when no other main colour is set
 NAVY = '#06123d'
-NAVY_2 = '#0b1f5c'
-BLUE = '#1454e8'
 CYAN = '#16c8f5'
-INK = '#0e1630'
-TEXT = '#3b4563'
-MUTED = '#6b7591'
-LINE = '#e4e9f4'
-SOFT = '#f4f7fd'
-FONT = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+INK = '#1a1f36'       # headings and values
+TEXT = '#414552'      # body text
+MUTED = '#687385'     # labels, footer
+FAINT = '#8792a2'
+LINE = '#e3e8ee'      # hairlines
+SOFT = '#f6f8fa'      # page background and grey panels
+FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+MONO = "'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace"
 
-TONES = {  # notice boxes and the header pill
-    'info': ('#eef3ff', '#1a4fd6', '#d5e1ff'),
-    'success': ('#e7f7ef', '#0f7a55', '#bfe8d3'),
-    'warning': ('#fff6e0', '#8a5a00', '#f5dfa6'),
-    'danger': ('#fdecea', '#b42318', '#f6c9c4'),
+TONES = {  # notice titles only; panels stay neutral grey
+    'info': INK,
+    'success': '#0e6245',
+    'warning': '#8a4b00',
+    'danger': '#a41c1c',
 }
+
+
+def _accent():
+    """The website's main colour (Site content → Colours), so emails match the site. Falls back to ADRAM blue."""
+    try:
+        from cms.models import PageContent
+        data = PageContent.objects.filter(slug='site').values_list('data', flat=True).first() or {}
+        colour = (data.get('theme') or {}).get('primary', '')
+        if isinstance(colour, str) and len(colour) == 7 and colour.startswith('#'):
+            int(colour[1:], 16)
+            return colour
+    except Exception:
+        pass
+    return BLUE
 
 
 def _setting(name, default):
@@ -63,70 +80,71 @@ def _frontend(path):
 def _logo():
     url = _setting('EMAIL_LOGO_URL', '')
     if url:
-        return f'<img src="{escape(url)}" width="40" height="40" alt="ADRAM" style="display:block;border:0;border-radius:50%;">'
-    # Text monogram so the header still looks right without a hosted image.
-    return (
-        f'<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="40" height="40" align="center" '
-        f'style="width:40px;height:40px;border-radius:50%;background:{BLUE};color:#ffffff;font:700 20px {FONT};">A</td></tr></table>'
-    )
+        return f'<img src="{escape(url)}" height="32" alt="ADRAM Technologies" style="display:block;border:0;height:32px;width:auto;">'
+    # A text wordmark, so the header looks right without a hosted image
+    return (f'<span style="font:700 19px {FONT};letter-spacing:.5px;color:{INK};">ADRAM</span>'
+            f'<span style="font:400 19px {FONT};color:{MUTED};"> Technologies</span>')
 
 
 def paragraph(text, size=15, color=TEXT, margin='0 0 16px'):
-    return f'<p style="margin:{margin};font:{size}px/1.65 {FONT};color:{color};">{text}</p>'
+    return f'<p style="margin:{margin};font:{size}px/1.6 {FONT};color:{color};">{text}</p>'
 
 
 def button(label, url):
     """A table-based button, which Outlook renders correctly."""
+    accent = _accent()
     return (
-        '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 8px;"><tr>'
-        f'<td bgcolor="{BLUE}" style="border-radius:8px;">'
-        f'<a href="{escape(url)}" target="_blank" style="display:inline-block;padding:13px 26px;font:600 15px {FONT};'
-        f'color:#ffffff;text-decoration:none;border-radius:8px;">{escape(label)} &rarr;</a>'
+        '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;"><tr>'
+        f'<td bgcolor="{accent}" style="border-radius:6px;">'
+        f'<a href="{escape(url)}" target="_blank" style="display:inline-block;padding:12px 22px;font:600 15px {FONT};'
+        f'color:#ffffff;text-decoration:none;border-radius:6px;">{escape(label)}</a>'
         '</td></tr></table>'
     )
 
 
 def code_box(code, minutes):
-    spaced = '&nbsp;'.join(escape(code))
     return (
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 22px;"><tr>'
-        f'<td align="center" style="background:{SOFT};border:1px solid {LINE};border-radius:12px;padding:24px 16px;">'
-        f'<div style="font:600 12px {FONT};letter-spacing:2px;text-transform:uppercase;color:{MUTED};margin-bottom:10px;">Your verification code</div>'
-        f'<div style="font:700 36px \'Courier New\', Courier, monospace;letter-spacing:6px;color:{NAVY};">{spaced}</div>'
-        f'<div style="font:13px {FONT};color:{MUTED};margin-top:10px;">Valid for {minutes} minutes &middot; single use</div>'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 8px;"><tr>'
+        f'<td align="center" style="background:{SOFT};border-radius:6px;padding:22px 16px;">'
+        # user-select:all: one tap or click selects the whole code, ready to copy (mail apps run no scripts,
+        # so a real copy button isn't possible). Plain digits, so Gmail and iPhones can offer their own "copy code".
+        f'<div style="font:600 32px/1 {MONO};letter-spacing:10px;color:{INK};padding-left:10px;'
+        f'-webkit-user-select:all;-moz-user-select:all;user-select:all;cursor:text;">{escape(code)}</div>'
         '</td></tr></table>'
+        + paragraph(f'Tap or click the code to select it, then copy it. It expires in {minutes} minutes and can only be used once.',
+                    13, MUTED, '0 0 20px')
     )
 
 
 def notice(text, tone='info', title=''):
-    bg, fg, border = TONES[tone]
-    heading = f'<div style="font:700 14px {FONT};color:{fg};margin-bottom:4px;">{escape(title)}</div>' if title else ''
+    heading = f'<div style="font:600 14px {FONT};color:{TONES.get(tone, INK)};margin-bottom:4px;">{escape(title)}</div>' if title else ''
     return (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>'
-        f'<td style="background:{bg};border:1px solid {border};border-left:4px solid {fg};border-radius:8px;padding:14px 16px;">'
+        f'<td style="background:{SOFT};border-radius:6px;padding:14px 16px;">'
         f'{heading}<div style="font:14px/1.6 {FONT};color:{TEXT};">{text}</div>'
         '</td></tr></table>'
     )
 
 
 def details(rows):
-    """Two-column summary table: [(label, value), ...]. Values are escaped."""
+    """Label/value rows separated by hairlines: [(label, value), ...]. Values are escaped."""
     cells = ''.join(
-        f'<tr><td style="padding:10px 14px;border-bottom:1px solid {LINE};font:600 13px {FONT};color:{MUTED};width:34%;vertical-align:top;">{escape(label)}</td>'
-        f'<td style="padding:10px 14px;border-bottom:1px solid {LINE};font:14px/1.5 {FONT};color:{INK};">{escape(str(value or "—"))}</td></tr>'
+        f'<tr><td style="padding:10px 0;border-top:1px solid {LINE};font:14px {FONT};color:{MUTED};width:38%;vertical-align:top;">{escape(label)}</td>'
+        f'<td style="padding:10px 0;border-top:1px solid {LINE};font:14px/1.5 {FONT};color:{INK};text-align:right;">{escape(str(value or "—"))}</td></tr>'
         for label, value in rows
     )
     return (
-        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
-        f'style="margin:6px 0 20px;border:1px solid {LINE};border-radius:10px;border-collapse:separate;overflow:hidden;">{cells}</table>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;border-bottom:1px solid {LINE};">'
+        f'{cells}</table>'
     )
 
 
 def quote(text):
     safe = escape(text).replace('\n', '<br>')
     return (
-        f'<div style="margin:6px 0 20px;padding:14px 16px;background:{SOFT};border-left:3px solid {CYAN};'
-        f'border-radius:6px;font:14px/1.65 {FONT};color:{TEXT};">{safe}</div>'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 20px;"><tr>'
+        f'<td style="background:{SOFT};border-radius:6px;padding:14px 16px;font:14px/1.6 {FONT};color:{TEXT};">{safe}</td>'
+        '</tr></table>'
     )
 
 
@@ -134,65 +152,39 @@ def layout(*, preheader, label, tone, title, body, reason):
     """
     The frame every email uses.
       preheader: inbox preview text (hidden in the email body)
-      label/tone: the small pill above the title, e.g. ("Sign-in code", "info")
+      label/tone: kept for callers; the plain design shows no label pill (tone only colours notice titles)
       reason: footer line explaining why the person received the email
     """
     c = _company()
-    pill_bg, pill_fg, _ = TONES[tone]
+    accent = _accent()
     year = date.today().year
+    link = f'color:{MUTED};text-decoration:underline;'
     return f"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">
 <title>{escape(title)}</title>
 </head>
-<body style="margin:0;padding:0;background:#eef1f7;-webkit-text-size-adjust:100%;">
+<body style="margin:0;padding:0;background:{SOFT};-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">{escape(preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#eef1f7" style="background:#eef1f7;">
-<tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="{SOFT}" style="background:{SOFT};">
+<tr><td align="center" style="padding:40px 16px;">
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-    <!-- Brand header -->
-    <tr><td style="padding:0 4px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td width="48" valign="middle">{_logo()}</td>
-        <td valign="middle" style="padding-left:10px;">
-          <div style="font:800 18px {FONT};color:{NAVY};letter-spacing:1px;">ADRAM</div>
-          <div style="font:600 10px {FONT};color:{MUTED};letter-spacing:3px;">TECHNOLOGIES</div>
-        </td>
-        <td align="right" valign="middle" style="font:13px {FONT};">
-          <a href="{escape(c['site'])}" style="color:{BLUE};text-decoration:none;">Visit website</a>
-        </td>
-      </tr></table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+    <tr><td style="padding:0 0 24px;"><a href="{escape(c['site'])}" style="text-decoration:none;">{_logo()}</a></td></tr>
+
+    <tr><td bgcolor="#ffffff" style="background:#ffffff;border:1px solid {LINE};border-radius:8px;padding:36px 32px 32px;">
+      <h1 style="margin:0 0 20px;font:600 22px/1.35 {FONT};color:{INK};">{escape(title)}</h1>
+      {body}
+      <p style="margin:28px 0 0;font:15px/1.6 {FONT};color:{TEXT};">Thanks,<br>The ADRAM Technologies team</p>
     </td></tr>
 
-    <!-- Card -->
-    <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:14px;border:1px solid {LINE};overflow:hidden;">
-      <div style="height:5px;line-height:5px;font-size:0;background:{BLUE};background-image:linear-gradient(90deg,{BLUE},{CYAN});">&nbsp;</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:34px 36px 30px;">
-        <span style="display:inline-block;padding:5px 12px;border-radius:999px;background:{pill_bg};color:{pill_fg};font:700 12px {FONT};letter-spacing:.3px;">{escape(label)}</span>
-        <h1 style="margin:16px 0 18px;font:700 24px/1.3 {FONT};color:{INK};">{escape(title)}</h1>
-        {body}
-        <p style="margin:26px 0 0;font:15px/1.6 {FONT};color:{TEXT};">Kind regards,<br><strong style="color:{INK};">The ADRAM Technologies Team</strong></p>
-      </td></tr></table>
-
-      <!-- Help strip -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td style="background:{SOFT};border-top:1px solid {LINE};padding:18px 36px;font:13px/1.7 {FONT};color:{MUTED};">
-          <strong style="color:{INK};">Need help?</strong> We’re here Monday to Friday, 9:00 AM to 6:00 PM.<br>
-          <a href="tel:{escape(c['phone'].replace(' ', ''))}" style="color:{BLUE};text-decoration:none;">{escape(c['phone'])}</a>
-          &nbsp;&middot;&nbsp; <a href="{escape(c['whatsapp'])}" style="color:{BLUE};text-decoration:none;">WhatsApp</a>
-          &nbsp;&middot;&nbsp; <a href="mailto:{escape(c['email'])}" style="color:{BLUE};text-decoration:none;">{escape(c['email'])}</a>
-        </td>
-      </tr></table>
-    </td></tr>
-
-    <!-- Footer -->
-    <tr><td style="padding:24px 12px 8px;" align="center">
-      <div style="font:700 13px {FONT};color:{NAVY};">{escape(c['name'])}</div>
-      <div style="font:12px/1.7 {FONT};color:{MUTED};">{escape(c['tagline'])} &middot; {escape(c['address'])}</div>
-      <div style="font:12px/1.7 {FONT};color:{MUTED};margin-top:10px;">{escape(reason)}</div>
-      <div style="font:12px/1.7 {FONT};color:#9aa3b8;margin-top:6px;">&copy; {year} {escape(c['name'])}. All rights reserved.</div>
+    <tr><td style="padding:24px 4px 0;font:12px/1.7 {FONT};color:{FAINT};">
+      <p style="margin:0 0 10px;">Questions? Contact us at <a href="mailto:{escape(c['email'])}" style="{link}">{escape(c['email'])}</a>,
+        call <a href="tel:{escape(c['phone'].replace(' ', ''))}" style="{link}">{escape(c['phone'])}</a>
+        or message us on <a href="{escape(c['whatsapp'])}" style="{link}">WhatsApp</a> (Monday to Friday, 9:00 AM to 6:00 PM).</p>
+      <p style="margin:0 0 10px;">{escape(reason)}</p>
+      <p style="margin:0;">{escape(c['name'])} &middot; {escape(c['address'])} &middot; <a href="{escape(c['site'])}" style="color:{accent};text-decoration:none;">{escape(c['site'].split('://')[-1])}</a><br>&copy; {year} {escape(c['name'])}</p>
     </td></tr>
   </table>
 
@@ -205,7 +197,7 @@ def _plain(title, lines, reason):
     c = _company()
     body = '\n\n'.join(line for line in lines if line)
     return (
-        f'{title}\n{"=" * len(title)}\n\n{body}\n\nKind regards,\nThe ADRAM Technologies Team\n\n'
+        f'{title}\n\n{body}\n\nThanks,\nThe ADRAM Technologies team\n\n'
         f'---\nNeed help? {c["phone"]} | WhatsApp: {c["whatsapp"]} | {c["email"]}\n'
         f'{c["name"]} · {c["address"]}\n{reason}\n'
     )

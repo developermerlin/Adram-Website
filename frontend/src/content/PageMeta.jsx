@@ -16,6 +16,9 @@ const ROUTES = [
   ['/scholarships', 'scholarships'],
   ['/contact', 'contact'],
   ['/join', 'other'],
+  ['/blog', 'blog'],
+  ['/partners', 'partners'],
+  ['/projects', 'projects'],
 ];
 
 // What index.html says, kept so it can be restored
@@ -77,10 +80,11 @@ const SiteIcon = () => {
 export const PageMeta = () => {
   const { pathname } = useLocation();
   const slug = pathname === '/' ? 'home' : ROUTES.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))?.[1];
+  const article = slug === 'blog' && pathname.replace(/\/$/, '') !== '/blog'; // a post sets its own title (BlogPostPage)
   return (
     <>
       <SiteIcon />
-      {slug && <Meta key={slug} slug={slug} pathname={pathname} />}
+      {slug && !article && <Meta key={slug} slug={slug} pathname={pathname} />}
     </>
   );
 };

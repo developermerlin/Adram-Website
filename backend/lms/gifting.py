@@ -24,6 +24,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.throttling import AnonRate, CodeRate
+
 from accounts.permissions import IsAdmin
 from catalog.models import Course
 
@@ -147,6 +149,7 @@ def gift_data(gift, user):
 
 class GiftView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRate, CodeRate]
 
     def get(self, request, code):
         gift = get_object_or_404(Gift.objects.select_related('order__student', 'order__bundle'), code=code.strip().upper())
@@ -155,6 +158,7 @@ class GiftView(APIView):
 
 class GiftRedeemView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AnonRate, CodeRate]
 
     def post(self, request, code):
         with transaction.atomic():

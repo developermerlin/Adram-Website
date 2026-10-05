@@ -5,13 +5,60 @@ import PortalLayout from '../../components/layout/PortalLayout';
 import { Alert } from '../../components/ui/Form';
 import { NOTIFICATION_ICONS, NOTIFICATION_LABELS, NOTIFICATIONS_CHANGED } from '../../components/lms/notifications';
 import { formatDateTime, timeAgo } from '../../utils/format';
+import { useAuth } from '../../context/AuthContext';
+import { Meter, MiniBars } from '../../components/admin/charts';
+import { StatTile } from '../../components/admin/StatTile';
+import { NotificationSiteStats } from '../../components/admin/EngagementStats';
 import '../../styles/shop.css';
 
 const changed = () => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+const fmt = new Intl.NumberFormat();
+const DAY = 86400000;
+
+/** This person's own figures: unread, read rate, the last 14 days, the most common type. */
+const MyNotificationStats = ({ refreshKey }) => {
+  const [all, setAll] = useState(null);
+  useEffect(() => {
+    notificationsAPI.list({ limit: 200 }).then(({ data }) => setAll(data)).catch(() => {});
+  }, [refreshKey]);
+  const list = all?.notifications || [];
+  const read = list.filter((x) => x.is_read).length;
+  const readRate = list.length ? Math.round((read / list.length) * 100) : null;
+  const today = new Date(new Date().toDateString()).getTime();
+  const series = Array.from({ length: 14 }, (_, i) => {
+    const start = today - (13 - i) * DAY;
+    return { date: new Date(start).toISOString().slice(0, 10), count: list.filter((x) => { const t = new Date(x.created_at).getTime(); return t >= start && t < start + DAY; }).length };
+  });
+  const week = list.filter((x) => new Date(x.created_at).getTime() >= today - 6 * DAY).length;
+  const kinds = list.reduce((m, x) => ({ ...m, [x.kind]: (m[x.kind] || 0) + 1 }), {});
+  const top = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0];
+  return (
+    <div className="viz-root stats-block">
+      <div className="admin-ov__label stats-head"><h2><i className="fas fa-user" aria-hidden="true" /> Your notifications</h2></div>
+      <div className="kpi-grid">
+        <StatTile label="Unread" value={all && fmt.format(all.unread)} icon="fa-bell" tone={all && all.unread ? 'amber' : 'green'}>
+          <span className="kpi__note">{all ? (all.unread ? 'Waiting for you below' : 'You’re all caught up') : ''}</span>
+        </StatTile>
+        <StatTile label="Last 7 days" value={all && fmt.format(week)} icon="fa-calendar-week" tone="violet"
+          chart={all && <MiniBars series={series} valueKey="count" label="Notifications per day, last 14 days" />}>
+          <span className="kpi__note">{all ? `${fmt.format(list.length)} in total` : ''}</span>
+        </StatTile>
+        <StatTile label="Read rate" value={all ? (readRate === null ? '—' : `${readRate}%`) : null} icon="fa-eye" tone="cyan"
+          chart={<Meter value={readRate} label="Share of your notifications you have read" />}>
+          <span className="kpi__note">{all ? `${fmt.format(read)} of ${fmt.format(list.length)} read` : ''}</span>
+        </StatTile>
+        <StatTile label="Most common" value={all ? (top ? NOTIFICATION_LABELS[top[0]] || 'Update' : '—') : null} icon={top ? NOTIFICATION_ICONS[top[0]] || 'fa-bell' : 'fa-bell'} tone="green">
+          <span className="kpi__note">{top ? `${fmt.format(top[1])} of your notifications` : all ? 'Nothing yet' : ''}</span>
+        </StatTile>
+      </div>
+    </div>
+  );
+};
 
 /** The notification centre: everything the site told this person, newest first, with read/unread. */
 export const NotificationsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [kind, setKind] = useState('');
   const [data, setData] = useState(null);
@@ -50,6 +97,8 @@ export const NotificationsPage = () => {
       subtitle={data ? (data.unread ? `${data.unread} unread` : 'You’re all caught up.') : 'Updates about your courses, orders and account.'}
       actions={data?.unread > 0 && <button type="button" className="btn btn--outline btn--sm" onClick={readAll}><i className="fas fa-check-double" /> Mark all as read</button>}
     >
+      {user?.role === 'ADMIN' && <NotificationSiteStats refreshKey={data} />}
+      <MyNotificationStats refreshKey={data} />
       <div className="lms-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={!unreadOnly} className={!unreadOnly ? 'is-active' : ''} onClick={() => setUnreadOnly(false)}>All</button>
         <button type="button" role="tab" aria-selected={unreadOnly} className={unreadOnly ? 'is-active' : ''} onClick={() => setUnreadOnly(true)}>

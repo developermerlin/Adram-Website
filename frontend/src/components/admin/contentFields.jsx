@@ -15,7 +15,7 @@ const Hint = ({ id, error, hint }) =>
 
 // ---------------------------------------------------------------- Images
 
-const ImageLibrary = ({ current, onPick, onClose }) => {
+export const ImageLibrary = ({ current, onPick, onClose }) => {
   const [tab, setTab] = useState('uploads');
   const [uploads, setUploads] = useState(null);
   const [progress, setProgress] = useState(null);
