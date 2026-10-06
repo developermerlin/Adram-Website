@@ -129,3 +129,70 @@ class MediaDelete(generics.DestroyAPIView):
     def perform_destroy(self, instance):
         instance.image.delete(save=False)
         instance.delete()
+
+
+# ---------------------------------------------------------------- videos for the pages' video sections
+
+VIDEO_FOLDER = 'site/videos'
+VIDEO_TYPES = {'.mp4', '.webm', '.m4v'}
+
+
+def _video_row(name):
+    from django.core.files.storage import default_storage
+    path = f'{VIDEO_FOLDER}/{name}'
+    return {'name': name, 'url': default_storage.url(path), 'size': default_storage.size(path),
+            'uploaded_at': default_storage.get_modified_time(path)}
+
+
+class SiteVideosView(APIView):
+    """GET: the uploaded videos (newest first). POST {file}: upload one (MP4 or WebM).
+    Long videos are better on YouTube or Vimeo: paste their link in the video section instead."""
+    permission_classes = [IsAdmin]
+    parser_classes = [parsers.MultiPartParser]
+
+    def get(self, request):
+        from django.core.files.storage import default_storage
+        try:
+            _, files = default_storage.listdir(VIDEO_FOLDER)
+        except FileNotFoundError:
+            files = []
+        rows = [_video_row(f) for f in files if os.path.splitext(f)[1].lower() in VIDEO_TYPES]
+        return Response(sorted(rows, key=lambda r: r['uploaded_at'], reverse=True))
+
+    def post(self, request):
+        import uuid
+
+        from django.conf import settings
+        from django.core.files.storage import default_storage
+        from django.utils.text import slugify
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'detail': 'Choose a video file.'}, status=400)
+        ext = os.path.splitext(upload.name)[1].lower()
+        if ext not in VIDEO_TYPES:
+            return Response({'detail': 'Upload an MP4 or WebM video, or paste a YouTube or Vimeo link instead.'}, status=400)
+        limit = getattr(settings, 'SITE_MAX_VIDEO_MB', 200)
+        if upload.size > limit * 1024 * 1024:
+            return Response({'detail': f'Videos can be up to {limit} MB. Put longer videos on YouTube and paste the link.'}, status=400)
+        head = upload.read(12)
+        upload.seek(0)
+        real = (ext in ('.mp4', '.m4v') and head[4:8] == b'ftyp') or (ext == '.webm' and head[:4] == b'\x1aE\xdf\xa3')
+        if not real:
+            return Response({'detail': 'That file isn’t a real video.'}, status=400)
+        stem = slugify(os.path.splitext(upload.name)[0])[:60] or 'video'
+        saved = default_storage.save(f'{VIDEO_FOLDER}/{uuid.uuid4().hex[:8]}-{stem}{ext}', upload)
+        return Response(_video_row(saved.rsplit('/', 1)[-1]), status=201)
+
+
+class SiteVideoDelete(APIView):
+    permission_classes = [IsAdmin]
+
+    def delete(self, request, name):
+        from django.core.files.storage import default_storage
+        if '/' in name or '\\' in name or os.path.splitext(name)[1].lower() not in VIDEO_TYPES:
+            raise Http404
+        path = f'{VIDEO_FOLDER}/{name}'
+        if not default_storage.exists(path):
+            raise Http404
+        default_storage.delete(path)
+        return Response(status=204)

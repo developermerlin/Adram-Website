@@ -306,7 +306,7 @@ export const ImageField = ({ field, value, onChange, id }) => {
 
 // ---------------------------------------------------------------- Icons
 
-const IconField = ({ field, value, onChange, id }) => {
+export const IconField = ({ field, value, onChange, id }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="field cf-icon">

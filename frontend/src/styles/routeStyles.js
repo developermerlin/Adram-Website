@@ -41,3 +41,5 @@ import './partners.css';
 import './partners-admin.css';
 import './projects.css';
 import './projects-admin.css';
+import './learning-hub.css';
+import './learning-admin.css';

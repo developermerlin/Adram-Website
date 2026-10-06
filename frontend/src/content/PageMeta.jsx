@@ -19,6 +19,7 @@ const ROUTES = [
   ['/blog', 'blog'],
   ['/partners', 'partners'],
   ['/projects', 'projects'],
+  ['/learning', 'learning'],
 ];
 
 // What index.html says, kept so it can be restored

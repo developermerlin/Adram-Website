@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'blog',
     'partners',
     'projects',
+    'learning',
     'team.apps.TeamConfig',
     'chatbot',
     'rest_framework_simplejwt.token_blacklist',
@@ -176,6 +177,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Off by default: in development Vite serves the site and the API root shows the API docs.
 # Largest lesson video an administrator can upload, in megabytes (bigger ones belong on YouTube or Vimeo)
 LMS_MAX_VIDEO_MB = config('LMS_MAX_VIDEO_MB', default=1500, cast=int)
+# Largest video for the pages' video sections (Site content). Longer ones belong on YouTube or Vimeo.
+SITE_MAX_VIDEO_MB = config('SITE_MAX_VIDEO_MB', default=200, cast=int)
 SERVE_FRONTEND = config('SERVE_FRONTEND', default=False, cast=bool)
 FRONTEND_DIST = config('FRONTEND_DIST', default=str(BASE_DIR.parent / 'frontend' / 'dist'))
 # Payment receipts and application documents: never served directly, only through the portal API.

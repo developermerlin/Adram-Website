@@ -130,6 +130,7 @@ export const portalNavFor = (role, track = null) => {
       { to: '/admin/team', label: 'Team', icon: 'fa-people-group' },
       { to: '/admin/chatbot', label: 'Chatbot', icon: 'fa-robot' },
       { to: '/admin/projects', label: 'Projects', icon: 'fa-briefcase' },
+      { to: '/admin/learning', label: 'Learning hub', icon: 'fa-book-open-reader' },
       { to: '/admin/partners', label: 'Partners', icon: 'fa-handshake' },
       { to: '/admin/scholarships', label: 'Scholarships', icon: 'fa-graduation-cap' },
       { to: '/admin/settings/application-form', label: 'Application forms', icon: 'fa-file-signature', badge: 'forms_to_review' },

@@ -28,6 +28,7 @@ ROUTES = [
     ('/blog', 'blog'),
     ('/partners', 'partners'),
     ('/projects', 'projects'),
+    ('/learning', 'learning'),
 ]
 
 
@@ -95,6 +96,18 @@ def build_meta(path):
                 meta['title'] = f"{project.title} | {site_name}"
                 meta['description'] = project.summary or meta['description']
                 meta['image'] = project.cover or meta['image']
+        # /learning/<field> and /learning/<field>/<note>: the field's or the note's own title and summary
+        if slug == 'learning' and len(parts) >= 2:
+            from learning.models import Field, Note
+            field = Field.objects.filter(slug=parts[1], is_published=True).first()
+            if field:
+                meta['title'] = f"{field.name} from zero to hero | {site_name}"
+                meta['description'] = field.summary or meta['description']
+                meta['image'] = field.cover or meta['image']
+                note = Note.objects.filter(field=field, slug=parts[2], is_published=True).first() if len(parts) >= 3 else None
+                if note:
+                    meta['title'] = f"{note.title} | {field.name} | {site_name}"
+                    meta['description'] = note.summary or meta['description']
         # /team/<slug>: the published team member's name, title, headline and photo
         if slug == 'team' and parts[0] == 'team' and len(parts) >= 2:
             from team.models import TeamProfile

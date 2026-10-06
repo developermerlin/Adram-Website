@@ -247,3 +247,15 @@ html body .cd-buybar { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0
   html body .panel__head .period-switch { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   html body .panel__head .period-switch button { flex: none; white-space: nowrap; }
 }
+
+/* The smallest phones (under 400px) with the cart and bell showing: a slightly smaller logo and tighter spacing,
+   so the logo, the two icons and the menu button always fit on one line. */
+@media (max-width: 400px) {
+  html body .site-header__inner { gap: 8px; }
+  html body .site-header__inner > .brand { gap: 8px; }
+  html body .site-header__inner > .brand img { width: 34px; height: 34px; }
+  html body .site-header__inner > .brand .brand__name { font-size: 1rem; }
+  html body .site-header__inner > .brand .brand__sub { letter-spacing: 0.16em; }
+  html body .header-quick { gap: 2px; }
+  html body .header-quick .header-icon { width: 34px; height: 34px; }
+}

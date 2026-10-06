@@ -25,6 +25,8 @@ urlpatterns = [
     path('partners/', include('partners.urls', namespace='partners')),
     # Completed projects (case studies) on the Projects page, managed in Admin → Projects
     path('projects/', include('projects.urls', namespace='projects')),
+    # Learning hub: free notes from zero to hero by field, managed in Admin → Learning
+    path('learning/', include('learning.urls', namespace='learning')),
     path('team/', include('team.urls', namespace='team')),
     path('chatbot/', include('chatbot.urls', namespace='chatbot')),
 ]

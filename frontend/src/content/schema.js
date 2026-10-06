@@ -980,6 +980,7 @@ export const contentPages = [
           text('labels.about', 'About'),
           text('labels.services', 'Services'),
           text('labels.training', 'Training'),
+          text('labels.learningInServices', 'Learning hub link in the Services menu'),
           text('labels.scholarships', 'Scholarships'),
           text('labels.contact', 'Contact'),
           text('labels.signIn', 'Sign in button'),
@@ -1207,6 +1208,7 @@ export const contentPages = [
           text('hero.eyebrow', 'Small label above the heading'),
           text('hero.title', 'Heading'),
           area('hero.lead', 'Introduction'),
+          image('hero.image', 'Banner photo', { hint: 'Shown darkened behind the heading. Remove it for the plain dark header.' }),
           text('hero.primaryLabel', 'Main button'),
           text('hero.secondaryLabel', 'Second button'),
         ],
@@ -1242,6 +1244,78 @@ export const contentPages = [
     ],
   },
 
+  // ------------------------------------------------------------------ Learning hub
+  {
+    slug: 'learning',
+    label: 'Learning hub',
+    icon: 'fa-book-open-reader',
+    description: 'The wording on the Learning pages and the names of the five levels. The fields, topics and notes are written under Learning in the admin menu.',
+    publicPath: '/learning',
+    sections: [
+      {
+        id: 'hero',
+        title: 'Page heading',
+        fields: [
+          text('hero.eyebrow', 'Small label above the heading'),
+          text('hero.title', 'Heading'),
+          area('hero.lead', 'Introduction'),
+          image('hero.image', 'Banner photo', { hint: 'Shown darkened behind the heading. Remove it for the plain dark header.' }),
+        ],
+      },
+      {
+        id: 'levels',
+        title: 'The five levels',
+        description: 'Every field runs through these five stages, from complete beginner to expert. Keep them in this order.',
+        fields: [
+          text('howTitle', 'Heading'),
+          area('howLead', 'Introduction'),
+          {
+            type: 'list', path: 'levels', label: 'Levels', itemName: 'level', titleField: 'name', max: 5,
+            blank: { name: '', text: '' }, fields: [text('name', 'Name'), area('text', 'What it covers')],
+          },
+        ],
+      },
+      {
+        id: 'servicesBand',
+        title: 'On the Services page',
+        description: 'A section on the Services page that introduces the Learning hub and lists its published fields.',
+        fields: [
+          toggle('servicesBand.show', 'Show the Learning hub section on the Services page'),
+          text('servicesBand.eyebrow', 'Small label above the heading'),
+          text('servicesBand.title', 'Heading'),
+          area('servicesBand.text', 'Text'),
+          text('servicesBand.button', 'Button'),
+        ],
+      },
+      {
+        id: 'kinds',
+        title: 'Types of note',
+        fields: [text('kinds.note', 'Note'), text('kinds.research', 'Research note'), text('kinds.lab', 'Hands-on lab'), text('kinds.cheatsheet', 'Cheat sheet')],
+      },
+      {
+        id: 'labels',
+        title: 'Labels and messages',
+        fields: [
+          text('labels.fieldsTitle', 'Fields heading'),
+          text('labels.search', 'Search box'),
+          area('labels.empty', 'Shown before any field is published'),
+          text('labels.start', 'Button: start learning'),
+          text('labels.continue', 'Button: continue'),
+          text('labels.signIn', 'Invitation to sign in'),
+          text('labels.markDone', 'Button: mark as complete'),
+          text('labels.objectives', 'Note: objectives heading'),
+          text('labels.resources', 'Note: resources heading'),
+          area('labels.finished', 'Shown when a field is finished'),
+        ],
+      },
+      {
+        id: 'cta',
+        title: 'Closing call to action',
+        fields: [text('cta.title', 'Heading'), area('cta.text', 'Text'), text('cta.button', 'Button')],
+      },
+    ],
+  },
+
   // ------------------------------------------------------------------ Blog
   {
     slug: 'blog',
@@ -1257,6 +1331,7 @@ export const contentPages = [
           text('hero.eyebrow', 'Small label above the heading'),
           text('hero.title', 'Heading'),
           area('hero.lead', 'Introduction'),
+          image('hero.image', 'Banner photo', { hint: 'Shown darkened behind the heading and search box. Remove it for the plain white header.' }),
         ],
       },
       {
@@ -1471,7 +1546,7 @@ export const contentPages = [
 ];
 
 // Every public page also gets a "search and browser title" section (the tab title and the description search engines show).
-const SEO_PAGES = ['home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'other', 'blog', 'partners', 'projects'];
+const SEO_PAGES = ['home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'other', 'blog', 'partners', 'projects', 'learning'];
 contentPages.forEach((p) => {
   if (!SEO_PAGES.includes(p.slug)) return;
   p.sections.push({

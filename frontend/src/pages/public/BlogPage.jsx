@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { blogAPI } from '../../services/api';
 import { usePageContent } from '../../content/useContent';
+import { assetUrl } from '../../utils/assets';
 import PostCard from '../../components/blog/PostCard';
 import BlogNewsletter from '../../components/blog/BlogNewsletter';
 import '../../styles/blog.css';
@@ -55,18 +56,20 @@ export const BlogPage = () => {
   const gridPosts = data ? (showHero || !data.featured ? data.results : [data.featured, ...data.results]) : [];
   return (
     <div className="blog">
-      <header className="blog-head">
-        <div className="container blog-head__inner">
-          <div>
-            {hero.eyebrow && <p className="blog-head__eyebrow">{hero.eyebrow}</p>}
-            <h1>{hero.title}</h1>
-            {hero.lead && <p className="blog-head__lead">{hero.lead}</p>}
+      <header className={`blog-head${hero.image ? ' blog-head--photo' : ''}`}>
+        <div className="blog-head__banner" style={hero.image ? { '--hero-photo': `url("${assetUrl(hero.image)}")` } : undefined}>
+          <div className="container blog-head__inner">
+            <div>
+              {hero.eyebrow && <p className="blog-head__eyebrow">{hero.eyebrow}</p>}
+              <h1>{hero.title}</h1>
+              {hero.lead && <p className="blog-head__lead">{hero.lead}</p>}
+            </div>
+            <form className="blog-search" role="search" onSubmit={search}>
+              <i className="fas fa-magnifying-glass" aria-hidden="true" />
+              <label htmlFor="blog-search" className="sr-only">{labels.search}</label>
+              <input id="blog-search" type="search" placeholder={labels.search} value={query} onChange={(e) => setQuery(e.target.value)} />
+            </form>
           </div>
-          <form className="blog-search" role="search" onSubmit={search}>
-            <i className="fas fa-magnifying-glass" aria-hidden="true" />
-            <label htmlFor="blog-search" className="sr-only">{labels.search}</label>
-            <input id="blog-search" type="search" placeholder={labels.search} value={query} onChange={(e) => setQuery(e.target.value)} />
-          </form>
         </div>
         {categories.length > 0 && (
           <nav className="container blog-tabs" aria-label="Categories">

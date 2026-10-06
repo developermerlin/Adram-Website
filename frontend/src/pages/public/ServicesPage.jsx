@@ -6,6 +6,7 @@ import { useServices } from '../../content/useServices';
 import { CtaBand, IconTile, PageHero } from '../../components/ui/Section';
 import { ServiceArt } from '../../components/brand/Illustrations';
 import BrandIcon from '../../components/brand/BrandIcon';
+import { LearningBand } from '../../components/learning/LearningBand';
 import { assetUrl } from '../../utils/assets';
 import '../../styles/pages.css';
 
@@ -97,6 +98,8 @@ export const ServicesPage = () => {
           ))}
         </div>
       </section>
+
+      <LearningBand />
 
       <CtaBand title={c.cta.title} text={c.cta.text} />
     </>

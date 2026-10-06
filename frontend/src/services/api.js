@@ -231,6 +231,39 @@ export const partnersAPI = {
   removeApplication: (id) => api.delete(`/v1/partners/manage/applications/${id}/`),
 };
 
+// Learning hub: free notes by field (public), progress for signed-in learners, and Admin → Learning
+export const learningAPI = {
+  fields: () => api.get('/v1/learning/fields/'),
+  field: (slug) => api.get(`/v1/learning/fields/${slug}/`),
+  note: (field, note) => api.get(`/v1/learning/fields/${field}/notes/${note}/`),
+  search: (q) => api.get('/v1/learning/search/', { params: { q } }),
+  pdf: (slug, drafts = false) => api.get(`/v1/learning/fields/${slug}/pdf/`, { params: drafts ? { drafts: 1 } : {}, responseType: 'blob' }),
+  mine: () => api.get('/v1/learning/me/'),
+  markDone: (id) => api.post(`/v1/learning/notes/${id}/progress/`),
+  markUndone: (id) => api.delete(`/v1/learning/notes/${id}/progress/`),
+  manageFields: () => api.get('/v1/learning/manage/fields/'),
+  manageField: (id) => api.get(`/v1/learning/manage/fields/${id}/`),
+  createField: (data) => api.post('/v1/learning/manage/fields/', data),
+  updateField: (id, data) => api.patch(`/v1/learning/manage/fields/${id}/`, data),
+  removeField: (id) => api.delete(`/v1/learning/manage/fields/${id}/`),
+  reorderFields: (ids) => api.post('/v1/learning/manage/fields/reorder/', { ids }),
+  publishNotes: (id, publish = true) => api.post(`/v1/learning/manage/fields/${id}/publish-notes/`, { publish }),
+  createTopic: (data) => api.post('/v1/learning/manage/topics/', data),
+  updateTopic: (id, data) => api.patch(`/v1/learning/manage/topics/${id}/`, data),
+  removeTopic: (id) => api.delete(`/v1/learning/manage/topics/${id}/`),
+  reorderTopics: (ids) => api.post('/v1/learning/manage/topics/reorder/', { ids }),
+  manageNote: (id) => api.get(`/v1/learning/manage/notes/${id}/`),
+  createNote: (data) => api.post('/v1/learning/manage/notes/', data),
+  updateNote: (id, data) => api.patch(`/v1/learning/manage/notes/${id}/`, data),
+  removeNote: (id) => api.delete(`/v1/learning/manage/notes/${id}/`),
+  reorderNotes: (ids) => api.post('/v1/learning/manage/notes/reorder/', { ids }),
+  upload: (file) => {
+    const body = new FormData();
+    body.append('file', file);
+    return api.post('/v1/learning/manage/upload/', body, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
 // Completed projects: the Projects page (public) and Admin → Projects
 export const projectsAPI = {
   list: () => api.get('/v1/projects/'),

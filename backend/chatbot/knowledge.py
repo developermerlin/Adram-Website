@@ -32,7 +32,7 @@ SERVICES = [
 ]
 PAGES = [
     ('/services', 'All services'), ('/courses', 'Training programmes'), ('/scholarships', 'Scholarships'),
-    ('/about', 'About ADRAM'), ('/about/team', 'The team'), ('/projects', 'Completed projects'), ('/blog', 'Blog'), ('/partners', 'Partners'),
+    ('/about', 'About ADRAM'), ('/about/team', 'The team'), ('/projects', 'Completed projects'), ('/learning', 'Learning hub (free notes)'), ('/blog', 'Blog'), ('/partners', 'Partners'),
     ('/contact', 'Contact form'), ('/join', 'Create a free account'), ('/login', 'Sign in'),
 ]
 
@@ -115,6 +115,16 @@ def _projects_section():
     return '\n'.join(rows) or 'No projects published yet.'
 
 
+def _learning_section():
+    from learning.models import Field
+    rows = []
+    for f in Field.objects.filter(is_published=True):
+        topics = list(f.topics.filter(notes__is_published=True).distinct().values_list('title', flat=True)[:12])
+        if topics:
+            rows.append(f"- {f.name} (free notes from zero to hero, page: /learning/{f.slug}): {f.summary} Topics: {', '.join(topics)}.")
+    return '\n'.join(rows) or 'No learning notes published yet.'
+
+
 def build(extra=''):
     sections = [
         ('ABOUT ADRAM AND CONTACT DETAILS', _site_section()),
@@ -123,6 +133,7 @@ def build(extra=''):
         ('SCHOLARSHIPS', _scholarships_section()),
         ('BLOG ARTICLES', _blog_section()),
         ('COMPLETED PROJECTS (CASE STUDIES)', _projects_section()),
+        ('LEARNING HUB (FREE STUDY NOTES)', _learning_section()),
         ('TEAM', _team_section()),
         ('USEFUL PAGES', '\n'.join(f'- {label}: {path}' for path, label in PAGES)),
     ]

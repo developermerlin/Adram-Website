@@ -1,0 +1,433 @@
+/* Admin → Learning hub (lha-): the fields list, a field's curriculum, and the note editor (with blog-admin.css's be-* layout). */
+
+.lha-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.lha-new {
+  display: flex;
+  flex: 1 1 360px;
+  gap: 8px;
+  max-width: 520px;
+}
+
+.lha-new .input {
+  flex: 1;
+}
+
+.lha-head__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lha-help {
+  margin-bottom: 16px;
+  padding: 18px 22px;
+}
+
+.lha-help h2 {
+  margin: 0 0 8px;
+}
+
+.lha-help ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.lha-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 44px 24px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.lha-empty > i {
+  color: var(--blue-600);
+  font-size: 1.8rem;
+}
+
+.lha-empty p {
+  margin: 0;
+}
+
+.lha-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lha-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 16px;
+}
+
+.lha-field__main {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+}
+
+.lha-field__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--tint-blue);
+  color: var(--blue-600);
+}
+
+.lha-field__text {
+  display: grid;
+  min-width: 0;
+}
+
+.lha-field__text strong {
+  color: var(--ink);
+}
+
+.lha-field__main:hover strong {
+  color: var(--blue-600);
+}
+
+.lha-field__text small {
+  color: var(--muted);
+}
+
+.lha-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.lha-danger,
+.lha-danger:hover {
+  color: var(--danger) !important;
+}
+
+/* ---------- Curriculum ---------- */
+.lha-level {
+  display: grid;
+  gap: 12px;
+}
+
+.lha-level__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.lha-level__head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.lha-level__head h2 {
+  margin: 0;
+}
+
+.lha-level__head p {
+  margin: 2px 0 0;
+}
+
+.lha-level__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--tint-blue);
+  color: var(--blue-600);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.lha-level__count {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.lha-topic {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+}
+
+.lha-topic__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+}
+
+.lha-topic__title {
+  display: grid;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.lha-topic__title strong {
+  color: var(--ink);
+}
+
+.lha-topic__title small {
+  color: var(--muted);
+}
+
+.lha-topic__form {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 8px;
+}
+
+.lha-topic__form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.lha-level-select {
+  width: auto;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  font-size: 0.82rem;
+}
+
+.lha-notes {
+  display: grid;
+  margin: 0;
+  padding: 0 8px;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.lha-notes li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.lha-notes li:last-child {
+  border-bottom: 0;
+}
+
+.lha-note {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px;
+  color: var(--text);
+}
+
+.lha-note:hover {
+  color: var(--blue-600);
+}
+
+.lha-note > i {
+  width: 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.lha-note > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lha-note small {
+  flex: none;
+  color: var(--muted);
+}
+
+.lha-add-note {
+  margin: 4px 8px 8px;
+}
+
+.lha-add-topic {
+  display: flex;
+  gap: 8px;
+}
+
+.lha-add-topic .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Note editor ---------- */
+.lha-writer { padding-top: 12px; }
+.lha-writer .be-toolbar { margin-top: 0; padding-top: 0; border-top: 0; }
+
+.lha-writer .be-body {
+  min-height: 420px;
+}
+
+.lha-objective {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lha-objective > i {
+  color: var(--blue-600);
+}
+
+.lha-objective .input {
+  flex: 1;
+}
+
+.lha-resource {
+  display: grid;
+  grid-template-columns: auto 110px minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.lha-resource__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lha-upload {
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .lha-resource {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .lha-resource > .input,
+  .lha-resource__tools {
+    grid-column: 1 / -1;
+  }
+
+  .lha-resource > select.input {
+    grid-column: 2;
+  }
+
+  .lha-resource__tools {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 560px) {
+  .lha-new,
+  .lha-add-topic {
+    flex-direction: column;
+  }
+
+  .lha-topic__head .lha-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .lha-notes li {
+    flex-wrap: wrap;
+  }
+
+  .lha-note .badge {
+    display: none;
+  }
+}
+
+/* field page: the "not visible yet" warning and the publish-all bar */
+.lha-notice { margin-bottom: 14px; }
+.lha-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); }
+.lha-bulk > span { flex: 1 1 220px; color: var(--muted); font-size: 0.92rem; }
+
+/* note editor: the labelled "Insert code" and "Insert picture" buttons at the end of the toolbar */
+.be-tools .lha-insert { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.be-tools .lha-insert button { display: inline-flex; gap: 6px; width: auto; padding: 0 12px; border: 1px solid var(--line); background: var(--white); font: inherit; font-size: 0.84rem; font-weight: 600; }
+.be-tools .lha-insert button:hover { border-color: var(--blue-600); color: var(--blue-600); background: var(--tint-blue); }
+
+/* insert windows (components/admin/InsertDialogs.jsx): never taller than the screen. The title and the buttons stay
+   in place; only the middle scrolls when it has to. */
+.modal__card.ins-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 40px);
+  padding: 0;
+  overflow: hidden;
+}
+.ins-dialog__head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.ins-dialog__head h2 { margin: 0; }
+.ins-dialog__body { display: grid; flex: 1 1 auto; gap: 14px; min-height: 0; padding: 18px 20px; overflow-y: auto; overscroll-behavior: contain; }
+.ins-dialog__body .field { margin: 0; }
+.ins-dialog .modal__actions { flex: none; margin: 0; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--surface); }
+.ins-dialog__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px; }
+.ins-dialog__code { min-height: 180px; max-height: 42vh; background: var(--navy-950); color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; line-height: 1.6; tab-size: 2; }
+.ins-dialog__code::placeholder { color: #7c8aa8; }
+
+/* the picture window: preview on the left, caption and width on the right */
+.ins-dialog__grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.ins-dialog__pic { display: grid; justify-items: center; gap: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface); }
+.ins-dialog__preview { display: flex; align-items: center; justify-content: center; width: 100%; height: 170px; overflow: hidden; border-radius: 8px; background: var(--white); }
+.ins-dialog__preview img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+.ins-dialog__fields { display: grid; gap: 14px; min-width: 0; }
+.ins-dialog__sizes { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.ins-dialog__sizes legend { margin-bottom: 6px; }
+.ins-dialog .ins-size { position: relative; display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.ins-size input { position: absolute; opacity: 0; pointer-events: none; }
+.ins-size__dot { flex: none; width: 16px; height: 16px; border: 2px solid var(--line-strong, #c5cbd8); border-radius: 50%; }
+.ins-size__text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.ins-size strong { color: var(--ink); font-size: 0.9rem; }
+.ins-size small { color: var(--muted); font-size: 0.8rem; }
+.ins-size.is-on { border-color: var(--blue-600); background: var(--tint-blue); }
+.ins-size.is-on .ins-size__dot { border-color: var(--blue-600); background: radial-gradient(circle, var(--blue-600) 0 4px, transparent 5px); }
+.ins-size:has(input:focus-visible) { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .ins-dialog__row, .ins-dialog__grid { grid-template-columns: minmax(0, 1fr); }
+  .ins-dialog__preview { height: 140px; }
+}
+
+/* Preview with insert points (components/admin/PreviewWithInserts.jsx): a + between blocks adds a picture, diagram or code there */
+.bi-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 10px 14px; border-radius: 10px; background: var(--tint-blue); color: var(--blue-700); font-size: 0.88rem; }
+.bi-wrap { display: grid; }
+.bi-block > * + * { margin-top: 1.25em; }
+.bi-insert { position: relative; display: flex; align-items: center; justify-content: center; min-height: 34px; margin: 4px 0; }
+.bi-insert__line { position: absolute; left: 0; right: 0; top: 50%; height: 0; border-top: 1px dashed transparent; transition: border-color 0.15s ease; }
+.bi-insert:hover .bi-insert__line, .bi-insert.is-open .bi-insert__line, .bi-insert:focus-within .bi-insert__line { border-color: color-mix(in srgb, var(--blue-600) 45%, var(--line)); }
+.bi-insert__add { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; background: var(--white); color: var(--muted); font-size: 0.75rem; cursor: pointer; opacity: 0.45; transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+.bi-insert:hover .bi-insert__add, .bi-insert__add:focus-visible { opacity: 1; border-color: var(--blue-600); color: var(--blue-600); transform: scale(1.08); }
+.bi-insert__menu { position: relative; display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); box-shadow: 0 12px 28px -18px rgba(5, 10, 28, 0.45); }
+.bi-insert__menu button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.bi-insert__menu button:hover { border-color: var(--blue-600); background: var(--tint-blue); color: var(--blue-600); }
+.bi-insert__menu .bi-insert__close { padding: 0 10px; border-color: transparent; color: var(--muted); }
+/* on touch screens there is no hover, so the + stays clearly visible */
+@media (hover: none) { .bi-insert__add { opacity: 1; } }

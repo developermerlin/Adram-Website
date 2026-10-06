@@ -859,7 +859,7 @@ textarea.input {
   font-size: 0.72rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1180px) { /* with the compact menu (see .mobile-nav) */
   .info-bar {
     display: none;
   }
@@ -1174,17 +1174,29 @@ textarea.input {
   display: none;
 }
 
-@media (max-width: 1180px) {
+/* The logo never shrinks (it would spill into the menu); the menu tightens instead on mid-size screens. */
+.site-header__inner > .brand {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1440px) {
   .nav__link {
-    padding: 0 9px;
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .nav__link {
+    padding: 0 8px;
     font-size: 0.9rem;
   }
 }
 
 /* ---------- Mobile and tablet menu ----------
-   Phones: a full-screen panel under the header. Tablets: a 400px drawer from the right over a dimmed page.
-   Items fade in one after another; sub-menus open with a smooth height change. */
-@media (max-width: 1024px) {
+   Phones: a full-screen panel under the header. Tablets and small laptops: a 400px drawer from the right over a dimmed page.
+   Items fade in one after another; sub-menus open with a smooth height change.
+   From 1180px down: below that the full menu and the account buttons no longer fit on one line. */
+@media (max-width: 1180px) {
   .nav,
   .header-actions {
     display: none;
@@ -2587,3 +2599,35 @@ body.site-locked #root { filter: grayscale(0.85); opacity: 0.55; user-select: no
 /* While a page's code downloads (routes load on demand) */
 .page-loading { display: grid; place-items: center; min-height: 60vh; color: var(--blue-600); }
 .page-loading .btn-spinner { width: 28px; height: 28px; border-width: 3px; border-color: color-mix(in srgb, currentColor 20%, transparent); border-top-color: currentColor; }
+
+/* ---------- Confirmation toast (components/ui/confirmToast.jsx): asks before an action, in place of the browser's confirm box ---------- */
+.confirm-toast {
+  display: flex;
+  gap: 14px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 20px 44px -18px color-mix(in srgb, var(--navy-950) 45%, transparent);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.confirm-toast.is-in { opacity: 1; transform: none; }
+.confirm-toast__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--tint-blue);
+  color: var(--blue-600);
+}
+.confirm-toast__icon--danger { background: var(--tint-red); color: var(--danger); }
+.confirm-toast__body { flex: 1; min-width: 0; }
+.confirm-toast__body strong { display: block; color: var(--ink); font-family: var(--font-display); }
+.confirm-toast__body p { margin: 2px 0 0; color: var(--text); font-size: 0.92rem; line-height: 1.5; }
+.confirm-toast__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .confirm-toast { transition: none; } }

@@ -87,6 +87,12 @@ const ProjectsPage = lazy(() => import('../pages/public/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('../pages/public/ProjectDetailPage'));
 const AdminProjectsPage = lazy(() => import('../pages/dashboard/AdminProjectsPage'));
 const AdminProjectEditorPage = lazy(() => import('../pages/dashboard/AdminProjectEditorPage'));
+const LearningPage = lazy(() => import('../pages/public/LearningPage'));
+const LearningFieldPage = lazy(() => import('../pages/public/LearningFieldPage'));
+const LearningNotePage = lazy(() => import('../pages/public/LearningNotePage'));
+const AdminLearningPage = lazy(() => import('../pages/dashboard/AdminLearningPage'));
+const AdminLearningFieldPage = lazy(() => import('../pages/dashboard/AdminLearningFieldPage'));
+const AdminLearningNotePage = lazy(() => import('../pages/dashboard/AdminLearningNotePage'));
 const NewsletterConfirmPage = lazy(() => import('../pages/public/NewsletterPages').then((m) => ({ default: m.NewsletterConfirmPage })));
 const NewsletterUnsubscribePage = lazy(() => import('../pages/public/NewsletterPages').then((m) => ({ default: m.NewsletterUnsubscribePage })));
 const ProfilePage = lazy(() => import('../pages/dashboard/ProfilePage'));
@@ -149,6 +155,9 @@ export const AppRoutes = () => (
       <Route path="partners" element={<PartnersPage />} />
       <Route path="projects" element={<ProjectsPage />} />
       <Route path="projects/:slug" element={<ProjectDetailPage />} />
+      <Route path="learning" element={<LearningPage />} />
+      <Route path="learning/:field" element={<LearningFieldPage />} />
+      <Route path="learning/:field/:note" element={<LearningNotePage />} />
       <Route path="blog/:slug" element={<BlogPostPage />} />
       <Route path="newsletter/unsubscribe/:token" element={<NewsletterUnsubscribePage />} />
       <Route path="premium" element={<PremiumPage />} />
@@ -236,6 +245,9 @@ export const AppRoutes = () => (
     <Route path="/admin/partners" element={only(['ADMIN'], <AdminPartnersPage />)} />
     <Route path="/admin/projects" element={only(['ADMIN'], <AdminProjectsPage />)} />
     <Route path="/admin/projects/:id" element={only(['ADMIN'], <AdminProjectEditorPage />)} />
+    <Route path="/admin/learning" element={only(['ADMIN'], <AdminLearningPage />)} />
+    <Route path="/admin/learning/notes/:id" element={only(['ADMIN'], <AdminLearningNotePage />)} />
+    <Route path="/admin/learning/:id" element={only(['ADMIN'], <AdminLearningFieldPage />)} />
     <Route path="/admin/team" element={only(['ADMIN'], <AdminTeamPage />)} />
     <Route path="/admin/chatbot" element={only(['ADMIN'], <AdminChatbotPage />)} />
     <Route path="/admin/team/:id" element={only(['ADMIN'], <AdminTeamMemberPage />)} />

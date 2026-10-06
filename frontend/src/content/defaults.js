@@ -528,7 +528,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Header and footer navigation
   navigation: {
-    labels: { home: 'Home', about: 'About', services: 'Services', training: 'Training', scholarships: 'Scholarships', contact: 'Contact', signIn: 'Sign in', signUp: 'Sign up', dashboard: 'My dashboard' },
+    labels: { home: 'Home', about: 'About', services: 'Services', training: 'Training', learningInServices: 'Learning hub: free notes', scholarships: 'Scholarships', contact: 'Contact', signIn: 'Sign in', signUp: 'Sign up', dashboard: 'My dashboard' },
     limits: { dropdown: 6, footerServices: 5 },
     aboutMenu: [
       { label: 'Company overview', link: '/about', icon: 'building' },
@@ -563,6 +563,7 @@ export const defaults = {
       studentsTitle: 'Students',
       students: [
         { label: 'Training programmes', link: '/courses' },
+        { label: 'Learning hub', link: '/learning' },
         { label: 'Scholarships', link: '/scholarships' },
         { label: 'How to apply', link: '/scholarships#process' },
         { label: 'Create an account', link: '/register' },
@@ -665,6 +666,7 @@ export const defaults = {
       eyebrow: 'Blog',
       title: 'Insights, news and practical guides',
       lead: 'Ideas from our engineers and trainers on software, networks, tech careers and studying abroad.',
+      image: '/banners/blog-banner.jpg',
     },
     labels: {
       menu: 'Blog',
@@ -693,6 +695,7 @@ export const defaults = {
       eyebrow: 'Our projects',
       title: 'Work we’re proud to have delivered',
       lead: 'A selection of the websites, software, networks and digital systems we have built for organisations across Sierra Leone and beyond.',
+      image: '/banners/projects-banner.jpg',
       primaryLabel: 'Start a project',
       secondaryLabel: 'Our services',
     },
@@ -727,6 +730,70 @@ export const defaults = {
       title: 'Have a project in mind?',
       text: 'Tell us what you need and we’ll come back with ideas, a plan and a clear quote.',
       button: 'Start a project',
+    },
+  },
+
+  // ---------------------------------------------------------------- Learning hub (the fields, topics and notes are written in Admin → Learning)
+  learning: {
+    seo: {
+      title: 'Learning hub | ADRAM Technologies',
+      description: 'Free, structured notes, hands-on labs and research from ADRAM Technologies: learn networking and other tech fields from zero to hero.',
+    },
+    hero: {
+      eyebrow: 'Learning hub',
+      title: 'Learn technology from zero to hero',
+      lead: 'Free, structured notes, hands-on labs and research from the ADRAM team. Pick a field, start at zero and work your way up, one topic at a time.',
+      image: '/banners/learning-banner.jpg',
+    },
+    levels: [
+      { name: 'Zero', text: 'No experience needed: the very first ideas, explained simply.' },
+      { name: 'Foundations', text: 'The core concepts every professional uses every day.' },
+      { name: 'Intermediate', text: 'Configure, build and troubleshoot real set-ups.' },
+      { name: 'Advanced', text: 'Design, secure and scale with confidence.' },
+      { name: 'Hero', text: 'Expert topics, research and certification-level depth.' },
+    ],
+    howTitle: 'How the learning path works',
+    howLead: 'Every field is laid out in five stages. Start at the first, follow the notes in order, and tick each one off as you finish it.',
+    kinds: { note: 'Note', research: 'Research note', lab: 'Hands-on lab', cheatsheet: 'Cheat sheet' },
+    labels: {
+      fieldsTitle: 'Choose a field',
+      search: 'Search all notes',
+      searchEmpty: 'No notes match your search.',
+      empty: 'The first learning notes are being written. Check back soon.',
+      notes: 'notes',
+      topics: 'topics',
+      labs: 'labs',
+      start: 'Start learning',
+      continue: 'Continue',
+      review: 'Start again from the beginning',
+      progress: 'Your progress',
+      signIn: 'Sign in to track your progress',
+      markDone: 'Mark as complete',
+      done: 'Completed',
+      objectives: 'What you will learn',
+      resources: 'Resources',
+      outline: 'Field outline',
+      previous: 'Previous',
+      next: 'Next',
+      finished: 'You have finished every note in this field. Well done!',
+      level: 'Level',
+      minutes: 'min read',
+      allFields: 'All fields',
+      continueTitle: 'Continue where you left off',
+      roadmap: 'The roadmap',
+      updated: 'Updated',
+    },
+    servicesBand: {
+      show: true,
+      eyebrow: 'Learning hub',
+      title: 'Learn the skills behind our services',
+      text: 'Free, structured notes, hands-on labs and research from the ADRAM team. Start at zero and work your way up to expert level, one topic at a time.',
+      button: 'Explore the Learning hub',
+    },
+    cta: {
+      title: 'Prefer learning with a trainer?',
+      text: 'Join one of our practical training programmes in Freetown and earn a certificate.',
+      button: 'See training programmes',
     },
   },
 

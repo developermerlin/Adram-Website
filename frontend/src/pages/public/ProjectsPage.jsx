@@ -43,7 +43,8 @@ export const ProjectsPage = () => {
         eyebrow={c.hero.eyebrow}
         title={c.hero.title}
         crumbs={[{ to: '/about', label: 'About' }, { label: c.hero.eyebrow }]}
-        art={<ServiceArt />}
+        background={c.hero.image || undefined}
+        art={<div className="art-frame art-frame--dark"><ServiceArt /></div>}
         actions={(
           <>
             <Link to="/contact?subject=New%20project" className="btn btn--primary"><i className="fas fa-paper-plane" /> {c.hero.primaryLabel}</Link>

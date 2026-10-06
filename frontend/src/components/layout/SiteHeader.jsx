@@ -25,7 +25,11 @@ const buildNav = (n, services, courses, blog, partners) => {
     {
       to: '/services',
       label: n.labels.services,
-      children: services.slice(0, limit).map((sv) => ({ to: `/services/${sv.id}`, label: sv.title, icon: sv.brandIcon })),
+      also: ['/learning'], // the Learning hub lives in this menu, so Services stays highlighted there
+      children: [
+        ...services.slice(0, limit).map((sv) => ({ to: `/services/${sv.id}`, label: sv.title, icon: sv.brandIcon })),
+        { to: '/learning', label: n.labels.learningInServices || 'Learning hub: free notes', icon: 'graduate' },
+      ],
       footer: { to: '/services', label: count(services, mf.services, mf.servicesMany) },
     },
     {
@@ -92,13 +96,18 @@ const SignUpIcon = () => (
 );
 
 // One desktop menu item. The dropdown is controlled by state (not CSS :hover), so choosing an item closes it.
+const linkClass = (base, item, pathname) => ({ isActive }) => (
+  `${base}${isActive || item.also?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ? ' active' : ''}`
+);
+
 const NavItem = ({ item, open, onOpen, onClose }) => {
+  const { pathname } = useLocation();
   const ref = useRef(null);
 
   if (!item.children) {
     return (
       <div className="nav__item">
-        <NavLink to={item.to} end={item.end} className="nav__link" onClick={onClose}>
+        <NavLink to={item.to} end={item.end} className={linkClass('nav__link', item, pathname)} onClick={onClose}>
           {item.label}
         </NavLink>
       </div>
@@ -120,7 +129,7 @@ const NavItem = ({ item, open, onOpen, onClose }) => {
       onBlur={(e) => !ref.current?.contains(e.relatedTarget) && onClose()}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
-      <NavLink to={item.to} end={item.end} className="nav__link" onClick={choose}>
+      <NavLink to={item.to} end={item.end} className={linkClass('nav__link', item, pathname)} onClick={choose}>
         {item.label}
       </NavLink>
       <button
@@ -279,7 +288,7 @@ export const SiteHeader = () => {
         {nav.map((item, index) => (
           <div key={item.to} className="mobile-nav__group" style={{ '--i': index }}>
             <div className="mobile-nav__row">
-              <NavLink to={item.to} end={item.end} className="mobile-nav__link" onClick={() => setMenuOpen(false)}>
+              <NavLink to={item.to} end={item.end} className={linkClass('mobile-nav__link', item, pathname)} onClick={() => setMenuOpen(false)}>
                 {item.label}
               </NavLink>
               {item.children && (

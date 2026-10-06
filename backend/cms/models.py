@@ -3,7 +3,7 @@ from django.db import models
 
 # The pages whose content the admin can edit. `site` holds details used across the whole website
 # (contact details, social links, opening hours). Add a slug here when a page becomes editable.
-CONTENT_PAGES = ('site', 'home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'navigation', 'other', 'accounts', 'interface', 'blog', 'partners', 'store', 'projects')
+CONTENT_PAGES = ('site', 'home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'navigation', 'other', 'accounts', 'interface', 'blog', 'partners', 'store', 'projects', 'learning')
 
 
 class PageContent(models.Model):
