@@ -7,6 +7,8 @@ import { DEFAULT_THEME, THEME_GROUPS, THEME_PRESETS, isHex } from '../../content
 import { assetUrl } from '../../utils/assets';
 import BrandIcon, { ICON_NAMES } from '../brand/BrandIcon';
 import { ListEditor } from './catalog';
+import { VideoPlayer } from '../ui/VideoPlayer';
+import { parseVideo } from '../../utils/video';
 
 // The controls the content editor is built from (see content/schema.js for how pages describe their fields).
 
@@ -304,6 +306,83 @@ export const ImageField = ({ field, value, onChange, id }) => {
   );
 };
 
+// ---------------------------------------------------------------- Videos
+
+const sizeText = (bytes) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`);
+
+/** A video for a page: paste a YouTube or Vimeo link, or upload a short MP4 / WebM (or reuse one uploaded before). */
+export const VideoField = ({ field, value, onChange, id }) => {
+  const [uploads, setUploads] = useState(null);
+  const [showUploads, setShowUploads] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const fileRef = useRef(null);
+  const url = value || '';
+  const video = parseVideo(url);
+  const loadUploads = () => contentAPI.videos().then(({ data }) => setUploads(data)).catch(() => setUploads([]));
+  const upload = async (file) => {
+    if (!file) return;
+    setProgress(0);
+    try {
+      const { data } = await contentAPI.uploadVideo(file, setProgress);
+      onChange(data.url);
+      toast.success('Video uploaded.');
+      if (uploads) loadUploads();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'The video could not be uploaded.');
+    } finally {
+      setProgress(null);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+  const remove = async (name) => {
+    if (!window.confirm('Delete this video file? Pages using it will hide their video section.')) return;
+    await contentAPI.removeVideo(name);
+    loadUploads();
+  };
+  return (
+    <div className="field cf-video">
+      <label htmlFor={id}>{field.label}</label>
+      <div className="cf-video__row">
+        <input id={id} className="input" value={url} maxLength={500} placeholder="Paste a YouTube or Vimeo link, e.g. https://youtu.be/…"
+          aria-invalid={Boolean(url && !video)} onChange={(e) => onChange(e.target.value.trim())} />
+        <button type="button" className="btn btn--outline btn--sm" disabled={progress !== null} onClick={() => fileRef.current?.click()}>
+          {progress !== null ? <><span className="btn-spinner" /> {progress}%</> : <><i className="fas fa-upload" /> Upload</>}
+        </button>
+        <input ref={fileRef} type="file" accept="video/mp4,video/webm,.mp4,.webm,.m4v" className="sr-only" tabIndex={-1} onChange={(e) => upload(e.target.files?.[0])} />
+      </div>
+      {url && !video && <p className="field-error">That doesn’t look like a YouTube or Vimeo link or an MP4 / WebM video.</p>}
+      <p className="hint">YouTube or Vimeo is best for anything longer than a minute or two: it plays smoothly on every connection. Uploads: MP4 or WebM, up to 200 MB.</p>
+      <div className="cf-video__tools">
+        <button type="button" className="btn btn--text btn--sm" onClick={() => { setShowUploads((v) => !v); if (!uploads) loadUploads(); }}>
+          <i className="fas fa-film" /> {showUploads ? 'Hide uploaded videos' : 'Choose an uploaded video'}
+        </button>
+        {url && <button type="button" className="btn btn--text btn--sm text-danger" onClick={() => onChange('')}><i className="fas fa-xmark" /> Remove video</button>}
+      </div>
+      {showUploads && (
+        <ul className="cf-video__list">
+          {uploads === null && <li className="muted">Loading…</li>}
+          {uploads?.length === 0 && <li className="muted">No videos uploaded yet.</li>}
+          {uploads?.map((v) => (
+            <li key={v.name} className={v.url === url ? 'is-on' : ''}>
+              <button type="button" className="cf-video__pick" onClick={() => onChange(v.url)}>
+                <i className={`fas ${v.url === url ? 'fa-circle-check' : 'fa-film'}`} aria-hidden="true" />
+                <span>{v.name.replace(/^[0-9a-f]{8}-/, '')}</span><small>{sizeText(v.size)}</small>
+              </button>
+              <button type="button" className="icon-btn text-danger" onClick={() => remove(v.name)} aria-label={`Delete ${v.name}`}><i className="fas fa-trash-can" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {video && (
+        <div className="cf-video__preview">
+          <span className="hint">Preview ({video.kind === 'file' ? 'uploaded video' : video.kind === 'youtube' ? 'YouTube' : 'Vimeo'})</span>
+          <VideoPlayer key={url} url={url} title="Preview" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------- Icons
 
 export const IconField = ({ field, value, onChange, id }) => {
@@ -442,6 +521,8 @@ export const ContentField = ({ field, value, onChange, id, error }) => {
   switch (field.type) {
     case 'image':
       return <ImageField field={field} value={value || ''} onChange={onChange} id={id} />;
+    case 'video':
+      return <VideoField field={field} value={value || ''} onChange={onChange} id={id} />;
     case 'icon':
       return <IconField field={field} value={value || ''} onChange={onChange} id={id} />;
     case 'theme':

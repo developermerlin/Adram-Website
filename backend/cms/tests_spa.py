@@ -1,6 +1,8 @@
 import tempfile
 from pathlib import Path
 
+from django.core.signals import request_finished
+from django.db import close_old_connections
 from django.test import RequestFactory, TestCase, override_settings
 
 from .models import PageContent
@@ -48,8 +50,18 @@ class ServeFrontendTests(TestCase):
     def get(self, path='/'):
         request = self.factory.get(path, HTTP_HOST='adram.test')
         response = spa(request, path.lstrip('/'))
-        self.addCleanup(response.close)  # release the file on Windows before the temp folder is removed
+        self.addCleanup(self.release, response)  # release the file on Windows before the temp folder is removed
         return response
+
+    @staticmethod
+    def release(response):
+        # Closing a response announces "request finished", which closes the database connection - inside a test's
+        # transaction that breaks PostgreSQL. Django's test client pauses that signal the same way.
+        request_finished.disconnect(close_old_connections)
+        try:
+            response.close()
+        finally:
+            request_finished.connect(close_old_connections)
 
     def html(self, path='/'):
         response = self.get(path)

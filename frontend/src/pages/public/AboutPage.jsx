@@ -5,6 +5,7 @@ import SmartLink from '../../components/ui/SmartLink';
 import { AboutArt } from '../../components/brand/Illustrations';
 import HeroBrand from '../../components/brand/HeroBrand';
 import '../../styles/pages.css';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 // All wording, links and the header photo come from the editable "about" content (see content/defaults.js).
 export const AboutPage = () => {
@@ -47,6 +48,8 @@ export const AboutPage = () => {
           ))}
         </div>
       </section>
+
+      <VideoSection video={c.video} surface />
 
       <section className="section section--dark" id="mission">
         <div className="container grid grid-2">

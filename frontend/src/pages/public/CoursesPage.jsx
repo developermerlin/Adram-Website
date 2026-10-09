@@ -17,6 +17,7 @@ import { levelLabel } from '../../components/lms/courseUtils';
 import '../../styles/pages.css';
 import '../../styles/lms.css';
 import '../../styles/marketplace.css';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 const SORTS = [
   ['popular', 'Most popular'],
@@ -395,6 +396,8 @@ export const CoursesPage = () => {
           </div>
         </section>
       )}
+
+      <VideoSection video={c.video} />
 
       {c.reasons.items.length > 0 && (
         <section className="section section--surface">

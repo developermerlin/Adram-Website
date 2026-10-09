@@ -7,6 +7,7 @@ import BrandIcon from '../../components/brand/BrandIcon';
 import { PageHero } from '../../components/ui/Section';
 import { KindBadge, LearnCta, LevelDots, ProgressBar } from '../../components/learning/LearningParts';
 import { hoursText, levelList } from '../../components/learning/levels';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 /** Search across every published note, as you type. */
 const NoteSearch = ({ c }) => {
@@ -137,6 +138,8 @@ export const LearningPage = () => {
           )}
         </div>
       </section>
+
+      <VideoSection video={c.video} />
 
       <section className="section lh-how">
         <div className="container">

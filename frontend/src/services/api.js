@@ -346,6 +346,17 @@ export const contentAPI = {
     });
   },
   removeMedia: (id) => api.delete(`/v1/content/media/${id}/`),
+  videos: () => api.get('/v1/content/videos/'),
+  uploadVideo: (file, onProgress) => {
+    const body = new FormData();
+    body.append('file', file);
+    return api.post('/v1/content/videos/', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 0, // big files take a while on slow connections
+      onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
+    });
+  },
+  removeVideo: (name) => api.delete(`/v1/content/videos/${encodeURIComponent(name)}/`),
 };
 
 // Course portal: finding courses, learning, quizzes, assignments, notes, progress and certificates.

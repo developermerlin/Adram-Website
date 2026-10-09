@@ -39,6 +39,11 @@ const cta = {
   text: 'Tell us what you need. We’ll get back to you within one working day with next steps.',
 };
 
+// A page's video section (components/ui/VideoSection.jsx). It stays hidden until an admin adds a video in Site content.
+const videoBlock = (eyebrow, title, text, layout = 'right') => ({
+  show: true, eyebrow, title, text, url: '', poster: '', layout, buttonLabel: '', buttonLink: '',
+});
+
 export const defaults = {
   // ---------------------------------------------------------------- Site-wide details
   site: {
@@ -62,6 +67,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Home
   home: {
+    video: videoBlock('See us at work', 'Technology that works for real organisations', 'A short look at how ADRAM Technologies designs, builds and supports the systems our clients rely on every day.', 'right'),
     seo: {
       title: 'ADRAM Technologies | Building Solutions for a Better Future',
       description: 'ADRAM Technologies is an IT company in Freetown, Sierra Leone: web and mobile development, networking, software, AI and IT consultancy, plus professional training and scholarship guidance.',
@@ -166,6 +172,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- About
   about: {
+    video: videoBlock('Our story', 'Meet ADRAM Technologies', 'Who we are, what drives us and how we work with businesses, schools, NGOs and students across Sierra Leone.', 'left'),
     seo: {
       title: 'About us | ADRAM Technologies',
       description: 'Learn about ADRAM Technologies: our mission, vision and values, and the team building technology, training and scholarship opportunities in Sierra Leone.',
@@ -214,6 +221,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Services
   services: {
+    video: videoBlock('How we work', 'From first conversation to a system that runs', 'See how a project with ADRAM moves from understanding your needs to delivery, training and support.', 'wide'),
     seo: {
       title: 'IT services | ADRAM Technologies',
       description: 'Web and mobile development, software, networking, hardware, AI, data analytics, consultancy, design and typing training from ADRAM Technologies in Freetown.',
@@ -279,6 +287,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Training (courses)
   courses: {
+    video: videoBlock('Inside our training', 'Learn by doing, in small groups', 'A look inside our practical, project-based classes and the skills our learners leave with.', 'right'),
     seo: {
       title: 'Training programmes | ADRAM Technologies',
       description: 'Practical, project-based tech training in Freetown: programming, web, mobile, networking, data, design and more, with a certificate on completion.',
@@ -376,6 +385,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Scholarships
   scholarships: {
+    video: videoBlock('Scholarship guidance', 'How we help you apply', 'Watch how ADRAM guides students from choosing the right scholarship to submitting a strong application.', 'left'),
     seo: {
       title: 'Scholarships | ADRAM Technologies',
       description: 'Find international scholarships, get expert help preparing your application and track every deadline with ADRAM Technologies.',
@@ -735,6 +745,7 @@ export const defaults = {
 
   // ---------------------------------------------------------------- Learning hub (the fields, topics and notes are written in Admin → Learning)
   learning: {
+    video: videoBlock('Start here', 'How to use the Learning hub', 'A quick tour: choose a field, start at level zero, follow the notes in order and track your progress.', 'wide'),
     seo: {
       title: 'Learning hub | ADRAM Technologies',
       description: 'Free, structured notes, hands-on labs and research from ADRAM Technologies: learn networking and other tech fields from zero to hero.',

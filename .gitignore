@@ -16,12 +16,21 @@ __pycache__/
 .env
 .env.local
 *.local
+# copies of .env (e.g. .env.backup-before-x) hold the same secrets; only the examples are shared
+.env.*
+!.env.example
 
 # Logs & databases
 *.log
 backend/logs/
 *.sqlite3
 db.sqlite3
+# database copies and dumps (they hold user data)
+*.sqlite3.*
+*.sqlite3-journal
+db.*backup*
+*.dump
+*.sql.gz
 
 # Media / uploads
 backend/media/

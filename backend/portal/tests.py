@@ -1,6 +1,8 @@
 import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.signals import request_finished
+from django.db import close_old_connections
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -9,6 +11,17 @@ from catalog.models import Scholarship
 from .models import DEFAULT_DOCUMENTS, Application, PortalEvent, StaffNote
 
 BASE = '/api/v1/portal'
+
+
+def release(response):
+    """Let go of a downloaded file (Windows won't delete an open one). Closing a response announces "request finished",
+    which closes the database connection - inside a test's transaction that breaks PostgreSQL - so pause that signal,
+    as Django's test client does."""
+    request_finished.disconnect(close_old_connections)
+    try:
+        response.close()
+    finally:
+        request_finished.connect(close_old_connections)
 
 
 def make_user(role=User.STUDENT, email='ama@example.com'):
@@ -190,10 +203,10 @@ class ServiceFlowTests(TestCase):
         self.assertTrue(doc['is_done'] and doc['has_file'])
         own = self.client.get(f'{BASE}/files/documents/{doc_id}/')
         self.assertEqual(own.status_code, 200)
-        own.close()
+        release(own)
         receipt = self.staff.get(f'{BASE}/files/receipts/{data["service"]["id"]}/')
         self.assertEqual(receipt.status_code, 200)
-        receipt.close()
+        release(receipt)
         stranger = APIClient()
         stranger.force_authenticate(make_user(email='other@example.com'))
         self.assertEqual(stranger.get(f'{BASE}/files/documents/{doc_id}/').status_code, 404)
@@ -354,7 +367,7 @@ class InterviewAndResultFileTests(ServiceFlowTests):
         self.assertIn('result documents', mail.outbox[-1].subject)
         own = self.client.get(f'{BASE}/files/results/{result["id"]}/')
         self.assertEqual(own.status_code, 200)
-        own.close()
+        release(own)
         stranger = APIClient()
         stranger.force_authenticate(make_user(email='nosy@example.com'))
         self.assertEqual(stranger.get(f'{BASE}/files/results/{result["id"]}/').status_code, 404)
@@ -864,6 +877,6 @@ class MissingFileTests(TestCase):
         url = f'/api/v1/portal/files/messages/{msg.pk}/'
         found = client.get(url)
         self.assertEqual(found.status_code, 200)
-        found.close()  # let go of the file (Windows won't delete an open file)
+        release(found)  # let go of the file (Windows won't delete an open file)
         msg.attachment.storage.delete(msg.attachment.name)
         self.assertEqual(client.get(url).status_code, 404)

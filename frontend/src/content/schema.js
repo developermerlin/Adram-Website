@@ -1545,6 +1545,31 @@ export const contentPages = [
   },
 ];
 
+// Pages with a video section (components/ui/VideoSection.jsx), and where on the page it appears.
+const VIDEO_PAGES = {
+  home: 'after “Why ADRAM”', about: 'after “Who we are”', services: 'after the list of services', courses: 'after the key numbers',
+  scholarships: 'after “How we help”', learning: 'after the fields',
+};
+contentPages.forEach((p) => {
+  if (!VIDEO_PAGES[p.slug]) return;
+  p.sections.push({
+    id: 'video',
+    title: 'Video',
+    description: `A video section shown ${VIDEO_PAGES[p.slug]}. It only appears when it is switched on and has a video.`,
+    fields: [
+      toggle('video.show', 'Show the video section'),
+      { type: 'video', path: 'video.url', label: 'Video' },
+      image('video.poster', 'Cover picture (optional)', { hint: 'Shown before the video plays. YouTube videos use their own thumbnail when this is empty.' }),
+      text('video.eyebrow', 'Small label above the heading'),
+      text('video.title', 'Heading'),
+      area('video.text', 'Text'),
+      { type: 'select', path: 'video.layout', label: 'Layout', options: [['right', 'Text on the left, video on the right'], ['left', 'Video on the left, text on the right'], ['wide', 'Heading on top, wide video below']] },
+      text('video.buttonLabel', 'Button text (optional)', { placeholder: 'e.g. Start a project' }),
+      link('video.buttonLink', 'Button link (optional)'),
+    ],
+  });
+});
+
 // Every public page also gets a "search and browser title" section (the tab title and the description search engines show).
 const SEO_PAGES = ['home', 'about', 'team', 'services', 'courses', 'scholarships', 'contact', 'other', 'blog', 'partners', 'projects', 'learning'];
 contentPages.forEach((p) => {

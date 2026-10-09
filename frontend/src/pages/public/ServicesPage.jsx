@@ -9,6 +9,7 @@ import BrandIcon from '../../components/brand/BrandIcon';
 import { LearningBand } from '../../components/learning/LearningBand';
 import { assetUrl } from '../../utils/assets';
 import '../../styles/pages.css';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 // The header, every service card and the wording come from the editable "services" content.
 export const ServicesPage = () => {
@@ -98,6 +99,8 @@ export const ServicesPage = () => {
           ))}
         </div>
       </section>
+
+      <VideoSection video={c.video} surface />
 
       <LearningBand />
 

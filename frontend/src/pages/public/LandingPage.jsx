@@ -9,6 +9,7 @@ import { AboutArt } from '../../components/brand/Illustrations';
 import HeroBrand from '../../components/brand/HeroBrand';
 import { assetUrl } from '../../utils/assets';
 import '../../styles/landing.css';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 // All wording, links and photos on this page come from the editable "home" content (see content/defaults.js).
 export const LandingPage = () => {
@@ -171,6 +172,8 @@ export const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      <VideoSection video={c.video} />
 
       {/* ---------- Process ---------- */}
       <section className="section section--dark process">

@@ -9,6 +9,7 @@ import { DeadlineBadge } from '../../components/ui/KeyDates';
 import { CtaBand, IconTile, PageHero, SectionHeading } from '../../components/ui/Section';
 import Flag from '../../components/ui/Flag';
 import '../../styles/pages.css';
+import { VideoSection } from '../../components/ui/VideoSection';
 
 const ScholarshipCard = ({ s }) => (
   <article className="sch-card">
@@ -314,6 +315,8 @@ export const ScholarshipsPage = () => {
           </div>
         </div>
       </section>
+
+      <VideoSection video={c.video} />
 
       {/* ---------- Documents + FAQ ---------- */}
       <section className="section section--surface" id="requirements">
